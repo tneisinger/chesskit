@@ -2,6 +2,7 @@
 
 import Chessboard from '@/components/Chessboard';
 import ArrowButtons from '@/components/arrowButtons';
+import MovesDisplay from '@/components/movesDisplay';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import { PieceColor } from '@/types/chess';
 
@@ -29,6 +30,11 @@ export default function Home() {
           changeCurrentMove={setCurrentMove}
         />
       </div>
+      <MovesDisplay
+        history={history}
+        currentMove={currentMove}
+        changeCurrentMove={setCurrentMove}
+      />
     </div>
   );
 }
