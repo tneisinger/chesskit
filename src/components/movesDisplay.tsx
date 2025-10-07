@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { Move } from 'cm-chess/src/Chess';
-// import styles from '../styles/components/movesDisplay.module.scss';
 import { makeMoveHistoryHtml } from '../utils/movesDisplay';
 // import type { GamePuzzle } from '../types/puzzle';
 
@@ -37,12 +36,11 @@ const MovesDisplay = ({
     }
   }, [currentMove]);
 
-  // const classes = [styles.movesDisplay];
-  // if (useMobileLayout) classes.push(styles.mobileLayout);
+  const classes = ['flex flex-col overflow-y-scroll w-full flex-1 min-h-0 px-3'];
+  if (useMobileLayout) classes.push('flex-row flex-wrap content-start');
 
   return (
-    <div>
-    {/* <div className={classes.join(' ')}> */}
+    <div className={classes.join(' ')}>
       <div ref={topOfDisplay} />
       {makeMoveHistoryHtml({
         moves: history,

@@ -15,8 +15,12 @@ const MoveNum = ({ whiteMove, blackMove, inVariation }: Props) => {
 
   const n = move.ply - Math.floor(move.ply / 2);
 
+  const classes = ['flex-[0_0_24%] dark:text-gray-400'];
+
+  if (inVariation) classes.push('pr-2 inline-block first:pl-0');
+
   return (
-    <span>{n}.</span>
+    <span className={classes.join(' ')}>{n}.</span>
   );
 };
 

@@ -30,11 +30,13 @@ export default function Home() {
           changeCurrentMove={setCurrentMove}
         />
       </div>
-      <MovesDisplay
-        history={history}
-        currentMove={currentMove}
-        changeCurrentMove={setCurrentMove}
-      />
+      <div className="w-80">
+        <MovesDisplay
+          history={history}
+          currentMove={currentMove}
+          changeCurrentMove={setCurrentMove}
+        />
+      </div>
     </div>
   );
 }
