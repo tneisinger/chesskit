@@ -242,7 +242,7 @@ const CmChessboard = ({
   }, [afterUserMove, playMove, changeBoardPosition]);
 
   const enableMoveInput = useCallback(() => {
-    const handleMoveDone = (event: MoveInputEvent) => {
+    const handleMoveFinished = (event: MoveInputEvent) => {
       const ev = moveOverSquareEvent.current;
       if (event.type !== INPUT_EVENT_TYPE.moveInputFinished) {
         throw new Error('Expected moveInputFinished event');
@@ -261,6 +261,7 @@ const CmChessboard = ({
       // If the isMoveAllowed predicate is defined and that predicate determines that
       // the move is not allowed, then don't play the move.
       if (isMoveAllowed != undefined && !isMoveAllowed(shortMove)) {
+        moveOverSquareEvent.current = null;
         return;
       }
 
@@ -275,9 +276,11 @@ const CmChessboard = ({
         setPromoteEvent(ev);
         // setShowPromoteModal(true);
         board.current?.movePiece(ev.squareFrom, ev.squareTo);
+        moveOverSquareEvent.current = null;
         return;
       }
       if (moves.length === 1) performMove(shortMove);
+      moveOverSquareEvent.current = null;
     }
 
     const inputHandler = (event: MoveInputEvent) => {
@@ -298,8 +301,10 @@ const CmChessboard = ({
         return moves.length > 0;
       } else if (event.type === INPUT_EVENT_TYPE.movingOverSquare) {
         moveOverSquareEvent.current = event;
+      } else if (event.type === INPUT_EVENT_TYPE.moveInputCanceled) {
+        moveOverSquareEvent.current = null;
       } else if (event.type === INPUT_EVENT_TYPE.moveInputFinished) {
-        handleMoveDone(event);
+        handleMoveFinished(event);
       }
     };
 
