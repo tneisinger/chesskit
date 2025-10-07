@@ -437,22 +437,22 @@ const CmChessboard = ({
   //   }
   // }, [arrows]);
 
-  // const containerStyles = [styles.chessboardContainer];
+  const containerStyles = ['relative'];
 
-  // if (cursor === Cursor.Wait) {
-  //   containerStyles.push(styles.useWaitCursor);
-  // } else if (cursor === Cursor.Arrow) {
-  //   containerStyles.push(styles.useArrowCursor);
-  // } else if (cursor === Cursor.Hand) {
-  //   containerStyles.push(styles.useHandCursor);
-  // }
+  if (cursor === Cursor.Wait) {
+    containerStyles.push('[&_*]:!cursor-wait');
+  } else if (cursor === Cursor.Arrow) {
+    containerStyles.push('[&_*]:!cursor-default');
+  } else if (cursor === Cursor.Hand) {
+    containerStyles.push('[&_*]:!cursor-pointer');
+  }
 
   const debug = () => {
     console.log('debug');
   }
 
   return (
-    <div /*className={/*containerStyles.join(' ')}*/>
+    <div className={containerStyles.join(' ')}>
       <div style={{ width: boardSize, height: boardSize }} id={elemId}></div>
       {/* <PromoteModal */}
       {/*   show={showPromoteModal} */}
@@ -461,7 +461,7 @@ const CmChessboard = ({
       {/*   pieceSize={boardSize * 0.10} */}
       {/* /> */}
       {isLoading && board.current && (
-        <div>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[15]">
           <p>spinning</p>
           {/* <Spinner scale={2} alwaysDark={true} /> */}
         </div>
