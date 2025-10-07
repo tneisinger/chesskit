@@ -1,7 +1,7 @@
 import React from 'react';
 import { Move } from 'cm-chess/src/Chess';
-import MovePair from '@/components/movePair';
-import { makeMoveHistoryHtml } from '@/utils/movesDisplay';
+import MovePair from './movePair';
+import { makeMoveHistoryHtml } from '../utils/movesDisplay';
 
 export interface Props {
   whiteMove?: Move;
@@ -32,30 +32,28 @@ const MovesGroup = (props: Props) => {
 
     if (inVariation) return variations;
 
-    // const classes = [styles.variations];
-    // if (props.useMobileLayout) classes.push(styles.mobileLayout);
+    const classes = ['bg-gray-500 px-1'];
+    if (props.useMobileLayout) classes.push('rounded mr-1 pb-0');
 
     return (
-      <div>
+      <div className={classes.join(' ')}>
         {variations}
       </div>
     );
-    // return (
-    //   <div className={classes.join(' ')}>
-    //     {variations}
-    //   </div>
-    // );
   }
 
   const makeVariationHtml = (variation: Move[]) => {
-    // const classes = [styles.variation];
-    // if (inVariation) classes.push(styles.inVariation);
-    // if (props.useMobileLayout) {
-    //   classes.push(styles.mobileLayout);
-    // }
+    const classes = ['text-sm py-1 before:content-["("] after:content-[")"] [&_.inVariation]:inline [&_.inVariation]:pr-1'];
+    if (inVariation) classes.push('inVariation');
+    if (props.useMobileLayout) {
+      classes.push('inline-block');
+    }
 
     return (
-      <div key={`variation_${variation[0].san}`}>
+      <div
+        className={classes.join(' ')}
+        key={`variation_${variation[0].san}`}
+      >
         {makeMoveHistoryHtml({
           moves: variation,
           currentMove,
@@ -67,22 +65,6 @@ const MovesGroup = (props: Props) => {
         })}
       </div>
     );
-    // return (
-    //   <div
-    //     className={classes.join(' ')}
-    //     key={`variation_${variation[0].san}`}
-    //   >
-    //     {makeMoveHistoryHtml({
-    //       moves: variation,
-    //       currentMove,
-    //       changeCurrentMove: props.changeCurrentMove,
-    //       keyMoves: props.keyMoves,
-    //       isVariation: true,
-    //       useMobileLayout: props.useMobileLayout,
-    //       showVariations: props.showVariations,
-    //     })}
-    //   </div>
-    // );
   }
 
   if (!hasVariations(whiteMove) || !props.showVariations) {

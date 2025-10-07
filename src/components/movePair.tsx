@@ -1,8 +1,8 @@
 import React from 'react';
 import { Move as MoveData } from 'cm-chess/src/Chess';
-import MoveNum from '@/components/moveNum';
-import Move from '@/components/move';
-import { areMovesEqual } from '@/utils/cmchess';
+import MoveNum from './moveNum';
+import Move from './move';
+import { areMovesEqual } from '../utils/cmchess';
 
 export interface Props {
   whiteMove?: MoveData;
@@ -49,19 +49,14 @@ const MovePair = (props: Props) => {
 
   if (props.inVariation) return innerHtml;
 
-  // const classes = [styles.mainLineMovePair];
-  // if (props.useMobileLayout) classes.push(styles.mobileLayout);
+  const classes = ['flex my-1'];
+  if (props.useMobileLayout) classes.push('inline-block mr-2 text-sm [&>span+span]:ml-1');
 
   return (
-    <div>
+    <div className={classes.join(' ')}>
       {innerHtml}
     </div>
   );
-  // return (
-  //   <div className={classes.join(' ')}>
-  //     {innerHtml}
-  //   </div>
-  // );
 };
 
 export default MovePair;
