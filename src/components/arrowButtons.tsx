@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Move } from 'cm-chess/src/Chess';
 // import type { GamePuzzle } from '../types/puzzle';
@@ -69,7 +68,7 @@ const ArrowButtons = ({
   }
 
   return (
-    <div>
+    <div className="m-1 mb-0 [&>button]:mr-2 [&>button:last-child]:mr-0">
       {!excludeStartAndEndBtns && (
         <ArrowButton
           arrow={Svg.ArrowBeginning}
