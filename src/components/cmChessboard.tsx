@@ -6,10 +6,10 @@ import { Square } from 'chess.js';
 import { ShortMove, PieceColor } from '../types/chess';
 import PromoteModal from '@/components/promoteModal';
 import Spinner from './spinner';
-// import {
-//   Arrows,
-//   Arrow,
-// } from 'cm-chessboard/src/extensions/arrows/Arrows.js';
+import {
+  Arrows,
+  ArrowTypeConfig,
+} from 'cm-chessboard/src/extensions/arrows/Arrows';
 import { FEN, Move } from 'cm-chess/src/Chess';
 import {
   Chessboard,
@@ -19,7 +19,7 @@ import {
   MARKER_TYPE,
   Marker,
   MoveInputEvent,
-  SquareSelectEvent,
+  // SquareSelectEvent,
   BORDER_TYPE,
   // SQUARE_SELECT_TYPE,
 } from 'cm-chessboard/src/Chessboard';
@@ -29,6 +29,13 @@ import { toColor } from '../utils/cmchess';
 import { getFen, getPlyFromFen } from '../utils/chess';
 
 const showDevButtons = false;
+
+export interface Arrow {
+  from: string;
+  to: string;
+  type: ArrowTypeConfig;
+}
+
 
 export enum Cursor {
   Arrow,
@@ -49,8 +56,8 @@ export interface Props {
   playMove?: (_move: ShortMove) => void;
   animate?: boolean;
   markers?: Marker[];
-  // arrows?: Arrow[];
-  // setArrows?: (_arrows: Arrow[]) => void;
+  arrows?: Arrow[];
+  setArrows?: (_arrows: Arrow[]) => void;
   isLoading?: boolean;
   isMoveAllowed?: (_move: ShortMove) => boolean;
   allowInteraction?: boolean;
@@ -98,14 +105,14 @@ const CmChessboard = ({
   animate,
   playMove,
   markers,
-  // arrows,
+  arrows,
   isLoading,
   isMoveAllowed,
   cursor,
   allowInteraction = true,
   elemId = 'board',
 
-  // setArrows = () => { return },
+  setArrows = () => { return },
   // Set a do-nothing function as the default value
   changeIsMoving = () => { return },
 
@@ -210,8 +217,8 @@ const CmChessboard = ({
       }
 
       boardFen.current = fen;
-      // board.current.removeArrows();
-      // setArrows([]);
+      board.current.removeArrows();
+      setArrows([]);
 
       // If the new position is an empty chessboard, do not play a move sound
       if (fen !== FEN.empty) playMoveSound(san, plyChange);
@@ -229,7 +236,7 @@ const CmChessboard = ({
       );
     }
     return Promise.resolve();
-  }, [/*setArrows, */changeIsMoving, playMoveSound]);
+  }, [setArrows, changeIsMoving, playMoveSound]);
 
   const performMove = useCallback((shortMove: ShortMove) => {
     const chessjsMove = chessjs.current.move(shortMove);
@@ -367,18 +374,13 @@ const CmChessboard = ({
         // moveFromMarker,
         // moveToMarker,
       },
-      // extensions: [{
-      //   class: Arrows,
-      //   props: {
-      //     sprite: { url: '/assets/arrows.svg' }
-      //   }
-      // }],
+      extensions: [{ class: Arrows }],
     }
 
     board.current = new Chessboard(elem, boardProps);
     // board.current.enableSquareSelect(squareSelectHandler);
     boardFen.current = emptyFen;
-    // return () => { if (board.current) board.current.removeArrows() }
+    return () => { if (board.current) board.current.removeArrows() }
   },
     [borderType, cssClass, showCoordinates, moveFromMarker, moveToMarker,
       elemId, orientation
@@ -432,14 +434,14 @@ const CmChessboard = ({
     }
   }, [markers]);
 
-  // useEffect(() => {
-  //   if (board.current) {
-  //     board.current.removeArrows();
-  //     if (arrows) {
-  //       arrows.forEach(({ type, from, to }) => board.current?.addArrow(type, from, to));
-  //     }
-  //   }
-  // }, [arrows]);
+  useEffect(() => {
+    if (board.current) {
+      board.current.removeArrows();
+      if (arrows) {
+        arrows.forEach(({from, to, type}) => board.current?.addArrow(type, from, to));
+      }
+    }
+  }, [arrows]);
 
   const containerStyles = ['relative'];
 

@@ -1,4 +1,6 @@
 declare module 'cm-chessboard/src/Chessboard' {
+  import { ArrowTypeConfig } from 'cm-chessboard/src/cm-chessboard/extensions/arrows/Arrows.js';
+
   export interface Props {
     position?: string;
     orientation?: COLOR;
@@ -17,7 +19,7 @@ declare module 'cm-chessboard/src/Chessboard' {
     animationDuration?: number;
     extensions?: {
       class: unknown,
-      props: Record<string, unknown>
+      props?: Record<string, unknown>
     }[]
   }
 
@@ -137,26 +139,10 @@ export enum POINTER_EVENTS {
 
     setOrientation(color: COLOR);
 
-    addArrow(type: ARROW_TYPE, from: string, to: string);
+    addArrow(type: ArrowTypeConfig, from: string, to: string);
 
-    removeArrows(type?: ARROW_TYPE, from?: string, to?: string);
+    removeArrows(type?: ArrowTypeConfig, from?: string, to?: string);
 
     destroy(): void;
   }
-}
-
-declare module 'cm-chessboard/src/cm-chessboard/extensions/arrows/Arrows.js' {
-  export interface Arrow {
-    type: ARROW_TYPE;
-    from: Square,
-    to: Square,
-  }
-
-  export enum ARROW_TYPE {
-    default = {class: "arrow-default", slice: "arrowDefault", headSize: 7},
-    danger = {class: "arrow-danger", slice: "arrowDefault", headSize: 7},
-    pointy = {class: "arrow-pointy", slice: "arrowPointy", headSize: 7},
-  }
-
-  declare class Arrows {}
 }
