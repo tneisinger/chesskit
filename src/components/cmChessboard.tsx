@@ -5,7 +5,7 @@ import ChessJS from '../chessjs';
 import { Square } from 'chess.js';
 import { ShortMove, PieceColor } from '../types/chess';
 import PromoteModal from '@/components/promoteModal';
-// import Spinner from './spinner';
+import Spinner from './spinner';
 // import {
 //   Arrows,
 //   Arrow,
@@ -466,8 +466,7 @@ const CmChessboard = ({
       />
       {isLoading && board.current && (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[15]">
-          <p>spinning</p>
-          {/* <Spinner scale={2} alwaysDark={true} /> */}
+          <Spinner scale={2} alwaysDark={true} />
         </div>
       )}
       {showDevButtons && (
