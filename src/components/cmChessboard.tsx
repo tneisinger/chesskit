@@ -4,9 +4,8 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import ChessJS from '../chessjs';
 import { Square } from 'chess.js';
 import { ShortMove, PieceColor } from '../types/chess';
-// import PromoteModal from './promoteModal';
+import PromoteModal from '@/components/promoteModal';
 // import Spinner from './spinner';
-// import styles from '../styles/components/chessboard.module.scss';
 // import {
 //   Arrows,
 //   Arrow,
@@ -133,7 +132,7 @@ const CmChessboard = ({
     undefined
   );
 
-  // const [showPromoteModal, setShowPromoteModal] = useState(false);
+  const [showPromoteModal, setShowPromoteModal] = useState(false);
 
   const [promoteColor, setPromoteColor] = useState<'w' | 'b'>('w');
 
@@ -274,7 +273,7 @@ const CmChessboard = ({
       if (moves.length > 1) {
         setPromoteColor(chessjs.current.turn());
         setPromoteEvent(ev);
-        // setShowPromoteModal(true);
+        setShowPromoteModal(true);
         board.current?.movePiece(ev.squareFrom, ev.squareTo);
         moveOverSquareEvent.current = null;
         return;
@@ -341,7 +340,7 @@ const CmChessboard = ({
     }
     performMove(shortMove);
     setPromoteEvent(null);
-    // setShowPromoteModal(false);
+    setShowPromoteModal(false);
   }
 
   useEffect(() => {
@@ -459,12 +458,12 @@ const CmChessboard = ({
   return (
     <div className={containerStyles.join(' ')}>
       <div style={{ width: boardSize, height: boardSize }} id={elemId}></div>
-      {/* <PromoteModal */}
-      {/*   show={showPromoteModal} */}
-      {/*   color={promoteColor} */}
-      {/*   handleClick={handlePromoteClick} */}
-      {/*   pieceSize={boardSize * 0.10} */}
-      {/* /> */}
+      <PromoteModal
+        show={showPromoteModal}
+        color={promoteColor}
+        handleClick={handlePromoteClick}
+        pieceSize={boardSize * 0.10}
+      />
       {isLoading && board.current && (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[15]">
           <p>spinning</p>
