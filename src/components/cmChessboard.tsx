@@ -458,7 +458,7 @@ const CmChessboard = ({
   }
 
   return (
-    <div className={containerStyles.join(' ')}>
+    <div className={containerStyles.join(' ')} style={{ width: boardSize, height: boardSize }}>
       <div style={{ width: boardSize, height: boardSize }} id={elemId}></div>
       <PromoteModal
         show={showPromoteModal}
