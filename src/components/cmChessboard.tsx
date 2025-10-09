@@ -468,7 +468,7 @@ const CmChessboard = ({
       />
       {isLoading && board.current && (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[15]">
-          <Spinner scale={2} alwaysDark={true} />
+          <Spinner scale={2} alwaysDark={true} centerOrigin/>
         </div>
       )}
       {showDevButtons && (
