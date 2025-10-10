@@ -1,15 +1,15 @@
 import { Chess as CmChess, COLOR, Move } from 'cm-chess/src/Chess';
 import { MARKER_TYPE } from 'cm-chessboard/src/Chessboard';
-import ChessJS from '../chessjs';
+import ChessJS from '@/chessjs';
 import { Square, Move as ChessJsMove } from 'chess.js';
-import { PieceColor, ShortMove } from '../types/chess';
+import { PieceColor, ShortMove } from '@/types/chess';
 import {
   isSubline,
   performMove,
   shortMoveToLan,
   lanToShortMove,
   areMovesEqual as areShortMovesEqual,
-} from './chess';
+} from '@/utils/chess';
 
 export function areMovesEqual(m1: Move | undefined, m2: Move | undefined): boolean {
   if (m1 == undefined || m2 == undefined) return false;
