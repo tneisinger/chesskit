@@ -14,9 +14,9 @@ import { Chess as CmChess, Move, FEN  } from 'cm-chess/src/Chess';
 import { Move as ChessJsMove } from 'chess.js';
 import { assertUnreachable, average, pluralizeWord } from '.';
 // import { Settings } from '../zustand/store';
-// import { povDiff } from './winningChances';
-// import sassVariables from '../styles/variables.module.scss';
-// import { isBookPosition } from './bookPositions';
+import { povDiff } from '@/utils/winningChances';
+import { ChessMoveColors } from '@/constants/colors';
+import { isBookPosition } from '@/utils/bookPositions';
 import { parse as parsePGN } from 'pgn-parser'
 import { parseLanMove } from './stockfish';
 
@@ -41,15 +41,15 @@ export function areMovesEqual(m1: ShortMove, m2: ShortMove): boolean {
 /**
  * Return true if two move strings (aka sans) represent the same move.
  */
-// export function areSansEquivalent(fen: string, m1: string, m2: string): boolean {
-//   const chessjs1 = new ChessJS();
-//   const chessjs2 = new ChessJS();
-//   chessjs1.load(fen);
-//   chessjs2.load(fen);
-//   performMove(m1, chessjs1);
-//   performMove(m2, chessjs2);
-//   return chessjs1.fen() === chessjs2.fen();
-// }
+export function areSansEquivalent(fen: string, m1: string, m2: string): boolean {
+  const chessjs1 = new ChessJS();
+  const chessjs2 = new ChessJS();
+  chessjs1.load(fen);
+  chessjs2.load(fen);
+  performMove(m1, chessjs1);
+  performMove(m2, chessjs2);
+  return chessjs1.fen() === chessjs2.fen();
+}
 
 export function areLinesEqual(line1: ShortMove[], line2: ShortMove[]): boolean {
   if (line1.length !== line2.length) return false;
@@ -64,58 +64,58 @@ export function areLinesEqual(line1: ShortMove[], line2: ShortMove[]): boolean {
  * of move sans. This function will assume the normal starting position if no fen
  * is provided on input.
  */
-// export function areSanLinesEqual(line1: string[], line2: string[], fen?: string): boolean {
-//   if (line1.length !== line2.length) return false;
-//   const chessjs1 = new ChessJS();
-//   const chessjs2 = new ChessJS();
-//   if (fen) {
-//     chessjs1.load(fen);
-//     chessjs2.load(fen);
-//   }
-//   for (let i = 0; i < line1.length; i++) {
-//     performMove(line1[i], chessjs1);
-//     performMove(line2[i], chessjs2);
-//     if (chessjs1.fen() !== chessjs2.fen()) return false;
-//   }
-//   return true;
-// }
+export function areSanLinesEqual(line1: string[], line2: string[], fen?: string): boolean {
+  if (line1.length !== line2.length) return false;
+  const chessjs1 = new ChessJS();
+  const chessjs2 = new ChessJS();
+  if (fen) {
+    chessjs1.load(fen);
+    chessjs2.load(fen);
+  }
+  for (let i = 0; i < line1.length; i++) {
+    performMove(line1[i], chessjs1);
+    performMove(line2[i], chessjs2);
+    if (chessjs1.fen() !== chessjs2.fen()) return false;
+  }
+  return true;
+}
 
-// export function convertLanLineToShortMoves(line: string[], fen?: string): ShortMove[] {
-//   const chessjs = new ChessJS();
-//   if (fen) chessjs.load(fen);
-//   line.forEach((lan) => {
-//     performMove(lanToShortMove(lan), chessjs);
-//   })
-//   return chessjs.history({ verbose: true }) as ShortMove[];
-// }
+export function convertLanLineToShortMoves(line: string[], fen?: string): ShortMove[] {
+  const chessjs = new ChessJS();
+  if (fen) chessjs.load(fen);
+  line.forEach((lan) => {
+    performMove(lanToShortMove(lan), chessjs);
+  })
+  return chessjs.history({ verbose: true }) as ShortMove[];
+}
 
-// export function convertLanLineToSanLine(line: string[], fen?: string): string[] {
-//   const chessjs = new ChessJS();
-//   if (fen) chessjs.load(fen);
-//   line.forEach((lan) => {
-//     performMove(lanToShortMove(lan), chessjs);
-//   })
-//   return chessjs.history() as string[];
-// }
+export function convertLanLineToSanLine(line: string[], fen?: string): string[] {
+  const chessjs = new ChessJS();
+  if (fen) chessjs.load(fen);
+  line.forEach((lan) => {
+    performMove(lanToShortMove(lan), chessjs);
+  })
+  return chessjs.history() as string[];
+}
 
-// export function convertSanLineToShortMoves(line: string[], fen?: string): ShortMove[] {
-//   const chessjs = new ChessJS();
-//   if (fen) chessjs.load(fen);
-//   line.forEach((move) => {
-//     performMove(move, chessjs);
-//   })
-//   return chessjs.history({ verbose: true }) as ShortMove[];
-// }
+export function convertSanLineToShortMoves(line: string[], fen?: string): ShortMove[] {
+  const chessjs = new ChessJS();
+  if (fen) chessjs.load(fen);
+  line.forEach((move) => {
+    performMove(move, chessjs);
+  })
+  return chessjs.history({ verbose: true }) as ShortMove[];
+}
 
-// export function convertSanLineToLanLine(line: string[], fen?: string): string[] {
-//   const chessjs = new ChessJS();
-//   if (fen) chessjs.load(fen);
-//   line.forEach((move) => {
-//     performMove(move, chessjs);
-//   })
-//   const moves = chessjs.history({ verbose: true }) as ShortMove[];
-//   return moves.map((m) => shortMoveToLan(m));
-// }
+export function convertSanLineToLanLine(line: string[], fen?: string): string[] {
+  const chessjs = new ChessJS();
+  if (fen) chessjs.load(fen);
+  line.forEach((move) => {
+    performMove(move, chessjs);
+  })
+  const moves = chessjs.history({ verbose: true }) as ShortMove[];
+  return moves.map((m) => shortMoveToLan(m));
+}
 
 /**
  * Return true if line1 is equal to the start of line2. Each input line should be any array
@@ -390,103 +390,111 @@ export function getAvgScore(games: GameData[]): number | undefined {
 
 // Stockfish gives moves that look like this: e2e4 e7e5 d7d8q
 // Use this function to convert a string like that to something more like Nf6 or e4.
-// export function changeStockfishMovesToSans(stockfishMoves: string[], fen: string): string[] {
-//   const result: string[] = [];
-//   const re = /^([a-h][1-8])([a-h][1-8])([qrbn])?/;
-//   const chessjs = new ChessJS();
-//   if (!chessjs.load(fen)) throw new Error(`Failed to load fen string ${fen}`);
-//   stockfishMoves.forEach((stockfishMove) => {
-//     if (!re.test(stockfishMove)) throw new Error(`Invalid stockfishMove ${stockfishMove}`);
-//     const matchArray = stockfishMove.match(re);
-//     if (matchArray == null) throw new Error(`Failed to parse stockfishMove ${stockfishMove}`);
-//     const [, from, to, promotion] = matchArray;
-//     const move = chessjs.move({ from, to, promotion });
-//     if (!move) throw new Error(`Invalid move ${stockfishMove} with fen ${chessjs.fen()}`);
-//     result.push(move.san);
-//   })
-//   return result;
-// }
+export function changeStockfishMovesToSans(stockfishMoves: string[], fen: string): string[] {
+  const result: string[] = [];
+  const re = /^([a-h][1-8])([a-h][1-8])([qrbn])?/;
+  const chessjs = new ChessJS();
 
-// export function wasBestMovePlayed(
-//   fen1: string,
-//   fen2: string,
-//   gameEvals: GameEvals
-// ): boolean | undefined {
-//   const eval1 = gameEvals[fen1];
-//   if (eval1 == undefined || eval1.bestMove == undefined) return undefined;
+  // Try to load the fen string into chessjs to make sure it is valid.
+  chessjs.load(fen);
 
-//   const chessjs = new ChessJS();
-//   if (!chessjs.load(fen1)) throw new Error(`Failed to load fen ${fen1}`);
-//   if (!chessjs.move(eval1.bestMove)) {
-//     throw new Error(`Failed to play bestMove ${eval1.bestMove}`);
-//   }
+  stockfishMoves.forEach((stockfishMove) => {
+    if (!re.test(stockfishMove)) throw new Error(`Invalid stockfishMove ${stockfishMove}`);
+    const matchArray = stockfishMove.match(re);
+    if (matchArray == null) throw new Error(`Failed to parse stockfishMove ${stockfishMove}`);
+    const [, from, to, promotion] = matchArray;
+    const move = chessjs.move({ from, to, promotion });
+    if (!move) throw new Error(`Invalid move ${stockfishMove} with fen ${chessjs.fen()}`);
+    result.push(move.san);
+  })
+  return result;
+}
 
-//   return fen2 === chessjs.fen();
-// }
+export function wasBestMovePlayed(
+  fen1: string,
+  fen2: string,
+  gameEvals: GameEvals
+): boolean | undefined {
+  const eval1 = gameEvals[fen1];
+  if (eval1 == undefined || eval1.bestMove == undefined) return undefined;
 
-// export function makeMoveJudgement(
-//   fen1: string,
-//   fen2: string,
-//   gameEvals: GameEvals,
-//   settings: Settings,
-// ): MoveJudgement | undefined {
-//   if (wasBestMovePlayed(fen1, fen2, gameEvals)) return MoveJudgement.Best;
+  const chessjs = new ChessJS();
 
-//   const evalBefore = gameEvals[fen1];
-//   const evalAfter = gameEvals[fen2];
+  // try to load fen1 into chessjs. If this fails, chessjs will throw an error.
+  chessjs.load(fen1);
 
-//   if (evalBefore && evalAfter
-//     && evalBefore.depth >= settings.minEvalDepth
-//     && evalAfter.depth >= settings.minEvalDepth
-//   ) {
+  if (!chessjs.move(eval1.bestMove)) {
+    throw new Error(`Failed to play bestMove ${eval1.bestMove}`);
+  }
 
-//     const color = getNextToPlay(fen1);
-//     if (!color) throw new Error(`Failed to get color from fen ${fen1}`);
+  return fen2 === chessjs.fen();
+}
 
-//     return judgeShift(povDiff(color, evalBefore, evalAfter));
-//   }
-// }
+export function makeMoveJudgement(
+  fen1: string,
+  fen2: string,
+  gameEvals: GameEvals,
+  // settings: Settings,
+): MoveJudgement | undefined {
+  if (wasBestMovePlayed(fen1, fen2, gameEvals)) return MoveJudgement.Best;
 
-// export function getMoveJudgement(
-//   currentMove: Move | undefined,
-//   gameEvals: GameEvals,
-//   settings: Settings,
-// ): MoveJudgement | undefined {
-//   if (currentMove && currentMove.previous) {
-//     const judgement = makeMoveJudgement(
-//       currentMove.previous.fen,
-//       currentMove.fen,
-//       gameEvals,
-//       settings
-//     );
-//     return judgement;
-//   }
-// }
+  const evalBefore = gameEvals[fen1];
+  const evalAfter = gameEvals[fen2];
+
+  if (evalBefore && evalAfter
+    // && evalBefore.depth >= settings.minEvalDepth
+    // && evalAfter.depth >= settings.minEvalDepth
+    && evalBefore.depth >= 20
+    && evalAfter.depth >= 20
+  ) {
+
+    const color = getNextToPlay(fen1);
+    if (!color) throw new Error(`Failed to get color from fen ${fen1}`);
+
+    return judgeShift(povDiff(color, evalBefore, evalAfter));
+  }
+}
+
+export function getMoveJudgement(
+  currentMove: Move | undefined,
+  gameEvals: GameEvals,
+  // settings: Settings,
+): MoveJudgement | undefined {
+  if (currentMove && currentMove.previous) {
+    const judgement = makeMoveJudgement(
+      currentMove.previous.fen,
+      currentMove.fen,
+      gameEvals,
+      // settings
+    );
+    return judgement;
+  }
+}
 
 // Get a css hex color string for a corresponding MoveJudgement. If `fen` is given,
 // the fen will be used to determine if the position is a book position. If it is a book
 // position, the function will return the hex color for a book move. If `fen` is not defined,
 // this function will just return the color of the MoveJudgement. If both `mj` and `fen` are
 // undefined, return undefined;
-// export function getMoveJudgementColor(mj?: MoveJudgement, fen?: string): string | undefined {
-//   if (fen && isBookPosition(fen)) return sassVariables.moveColorBook;
-//   if (mj == undefined) return undefined;
-//   switch (mj) {
-//     case MoveJudgement.Best:
-//     case MoveJudgement.Excellent:
-//       return sassVariables.moveColorExcellent;
-//     case MoveJudgement.Good:
-//       return sassVariables.moveColorGood;
-//     case MoveJudgement.Inaccurate:
-//       return sassVariables.moveColorInaccurate;
-//     case MoveJudgement.Mistake:
-//       return sassVariables.moveColorMistake;
-//     case MoveJudgement.Blunder:
-//       return sassVariables.moveColorBlunder;
-//     default:
-//       assertUnreachable(mj);
-//   }
-// }
+export function getMoveJudgementColor(mj?: MoveJudgement, fen?: string): string | undefined {
+  if (fen && isBookPosition(fen)) return ChessMoveColors.Book;
+  if (mj == undefined) return undefined;
+  switch (mj) {
+    case MoveJudgement.Best:
+    case MoveJudgement.Excellent:
+      return ChessMoveColors.Excellent;
+    case MoveJudgement.Good:
+      return ChessMoveColors.Good;
+    case MoveJudgement.Inaccurate:
+      return ChessMoveColors.Inaccurate;
+    case MoveJudgement.Mistake:
+      return ChessMoveColors.Mistake;
+    case MoveJudgement.Blunder:
+      return ChessMoveColors.Blunder;
+    default:
+      assertUnreachable(mj);
+  }
+}
 
 export function getBestMoveSan(fen: string, gameEvals: GameEvals): string | undefined {
   const bestMove = gameEvals[fen].bestMove;
@@ -611,73 +619,73 @@ export function makePgnStringFromHistory(history: Move[]): string {
 
 // Create a pgn string from a chessjs.history() or a cmchess.history()
 // This function will recursively add variations to the pgn string.
-// export function makePgnFromHistory(
-//   history: Move[],
-//   includeVariations = true,
-//   isVariation = false,
-// ): string {
-//   let output = '';
-//   for (let i = 0; i < history.length; i++) {
-//     const move = history[i];
-//     const moveNumber = Math.ceil(move.ply / 2);
+export function makePgnFromHistory(
+  history: Move[],
+  includeVariations = true,
+  isVariation = false,
+): string {
+  let output = '';
+  for (let i = 0; i < history.length; i++) {
+    const move = history[i];
+    const moveNumber = Math.ceil(move.ply / 2);
 
-//     // A pgn always starts with a move number. Variations also always
-//     // start with a move number. If we are in a variation that begins
-//     // with a black move, we must follow the move number with '...'.
-//     // Otherwise, just follow the move number with a single '.'.
-//     if (i === 0) {
-//       if (move.ply % 2 === 1) {
-//         output += `${moveNumber}. `;
-//       } else {
-//         output += `${moveNumber}... `;
-//       }
-//     }
+    // A pgn always starts with a move number. Variations also always
+    // start with a move number. If we are in a variation that begins
+    // with a black move, we must follow the move number with '...'.
+    // Otherwise, just follow the move number with a single '.'.
+    if (i === 0) {
+      if (move.ply % 2 === 1) {
+        output += `${moveNumber}. `;
+      } else {
+        output += `${moveNumber}... `;
+      }
+    }
 
-//     // If the move is a white move (and i !== 0) we need to add a move number
-//     // before we add the move.
-//     if (i > 0 && move.ply % 2 === 1) {
-//       output += `${moveNumber}. `;
-//     }
+    // If the move is a white move (and i !== 0) we need to add a move number
+    // before we add the move.
+    if (i > 0 && move.ply % 2 === 1) {
+      output += `${moveNumber}. `;
+    }
 
-//     output += move.san;
+    output += move.san;
 
-//     // If the move has variations, recursively add the variations to the pgn.
-//     if (move.variations.length > 0 && includeVariations) {
-//       for (const variation of move.variations) {
-//         output += ' (';
-//         output += makePgnFromHistory(variation, includeVariations, true);
-//         output += ')';
-//       }
-//       if (move.ply % 2 === 1) output += ` ${moveNumber}...`
-//     }
-//     output += ' ';
-//   }
+    // If the move has variations, recursively add the variations to the pgn.
+    if (move.variations.length > 0 && includeVariations) {
+      for (const variation of move.variations) {
+        output += ' (';
+        output += makePgnFromHistory(variation, includeVariations, true);
+        output += ')';
+      }
+      if (move.ply % 2 === 1) output += ` ${moveNumber}...`
+    }
+    output += ' ';
+  }
 
-//   // Determine the game result if not currently in a variation
-//   if (!isVariation) {
-//     const chessjs = new ChessJS();
-//     history.forEach((move) => performMove(move, chessjs));
-//     let gameResult = '*';
-//     if (chessjs.isCheckmate()) {
-//       gameResult = chessjs.turn() === 'w' ? '0-1' : '1-0';
-//     } else if (chessjs.isDraw() || chessjs.isStalemate()) {
-//       gameResult = '1/2-1/2';
-//     }
-//     output += gameResult;
-//   }
+  // Determine the game result if not currently in a variation
+  if (!isVariation) {
+    const chessjs = new ChessJS();
+    history.forEach((move) => performMove(move, chessjs));
+    let gameResult = '*';
+    if (chessjs.isCheckmate()) {
+      gameResult = chessjs.turn() === 'w' ? '0-1' : '1-0';
+    } else if (chessjs.isDraw() || chessjs.isStalemate()) {
+      gameResult = '1/2-1/2';
+    }
+    output += gameResult;
+  }
 
-//   return output.trim();
-// }
+  return output.trim();
+}
 
-// export function isThreefoldRepetition(
-//   moves: (string | ShortMove)[],
-//   initialFen?: string
-// ): boolean {
-//   const chessjs = new ChessJS();
-//   if (initialFen) chessjs.load(initialFen);
-//   moves.forEach((move) => {
-//     performMove(move, chessjs);
-//   })
-//   return chessjs.isThreefoldRepetition();
-// }
+export function isThreefoldRepetition(
+  moves: (string | ShortMove)[],
+  initialFen?: string
+): boolean {
+  const chessjs = new ChessJS();
+  if (initialFen) chessjs.load(initialFen);
+  moves.forEach((move) => {
+    performMove(move, chessjs);
+  })
+  return chessjs.isThreefoldRepetition();
+}
 
