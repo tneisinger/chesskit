@@ -72,7 +72,7 @@ declare module 'cm-chess/src/Chess' {
     load(fen: string);
 
     // TODO: fix this
-    loadPgn(pgn: string, { sloppy: boolean });
+    loadPgn(pgn: string, sloppy?: boolean);
 
     move(move: string | ShortMove, previousMove?: Move, sloppy?: boolean): Move | undefined;
 
