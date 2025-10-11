@@ -10,14 +10,13 @@ import {
   Arrows,
   ArrowTypeConfig,
 } from 'cm-chessboard/src/extensions/arrows/Arrows';
+import { MarkerTypeConfig, MARKER_TYPE, Markers } from 'cm-chessboard/src/extensions/markers/Markers';
 import { FEN, Move } from 'cm-chess/src/Chess';
 import {
   Chessboard,
   Props as BoardProps,
   INPUT_EVENT_TYPE,
   COLOR,
-  MARKER_TYPE,
-  Marker,
   MoveInputEvent,
   // SquareSelectEvent,
   BORDER_TYPE,
@@ -25,6 +24,7 @@ import {
 } from 'cm-chessboard/src/Chessboard';
 import 'cm-chessboard/assets/chessboard.css';
 import 'cm-chessboard/assets/extensions/arrows/arrows.css';
+import 'cm-chessboard/assets/extensions/markers/markers.css';
 import { toColor } from '../utils/cmchess';
 import { getFen, getPlyFromFen } from '../utils/chess';
 
@@ -36,6 +36,10 @@ export interface Arrow {
   type: ArrowTypeConfig;
 }
 
+export interface Marker {
+  type: MarkerTypeConfig;
+  square: string;
+}
 
 export enum Cursor {
   Arrow,
@@ -56,6 +60,7 @@ export interface Props {
   playMove?: (_move: ShortMove) => void;
   animate?: boolean;
   markers?: Marker[];
+  setMarkers?: (_markers: Marker[]) => void;
   arrows?: Arrow[];
   setArrows?: (_arrows: Arrow[]) => void;
   isLoading?: boolean;
@@ -79,8 +84,8 @@ export interface Props {
   showCoordinates?: boolean;
   borderType?: BORDER_TYPE;
   cssClass?: string;
-  moveFromMarker?: MARKER_TYPE;
-  moveToMarker?: MARKER_TYPE;
+  moveFromMarker?: keyof typeof MARKER_TYPE;
+  moveToMarker?: keyof typeof MARKER_TYPE;
 
   setPiecesAfterOrientation?: boolean;
 
@@ -105,6 +110,7 @@ const CmChessboard = ({
   animate,
   playMove,
   markers,
+  setMarkers = () => { return },
   arrows,
   isLoading,
   isMoveAllowed,
@@ -217,8 +223,11 @@ const CmChessboard = ({
       }
 
       boardFen.current = fen;
-      board.current.removeArrows();
+      if (board.current.removeArrows) board.current.removeArrows();
       setArrows([]);
+
+      if (board.current.removeMarkers) board.current.removeMarkers();
+      setMarkers([]);
 
       // If the new position is an empty chessboard, do not play a move sound
       if (fen !== FEN.empty) playMoveSound(san, plyChange);
@@ -256,6 +265,7 @@ const CmChessboard = ({
 
       if (ev === null) {
         console.log('ev was null');
+        console.log(event);
         return;
       }
 
@@ -281,7 +291,9 @@ const CmChessboard = ({
         setPromoteColor(chessjs.current.turn());
         setPromoteEvent(ev);
         setShowPromoteModal(true);
-        board.current?.movePiece(ev.squareFrom, ev.squareTo);
+        if (ev.squareFrom && ev.squareTo) {
+          board.current?.movePiece(ev.squareFrom, ev.squareTo);
+        }
         moveOverSquareEvent.current = null;
         return;
       }
@@ -369,18 +381,21 @@ const CmChessboard = ({
         cssClass,
         showCoordinates,
         pieces: {
-          file: 'pieces/staunty.svg'
+          file: '/assets/pieces/staunty.svg'
         },
         // moveFromMarker,
         // moveToMarker,
       },
-      extensions: [{ class: Arrows }],
+      extensions: [
+        { class: Arrows, props: {sprite: '/assets/extensions/arrows/arrows.svg'}},
+        { class: Markers, props: {sprite: '/assets/extensions/markers/markers.svg'}},
+      ]
     }
 
     board.current = new Chessboard(elem, boardProps);
     // board.current.enableSquareSelect(squareSelectHandler);
     boardFen.current = emptyFen;
-    return () => { if (board.current) board.current.removeArrows() }
+    return () => { if (board.current && board.current.removeArrows) board.current.removeArrows() }
   },
     [borderType, cssClass, showCoordinates, moveFromMarker, moveToMarker,
       elemId, orientation
@@ -426,19 +441,21 @@ const CmChessboard = ({
     ]);
 
   useEffect(() => {
-    if (board.current) {
-      // board.current.removeMarkers(undefined, undefined);
-      if (markers) {
-        markers.forEach(({ square, type }) => board.current?.addMarker(type, square));
+    if (board.current && board.current.removeMarkers) {
+      board.current.removeMarkers(undefined, undefined);
+      if (markers && board.current.addMarker) {
+        const addMarker = board.current.addMarker;
+        markers.forEach(({ square, type }) => addMarker(type, square));
       }
     }
   }, [markers]);
 
   useEffect(() => {
-    if (board.current) {
+    if (board.current && board.current.removeArrows) {
       board.current.removeArrows();
-      if (arrows) {
-        arrows.forEach(({from, to, type}) => board.current?.addArrow(type, from, to));
+      if (arrows && board.current.addArrow) {
+        const addArrow = board.current.addArrow;
+        arrows.forEach(({from, to, type}) => addArrow(type, from, to));
       }
     }
   }, [arrows]);
