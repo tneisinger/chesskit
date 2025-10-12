@@ -18,7 +18,7 @@ const ArrowButton = ({ arrow, onClick, disabled }: Props) => {
       onClick={onClick}
       disabled={disabled}
     >
-      <div className="brightness-90 hover:brightness-100 hover:cursor-pointer brightness-110 hover:brightness-125 transition-all">
+      <div className="invert brightness-90 hover:brightness-100 hover:cursor-pointer brightness-110 hover:brightness-125 transition-all">
         <SvgIcon svg={arrow} width={buttonSize} height={buttonSize} />
       </div>
     </button>
