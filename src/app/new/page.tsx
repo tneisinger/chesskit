@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Chessboard from '@/components/Chessboard';
-import { Arrow } from '@/components/cmChessboard';
+import { Arrow, Marker } from '@/components/cmChessboard';
 import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
+import { MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers';
 import ArrowButtons from '@/components/arrowButtons';
 import MovesDisplay from '@/components/movesDisplay';
 import EvalerDisplay from '@/components/evalerDisplay';
@@ -31,9 +32,14 @@ export default function Home() {
   } = useChessEvaler(isEvaluatorOn, currentMove);
 
   const [arrows, setArrows] = useState<Arrow[]>([]);
+  const [markers, setMarkers] = useState<Marker[]>([]);
 
-  const handleButtonClick = () => {
+  const handleAddArrows = () => {
     setArrows([{from: 'g2', to: 'g4', type: ARROW_TYPE.info}]);
+  };
+
+  const handleAddMarkers = () => {
+    setMarkers([{square: 'g4', type: MARKER_TYPE.dot}]);
   };
 
   const orientation = PieceColor.WHITE;
@@ -46,6 +52,8 @@ export default function Home() {
         playMove={playMove}
         arrows={arrows}
         setArrows={setArrows}
+        markers={markers}
+        setMarkers={setMarkers}
       />
       <div className="p-2">
         <ArrowButtons
@@ -73,7 +81,8 @@ export default function Home() {
           changeCurrentMove={setCurrentMove}
         />
       </div>
-      <button onClick={handleButtonClick}>Add arrows</button>
+      <button onClick={handleAddArrows}>Add arrows</button>
+      <button onClick={handleAddMarkers}>Add markers</button>
       <div className="w-80">
       </div>
     </div>

@@ -1,0 +1,875 @@
+'use client';
+
+import React, {
+  useReducer,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react';
+import { Lesson, LineStats, Mode } from '@/types/lesson';
+import {
+  areCmMovesEqual,
+  getLineFromCmMove,
+  getLanLineFromCmMove,
+  addLineToCmChess,
+  Marker,
+  getLastMoveOfLine,
+} from '@/utils/cmchess';
+import { MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers';
+import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
+import { PieceColor, ShortMove } from '@/types/chess';
+import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
+import { assertUnreachable, getRandom } from '@/utils';
+import useChessboardEngine from '@/hooks/useChessboardEngine';
+// import useStore from '../zustand/store';
+import {
+  areMovesEqual,
+  convertSanLineToLanLine,
+  convertLanLineToShortMoves,
+  lanToShortMove,
+  areLinesEqual,
+} from '@/utils/chess';
+import Chessboard from '@/components/Chessboard'
+import BlinkOverlay from '@/components/blinkOverlay';
+import EvalerDisplay from '@/components/evalerDisplay';
+import MovesDisplay from '@/components/movesDisplay';
+import ArrowButtons from '@/components/arrowButtons';
+import IconButton from '@/components/iconButton';
+import { Svg } from '@/components/svgIcon';
+import {
+  calculateBoardSize,
+  getWindowHeightMinusNavbarHeight,
+  shouldUseMobileLayout
+} from '@/utils/mobileLayout';
+import useWindowSize from '@/hooks/useWindowSize';
+import { getLinesFromPGN } from '@/utils/pgn';
+import usePrevious from '@/hooks/usePrevious';
+import LessonSessionInfo from '@/components/lessonSessionInfo';
+import useEvaler from '@/hooks/useChessEvaler';
+import LessonControls from './lessonControls';
+
+enum MobileTab {
+  Moves = 'Moves',
+  Engine = 'Engine',
+}
+
+interface State {
+  isEvalAllowed: boolean,
+  isEvaluatorOn: boolean,
+  isLoading: boolean,
+  wrongAnswerBlinkCount: number,
+  markers: Marker[],
+  arrows: Arrow[],
+  hasFirstLoadCompleted: boolean,
+
+  allowBoardInteraction: boolean,
+  allowBoardAnimation: boolean,
+  boardCursor: Cursor | null,
+  nextBoardMoveSound: MoveSound | null,
+  boardFenOverride: string | null,
+  isChessboardMoving: boolean,
+  boardSize: number | undefined,
+
+  // These state variables are used to trigger the automatic opponent move after
+  // puzzlesOrGameId changes if animateOpponentMoveBeforePuzzlePos is true.
+  hasChessboardMoved: boolean,
+  hasChessboardLoaded: boolean,
+
+  selectedMobileTab: MobileTab,
+
+  recentlyCompletedLine: string | null,
+  restartedLine: ShortMove[] | null,
+  lines: Record<string, LineStats>,
+  lineProgressIdx: number,
+  mode: Mode,
+}
+
+const initialState: State = {
+  isEvalAllowed: false,
+  isEvaluatorOn: false,
+  isLoading: true,
+  wrongAnswerBlinkCount: 0,
+  markers: [],
+  arrows: [],
+  hasFirstLoadCompleted: false,
+
+  allowBoardInteraction: true,
+  allowBoardAnimation: true,
+  boardCursor: null,
+  nextBoardMoveSound: null,
+  boardFenOverride: null,
+  isChessboardMoving: false,
+  boardSize: undefined,
+
+  // These state variables are used to trigger the automatic opponent move after
+  // puzzlesOrGameId changes if animateOpponentMoveBeforePuzzlePos is true.
+  hasChessboardMoved: false,
+  hasChessboardLoaded: false,
+
+  selectedMobileTab: MobileTab.Moves,
+
+  recentlyCompletedLine: null,
+  restartedLine: null,
+  lines: {},
+  lineProgressIdx: 0,
+  mode: Mode.Practice,
+}
+
+interface ClearMoveSound {
+  type: 'clearMoveSound',
+}
+
+interface SetIsChessboardMoving {
+  type: 'setIsChessboardMoving',
+  value: boolean,
+}
+
+interface RemoveAllMarkersAndArrows {
+  type: 'removeAllMarkersAndArrows',
+}
+
+interface TriggerWrongAnswerBlink {
+  type: 'triggerWrongAnswerBlink',
+}
+
+interface DeclareEvaluating {
+  type: 'declareEvaluating',
+}
+
+interface DeclareEvaluationComplete {
+  type: 'declareEvaluationComplete',
+}
+
+interface setIsEvaluatorOn {
+  type: 'setIsEvaluatorOn',
+  value: boolean,
+}
+
+interface SetMarkers {
+  type: 'setMarkers',
+  markers: Marker[],
+}
+
+interface ClearMarkersAndSetArrows {
+  type: 'clearMarkersAndSetArrows',
+  arrows: Arrow[],
+}
+
+interface ChangeSelectedMobileTab {
+  type: 'changeSelectedMobileTab',
+  value: MobileTab,
+}
+
+interface SetupNewLesson {
+  type: 'setupNewLesson',
+  lines: Record<string, LineStats>,
+  nextMode: Mode,
+}
+
+interface SetLineProgressIdx {
+  type: 'setLineProgressIdx',
+  idx: number,
+}
+
+interface SetupNextLine {
+  type: 'setupNextLine'
+}
+
+interface RestartCurrentLine {
+  type: 'restartCurrentLine'
+  restartedLine: ShortMove[],
+}
+
+interface DeclareLineComplete {
+  type: 'declareLineComplete'
+  completedLine: string,
+}
+
+interface SwitchToEditMode {
+  type: 'switchToEditMode'
+}
+
+type Action =
+  | ClearMoveSound
+  | SetIsChessboardMoving
+  | RemoveAllMarkersAndArrows
+  | TriggerWrongAnswerBlink
+  | DeclareEvaluating
+  | DeclareEvaluationComplete
+  | setIsEvaluatorOn
+  | SetMarkers
+  | ClearMarkersAndSetArrows
+  | ChangeSelectedMobileTab
+  | SetupNewLesson
+  | SetLineProgressIdx
+  | SetupNextLine
+  | RestartCurrentLine
+  | DeclareLineComplete
+  | SwitchToEditMode
+
+function reducer(s: State, a: Action): State {
+  let newState: State;
+  switch (a.type) {
+    case 'clearMoveSound':
+      newState = { ...s, nextBoardMoveSound: null };
+      break;
+    case 'setIsChessboardMoving':
+      newState = { ...s, isChessboardMoving: a.value };
+      if (a.value) {
+        newState.hasChessboardLoaded = true;
+        newState.hasChessboardMoved = true;
+        newState.hasFirstLoadCompleted = true;
+      }
+      break;
+    case 'removeAllMarkersAndArrows':
+      newState = { ...s, markers: [], arrows: [] };
+      break;
+    case 'triggerWrongAnswerBlink':
+      newState = { ...s, wrongAnswerBlinkCount: s.wrongAnswerBlinkCount + 1 };
+      break;
+    case 'declareEvaluating':
+      newState = { ...s, allowBoardInteraction: false, boardCursor: Cursor.Wait };
+      break;
+    case 'declareEvaluationComplete':
+      newState = { ...s, allowBoardInteraction: true, boardCursor: null };
+      break;
+    case 'setIsEvaluatorOn':
+      newState = { ...s, isEvaluatorOn: a.value };
+      break;
+    case 'setMarkers':
+      newState = { ...s, markers: a.markers };
+      break;
+    case 'clearMarkersAndSetArrows':
+      newState = { ...s, markers: [], arrows: a.arrows };
+      break;
+    case 'changeSelectedMobileTab':
+      let isEvaluatorOn = false;
+      if (a.value === MobileTab.Engine) isEvaluatorOn = true;
+      newState = { ...s, selectedMobileTab: a.value, isEvaluatorOn };
+      break;
+    case 'setupNewLesson':
+      newState = setupNewLesson(s, a.lines, a.nextMode);
+      break;
+    case 'setLineProgressIdx':
+      newState = { ...s, lineProgressIdx: a.idx };
+      break;
+    case 'setupNextLine':
+      newState = setupNextLine(s);
+      break;
+    case 'restartCurrentLine':
+      newState = restartCurrentLine(s, a.restartedLine);
+      break;
+    case 'declareLineComplete':
+      newState = declareLineComplete(s, a.completedLine);
+      break;
+    case 'switchToEditMode':
+      newState = { ...s, mode: Mode.Edit };
+      break;
+    default:
+      assertUnreachable(a);
+  }
+  return newState;
+}
+
+function setupNewLesson(
+  s: State,
+  lines: Record<string, LineStats>,
+  nextMode: Mode,
+): State {
+  return {
+    ...s,
+    lines,
+    recentlyCompletedLine: null,
+    isLoading: false,
+    hasChessboardLoaded: false,
+    hasChessboardMoved: false,
+    lineProgressIdx: 0,
+    mode: nextMode,
+  };
+}
+
+function setupNextLine(s: State): State {
+  const incompleteLines: string[] = [];
+  Object.entries(s.lines).forEach(([k, v]) => {
+    if (!v.isComplete) incompleteLines.push(k);
+  });
+  if (incompleteLines.length < 1) throw new Error('No incomplete lines');
+  return {
+    ...s,
+    recentlyCompletedLine: null,
+    restartedLine: null,
+    lineProgressIdx: 0,
+    isEvaluatorOn: false,
+    mode: Mode.Practice,
+  };
+}
+
+function restartCurrentLine(s: State, restartedLine: ShortMove[]): State {
+  const lines = { ...s.lines };
+  if (s.recentlyCompletedLine) lines[s.recentlyCompletedLine].isComplete = false;
+  const incompleteLines: string[] = [];
+  Object.entries(lines).forEach(([k, v]) => {
+    if (!v.isComplete) incompleteLines.push(k);
+  });
+
+  // Use the longest restartedLine, either from state or from the action
+  if (s.restartedLine && s.restartedLine.length > restartedLine.length) {
+    restartedLine = s.restartedLine;
+  }
+
+  return {
+    ...s,
+    lines,
+    recentlyCompletedLine: null,
+    restartedLine,
+    lineProgressIdx: 0,
+    isEvaluatorOn: false,
+    mode: Mode.Practice,
+  };
+}
+
+function declareLineComplete(s: State, completedLine: string): State {
+  const lines = { ...s.lines };
+  lines[completedLine].isComplete = true;
+  return {
+    ...s,
+    lines,
+    recentlyCompletedLine: completedLine,
+    mode: Mode.Explore,
+  };
+}
+
+interface Props {
+  lesson: Lesson;
+}
+
+const LessonSession = ({ lesson }: Props) => {
+
+  const {
+    cmchess,
+    history,
+    setHistory,
+    currentMove,
+    setCurrentMove,
+    playMove,
+    reset,
+    undoLastMove,
+    deleteMove,
+  } = useChessboardEngine();
+
+  // const zState = useStore((state) => state);
+
+  const [s, dispatch] = useReducer(reducer, initialState);
+
+  const windowSize = useWindowSize();
+  const boardSize = calculateBoardSize(windowSize);
+
+  const {
+    setupEvalerForNewGame,
+    gameEvals,
+    fenBeingEvaluated,
+    evalDepth,
+    engineName,
+    lines: engineLines,
+    numLines,
+  } = useEvaler(s.isEvaluatorOn, currentMove, { numLines: 2 });
+
+  const resetEvaler = useCallback(() => {
+    setupEvalerForNewGame();
+  }, []);
+
+  const afterChessboardMoveDo = useRef<((() => void)[])>([]);
+
+  const timeoutRef = useRef<number>(0);
+
+  const previousMove = usePrevious(currentMove);
+  const prevLesson = usePrevious(lesson);
+  const prevMode = usePrevious(s.mode);
+
+  const isMoveAllowed = (move: ShortMove): boolean => {
+    // CmChess does not allow variations on the first move, so do not allow the move if
+    // the user is trying to play a first move that differs from the first move in the
+    // history.
+    const history = cmchess.current.history();
+    if (!currentMove && history.length > 0 && !areMovesEqual(move, history[0])) {
+      return false;
+    }
+
+    // Otherwise, allow the move
+    return true;
+  }
+
+  // Get all the relevant lesson lines that start with the line played on the board.
+  // Returns completed and uncompleted lines.
+  const getRelevantLessonLines = useCallback((
+    options?: { incompleteLinesOnly: boolean }
+  ): string[] => {
+    if (currentMove == undefined) return Object.keys(s.lines);
+    const currentMoveLine = getLanLineFromCmMove(currentMove);
+    const relevantLines: string[] = [];
+    Object.keys(s.lines).forEach((k) => {
+      if (options?.incompleteLinesOnly && s.lines[k].isComplete) return;
+      const line = k.split(' ');
+      let isRelevant = true;
+      for (let i = 0; i < currentMoveLine.length; i++) {
+        if (currentMoveLine[i] !== line[i]) {
+          isRelevant = false;
+          break;
+        }
+      }
+      if (isRelevant) relevantLines.push(k);
+    });
+    return relevantLines;
+  }, [currentMove, s.lines]);
+
+  const performWrongAnswerActions = useCallback(() => {
+    dispatch({ type: 'triggerWrongAnswerBlink' });
+    if (currentMove && currentMove.previous) undoLastMove();
+  }, [currentMove, undoLastMove]);
+
+  const restartCurrentLine = useCallback(() => {
+    reset();
+    const restartedLine = history.slice(0, s.lineProgressIdx);
+    dispatch({
+      type: 'restartCurrentLine',
+      restartedLine,
+    });
+  }, [reset, history, s.lineProgressIdx]);
+
+  const setupNextLine = useCallback(() => {
+    reset();
+    dispatch({ type: 'setupNextLine' });
+  }, [reset]);
+
+  const getNextMoves = useCallback((
+    options?: { incompleteLinesOnly: boolean }
+  ): ShortMove[] => {
+    const incompleteLinesOnly = options?.incompleteLinesOnly ?? false;
+    let relevantLines = getRelevantLessonLines({ incompleteLinesOnly });
+    const nextMoves: ShortMove[] = [];
+    relevantLines.forEach((line) => {
+      const shortMoves = convertLanLineToShortMoves(line.split(' '));
+      const ply = currentMove ? currentMove.ply : 0;
+      const nextMove = shortMoves[ply];
+
+      // If there is a nextMove and it is not already in nextMoves, add it
+      if (nextMove && !nextMoves.some((m) => areMovesEqual(m, nextMove))) {
+        nextMoves.push(nextMove);
+      }
+    });
+    return nextMoves;
+  }, [currentMove, getRelevantLessonLines]);
+
+  const isOpponentsTurn = useCallback((): boolean => {
+    const ply = currentMove ? currentMove.ply : 0;
+    if (ply % 2 === 0) {
+      return lesson.userColor === PieceColor.BLACK;
+    } else {
+      return lesson.userColor === PieceColor.WHITE;
+    }
+  }, [currentMove, lesson.userColor]);
+
+  const handleEditModeBtnClick = useCallback(() => {
+    if (s.mode === Mode.Edit) return;
+    dispatch({ type: 'switchToEditMode' });
+  }, [s.mode]);
+
+  const handleDeleteMoveBtnClick = useCallback(() => {
+    if (currentMove == undefined) return;
+    deleteMove(currentMove, true);
+  }, [currentMove, deleteMove]);
+
+  const handleDiscardChangesBtnClick = useCallback(() => {
+    const currentMoveLine = getLanLineFromCmMove(currentMove);
+    cmchess.current.loadPgn(lesson.pgn);
+    const newHistory = cmchess.current.history();
+    const lastCommonMove = getLastMoveOfLine(currentMoveLine, newHistory);
+    setHistory(newHistory);
+    setCurrentMove(lastCommonMove);
+  }, [currentMove, cmchess, lesson, setCurrentMove, setHistory]);
+
+  const putAllLessonLinesInHistory = useCallback(() => {
+    const currentMoveLine = getLanLineFromCmMove(currentMove);
+    cmchess.current.loadPgn(lesson.pgn);
+    const newCurrentMove = addLineToCmChess(cmchess.current, currentMoveLine);
+    setHistory(cmchess.current.history());
+    setCurrentMove(newCurrentMove);
+  }, [cmchess, lesson.pgn, setHistory, currentMove, setCurrentMove]);
+
+  const giveHint = () => {
+    const nextMoves = getNextMoves();
+    if (nextMoves.length < 1) return;
+    const uniqueFromSquares = new Set(nextMoves.map((m) => m.from));
+    const markers: Marker[] = [];
+    uniqueFromSquares.forEach((from) => {
+      markers.push({ square: from, type: MARKER_TYPE.circle });
+    });
+    dispatch({ type: 'setMarkers', markers })
+  }
+
+  const showMoves = () => {
+    const nextMoves = getNextMoves();
+    if (nextMoves.length < 1) return;
+    const arrows = nextMoves.map(
+      (m) => ({ type: ARROW_TYPE.default, from: m.from, to: m.to })
+    );
+    dispatch({ type: 'clearMarkersAndSetArrows', arrows: arrows });
+  }
+
+  useEffect(() => {
+    return () => window.clearTimeout(timeoutRef.current);
+  }, [])
+
+  useEffect(() => {
+    const isDifferentLesson = (): boolean => {
+      if (lesson == undefined) return false;
+      if (prevLesson == undefined) return true;
+      return lesson.title !== prevLesson.title;
+    };
+
+    const wasPgnUpdated = (): boolean => {
+      if (isDifferentLesson()) return false;
+      return lesson.pgn !== prevLesson!.pgn;
+    }
+
+    // Do nothing if the lesson hasn't changed and isLoading is false
+    if (!s.isLoading && !isDifferentLesson() && !wasPgnUpdated()) {
+      return;
+    }
+
+    // Create the new lines object
+    const sanLines = getLinesFromPGN(lesson.pgn);
+    const lanLines = sanLines.map((l) => convertSanLineToLanLine(l.split(/\s+/)));
+    const lines: Record<string, LineStats> = {};
+    lanLines.forEach((line) => {
+      lines[line.join(' ')] = { isComplete: false };
+    });
+
+    // Determine the next mode
+    let nextMode = Mode.Practice;
+    if (sanLines.length < 1) nextMode = Mode.Edit;
+
+    if (wasPgnUpdated()) {
+      nextMode = s.mode;
+      // For any lines that are unchanged, keep their completion status
+      const newLines = Object.keys(lines);
+      Object.keys(s.lines).forEach((k) => {
+        if (newLines.includes(k)) lines[k] = s.lines[k];
+      });
+    }
+
+    resetEvaler();
+    dispatch({
+      type: 'setupNewLesson',
+      lines,
+      nextMode,
+    });
+  }, [lesson, prevLesson, resetEvaler, s.mode, s.lines, s.isLoading])
+
+  useEffect(() => {
+    // If currentMove hasn't actually changed, do nothing
+    if (areCmMovesEqual(currentMove, previousMove)) return;
+
+    // If there are markers or arrows on the board, remove them
+    if (s.markers.length > 0 || s.arrows.length > 0) {
+      dispatch({ type: 'removeAllMarkersAndArrows' });
+    }
+  }, [currentMove, previousMove, s.markers.length, s.arrows.length]);
+
+  useEffect(() => {
+    // If we aren't in practice mode, do nothing
+    if (s.mode !== Mode.Practice) return;
+
+    // If currentMove is undefined, do nothing
+    if (currentMove == undefined) return;
+
+    // If currentMove hasn't actually changed, do nothing
+    if (areCmMovesEqual(currentMove, previousMove)) return;
+
+    // If the user has already completed a line, stop here.
+    if (s.recentlyCompletedLine != null) return;
+
+    // If there are no relevant lines, the user has made a mistake.
+    // Perform wrong answer actions and do nothing else.
+    const relevantLines = getRelevantLessonLines();
+    if (relevantLines.length < 1) {
+      performWrongAnswerActions();
+      return;
+    }
+
+    // If there are relevant lines, then a correct move as been played.
+    // If currentMove.ply > s.lineProgressIdx, then we need to update the
+    // lineProgressIdx and play the next move if the next move is an opponent move.
+    if (relevantLines.length > 0 && currentMove.ply > s.lineProgressIdx) {
+      dispatch({ type: 'setLineProgressIdx', idx: currentMove.ply });
+
+      // Get a list of the next possible moves.
+      // If s.restartedLine is defined, just use the move from the restarted line.
+      // Otherwise, get the next moves from the relevant lines.
+      let nextMoves: ShortMove[];
+      if (s.restartedLine && s.restartedLine[currentMove.ply]) {
+        nextMoves = [s.restartedLine[currentMove.ply]];
+      } else {
+        nextMoves = getNextMoves({ incompleteLinesOnly: true });
+      }
+
+      if (isOpponentsTurn() && nextMoves.length > 0 && timeoutRef.current === 0) {
+        const nextMove = getRandom(nextMoves);
+        timeoutRef.current = window.setTimeout(() => {
+          playMove(nextMove!);
+          timeoutRef.current = 0;
+        }, 600);
+      }
+    }
+  }, [currentMove, getNextMoves, getRelevantLessonLines, isOpponentsTurn,
+    performWrongAnswerActions, playMove, previousMove, s.lineProgressIdx,
+    s.recentlyCompletedLine, s.restartedLine, s.mode]
+  );
+
+  useEffect(() => {
+    if (s.isChessboardMoving) return;
+
+    if (afterChessboardMoveDo.current.length > 0) {
+      afterChessboardMoveDo.current.forEach((f) => {
+        f();
+      });
+      afterChessboardMoveDo.current = [];
+    }
+  }, [s.isChessboardMoving]);
+
+  // When the lineProgressIdx changes, check if a line has been completed.
+  useEffect(() => {
+    if (currentMove == undefined) return;
+    if (s.recentlyCompletedLine) return;
+    if (s.lineProgressIdx === 0) return;
+    if (currentMove.ply !== s.lineProgressIdx) return;
+    const relevantLines = getRelevantLessonLines({ incompleteLinesOnly: true })
+
+    const currentLine = getLineFromCmMove(currentMove);
+    const matchingLine = relevantLines.find((line) => {
+      const relevantLine = convertLanLineToShortMoves(line.split(' '));
+      return areLinesEqual(relevantLine, currentLine);
+    });
+    if (matchingLine == undefined) return;
+    if (s.lines[matchingLine] == undefined) throw new Error('Line not found');
+    if (s.lines[matchingLine].isComplete) return;
+    dispatch({ type: 'declareLineComplete', completedLine: matchingLine })
+  }, [s.lineProgressIdx, s.lines, cmchess, currentMove, getRelevantLessonLines,
+  s.recentlyCompletedLine])
+
+  // When the userColor is BLACK, this useEffect is necessary to perform the first
+  // opponent move of each line.
+  useEffect(() => {
+    if (currentMove) return;
+    if (s.lineProgressIdx !== 0) return;
+    const nextMoves = getNextMoves({ incompleteLinesOnly: true });
+    if (nextMoves.length < 1) return;
+    if (isOpponentsTurn() && timeoutRef.current === 0) {
+      const nextMove = getRandom(nextMoves);
+      timeoutRef.current = window.setTimeout(() => {
+        playMove(nextMove!);
+        timeoutRef.current = 0;
+      }, 600);
+    }
+  }, [currentMove, getNextMoves, isOpponentsTurn, playMove, s.lineProgressIdx])
+
+  // If we have a best move from the engine and the engine is on, show the move
+  // on the board with an arrow
+  useEffect(() => {
+    if (s.isEvaluatorOn && currentMove && engineLines[currentMove.fen]) {
+      const posLines = engineLines[currentMove.fen];
+      const best = posLines.find((l) => l.multipv === 1);
+      if (best == undefined || best.lanLine.length < 1) return;
+      const engineMove = lanToShortMove(best.lanLine[0]);
+      const arrow = {
+        type: ARROW_TYPE.default,
+        from: engineMove.from,
+        to: engineMove.to
+      };
+      dispatch({ type: 'clearMarkersAndSetArrows', arrows: [arrow] })
+    }
+  }, [s.isEvaluatorOn, engineLines, currentMove])
+
+  useEffect(() => {
+    if (s.mode === Mode.Edit && prevMode !== Mode.Edit) {
+      putAllLessonLinesInHistory();
+    }
+  }, [s.mode, prevMode, putAllLessonLinesInHistory])
+
+  const chessboard = (
+    <div className="relative">
+      <BlinkOverlay blinkCount={s.wrongAnswerBlinkCount} />
+      <Chessboard
+        boardSize={boardSize}
+        currentMove={currentMove}
+        fenOverride={s.boardFenOverride ? s.boardFenOverride : undefined}
+        isLoading={s.isLoading}
+        orientation={lesson.userColor}
+        animate={s.allowBoardAnimation}
+        playMove={playMove}
+        isMoveAllowed={isMoveAllowed}
+        allowInteraction={s.allowBoardInteraction}
+        cursor={s.boardCursor ? s.boardCursor : undefined}
+        markers={s.markers}
+        arrows={s.arrows}
+        nextMoveSound={s.nextBoardMoveSound ? s.nextBoardMoveSound : undefined}
+        onNextMoveSoundUsed={() => dispatch({ type: 'clearMoveSound' })}
+        changeIsMoving={(b) => {
+          if (b !== s.isChessboardMoving) {
+            dispatch({ type: 'setIsChessboardMoving', value: b });
+          }
+        }}
+      />
+    </div>
+  );
+
+  const engineDisplay = (
+    <EvalerDisplay
+      isEngineOn={s.isEvaluatorOn}
+      setIsEngineOn={(b) => dispatch({ type: 'setIsEvaluatorOn', value: b })}
+      gameEvals={gameEvals}
+      currentMove={currentMove}
+      evalerMaxDepth={evalDepth}
+      engineName={engineName}
+      engineLines={engineLines}
+      isEvaluating={fenBeingEvaluated !== null}
+      maxLineLength={3}
+      numLines={numLines}
+      isSwitchDisabled={s.mode === Mode.Practice}
+      switchDisabledMsg={'Complete a line to enable the engine'}
+    />
+  )
+
+  const lessonSessionInfo = (
+    <LessonSessionInfo
+      currentMove={currentMove}
+      changeCurrentMove={setCurrentMove}
+      history={history}
+      giveHint={giveHint}
+      showMove={showMoves}
+      isSessionLoading={s.isLoading}
+      isLineComplete={s.recentlyCompletedLine != null}
+      lines={s.lines}
+      lineProgressIdx={s.lineProgressIdx}
+      mode={s.mode}
+      setupNextLine={setupNextLine}
+      restartCurrentLine={restartCurrentLine}
+    />
+  );
+
+  const movesDisplay = (
+    <MovesDisplay
+      history={history}
+      currentMove={currentMove}
+      changeCurrentMove={setCurrentMove}
+      // useMobileLayout={shouldUseMobileLayout(zState.windowSize)}
+      showVariations={s.mode !== Mode.Practice}
+    />
+  );
+
+  const arrowButtons = (
+    <ArrowButtons
+      history={history}
+      currentMove={currentMove}
+      changeCurrentMove={setCurrentMove}
+      // excludeStartAndEndBtns={shouldUseMobileLayout(zState.windowSize)}
+    />
+  );
+
+  const containerClasses = ['flex flex-col items-center w-full mt-3'];
+
+  // if (shouldUseMobileLayout(zState.windowSize)) {
+  //   containerClasses.push('mt-0');
+  //   const divHeight = getWindowHeightMinusNavbarHeight(zState.windowSize);
+
+  //   return (
+  //     <div
+  //       style={{ height: divHeight }}
+  //       className={containerClasses.join(' ')}
+  //     >
+  //       {chessboard}
+
+  //       <div className="min-h-[60px] flex w-full flex-row justify-around items-center">
+  //         {'lessonSessionInfo'}
+  //       </div>
+  //       <div className="flex-1 p-0 w-screen bg-[#292724] overflow-y-scroll border-t-8 border-[#292724]">
+  //         {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
+  //         {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
+  //       </div>
+  //       <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]">
+  //         <IconButton
+  //           icon={Svg.SwoopyArrow}
+  //           onClick={() => dispatch({
+  //             type: 'changeSelectedMobileTab',
+  //             value: MobileTab.Moves,
+  //           })}
+  //           text={'Moves'}
+  //           isHighlighted={s.selectedMobileTab === MobileTab.Moves}
+  //         />
+  //         <IconButton
+  //           icon={Svg.Lightbulb}
+  //           onClick={() => dispatch({
+  //             type: 'changeSelectedMobileTab',
+  //             value: MobileTab.Engine,
+  //           })}
+  //           text={'Engine'}
+  //           isHighlighted={s.selectedMobileTab === MobileTab.Engine}
+  //         />
+  //         {arrowButtons}
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  const showDebugButtons = false;
+
+  const debug = () => {
+    console.log('debug');
+  };
+
+  return (
+    <div className={containerClasses.join(' ')}>
+      <div className="flex flex-row w-full">
+        <div className="flex flex-col items-center">
+          <h2 className="text-[2rem] h-12">{lesson.title} Lesson</h2>
+          {chessboard}
+          <div className="mt-3 w-full">{lessonSessionInfo}</div>
+        </div>
+        <div className="mt-12 ml-2 w-[300px]">
+          <div
+            style={{ height: boardSize }}
+            className="flex flex-col flex-1 items-center w-full"
+          >
+            <div className="bg-[#292724] w-full p-2">
+              {engineDisplay}
+            </div>
+            <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll bg-[#37342f]">
+              {movesDisplay}
+            </div>
+            <div className="border border-black border-t-0 w-full bg-[#37342f]">
+              <LessonControls
+                lines={Object.keys(s.lines)}
+                currentMove={currentMove}
+                lesson={lesson}
+                history={history}
+                mode={s.mode}
+                onEditModeBtnClick={handleEditModeBtnClick}
+                onDeleteMoveBtnClick={handleDeleteMoveBtnClick}
+                onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
+                onPracticeBtnClick={setupNextLine}
+              />
+            </div>
+            {arrowButtons}
+          </div>
+        </div>
+      </div>
+      {showDebugButtons && (
+        <>
+          <button onClick={debug}>debug!</button>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default LessonSession;
