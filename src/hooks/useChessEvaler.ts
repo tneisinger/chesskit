@@ -19,7 +19,7 @@ import usePrevious from '@/hooks/usePrevious';
 
 interface Toolkit {
   evaluate: (fen: string, prevFen?: string) => void;
-  // setupEvalerForNewGame: (gameId?: string) => void;
+  setupEvalerForNewGame: (gameId?: string) => void;
   gameEvals: GameEvals;
   latestEvaluation: Evaluation | null;
   fenBeingEvaluated: string | null;
@@ -96,22 +96,22 @@ export default function useEvaler(
     [stockfish]
   );
 
-  // const setupEvalerForNewGame = (gameId?: string) => {
-  //   const puzzlesOfGame = gameId == undefined ? [] : puzzles[gameId];
-  //   if (puzzlesOfGame == undefined) throw new Error('puzzlesOfGame was undefined');
+  const setupEvalerForNewGame = (_gameId?: string) => {
+    // const puzzlesOfGame = gameId == undefined ? [] : puzzles[gameId];
+    // if (puzzlesOfGame == undefined) throw new Error('puzzlesOfGame was undefined');
 
-  //   const evals: GameEvals = {};
-  //   puzzlesOfGame.forEach((p) => {
-  //     evals[p.evalBeforeMove.fen] = p.evalBeforeMove;
-  //     evals[p.evalAfterMove.fen] = p.evalAfterMove;
-  //   })
+    const evals: GameEvals = {};
+    // puzzlesOfGame.forEach((p) => {
+    //   evals[p.evalBeforeMove.fen] = p.evalBeforeMove;
+    //   evals[p.evalAfterMove.fen] = p.evalAfterMove;
+    // })
 
-  //   cancelAllEvaluations(() => {
-  //     setGameEvals(evals);
-  //     setLines({});
-  //     if (stockfish) stockfish.postMessage('ucinewgame');
-  //   })
-  // }
+    cancelAllEvaluations(() => {
+      setGameEvals(evals);
+      setLines({});
+      if (stockfish) stockfish.postMessage('ucinewgame');
+    })
+  }
 
   const evaluate = useCallback((fen: string, prevFen?: string) => {
     const newFens = [fen];
@@ -335,7 +335,7 @@ export default function useEvaler(
 
   return {
     evaluate,
-    // setupEvalerForNewGame,
+    setupEvalerForNewGame,
     gameEvals,
     latestEvaluation,
     fenBeingEvaluated,
