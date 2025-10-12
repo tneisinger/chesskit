@@ -2,18 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import CmChessboard, {Props as CmChessboardProps} from '@/components/cmChessboard';
-import useChessboardEngine from '@/hooks/useChessboardEngine';
-import { PieceColor } from '@/types/chess';
-import { BORDER_TYPE, MARKER_TYPE } from 'cm-chessboard/src/Chessboard';
+import { BORDER_TYPE } from 'cm-chessboard/src/Chessboard';
 
 type Props = Omit<CmChessboardProps,
   | 'showCoordinates'
   | 'borderType'
   | 'cssClass'
-  | 'moveFromMarker'
-  | 'moveToMarker'
   | 'setPiecesAfterOrientationIsSet'
-  | 'boardSize'
 >
 const Chessboard = (props: Props) => {
   const [moveSound, setMoveSound] = useState<HTMLAudioElement | undefined>(undefined);
@@ -27,7 +22,6 @@ const Chessboard = (props: Props) => {
   return (
     <CmChessboard
       {...props}
-      boardSize={600}
       showCoordinates={false}
       borderType={BORDER_TYPE.none}
       cssClass='green'
