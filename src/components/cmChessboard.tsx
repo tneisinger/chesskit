@@ -10,7 +10,7 @@ import {
   Arrows,
   ArrowTypeConfig,
 } from 'cm-chessboard/src/extensions/arrows/Arrows';
-import { MarkerTypeConfig, MARKER_TYPE, Markers } from 'cm-chessboard/src/extensions/markers/Markers';
+import { MarkerTypeConfig, Markers } from 'cm-chessboard/src/extensions/markers/Markers';
 import { FEN, Move } from 'cm-chess/src/Chess';
 import {
   Chessboard,
@@ -18,9 +18,7 @@ import {
   INPUT_EVENT_TYPE,
   COLOR,
   MoveInputEvent,
-  // SquareSelectEvent,
   BORDER_TYPE,
-  // SQUARE_SELECT_TYPE,
 } from 'cm-chessboard/src/Chessboard';
 import 'cm-chessboard/assets/chessboard.css';
 import 'cm-chessboard/assets/extensions/arrows/arrows.css';
@@ -84,9 +82,6 @@ export interface Props {
   showCoordinates?: boolean;
   borderType?: BORDER_TYPE;
   cssClass?: string;
-  moveFromMarker?: keyof typeof MARKER_TYPE;
-  moveToMarker?: keyof typeof MARKER_TYPE;
-
   setPiecesAfterOrientation?: boolean;
 
   // If you want to limit user input to only one piece color, set this value to
@@ -128,9 +123,6 @@ const CmChessboard = ({
   showCoordinates,
   borderType,
   cssClass,
-  moveFromMarker,
-  moveToMarker,
-
   // Set this to true if you expect to get a defined orientation value and
   // you don't want to display the pieces until after you know the orientation.
   // This makes the orientation flip less jarring.
@@ -341,15 +333,6 @@ const CmChessboard = ({
     })
   }
 
-  // const squareSelectHandler = (event: SquareSelectEvent) => {
-  //   switch (event.type) {
-  //     case SQUARE_SELECT_TYPE.primary:
-  //       break;
-  //     case SQUARE_SELECT_TYPE.secondary:
-  //       break;
-  //   }
-  // }
-
   const handlePromoteClick = (piece: 'q' | 'r' | 'b' | 'n') => {
     if (promoteEvent == null) throw new Error('promoteEvent was null');
     const shortMove: ShortMove = {
@@ -383,8 +366,6 @@ const CmChessboard = ({
         pieces: {
           file: '/assets/pieces/staunty.svg'
         },
-        // moveFromMarker,
-        // moveToMarker,
       },
       extensions: [
         { class: Arrows, props: {sprite: '/assets/extensions/arrows/arrows.svg'}},
@@ -393,13 +374,9 @@ const CmChessboard = ({
     }
 
     board.current = new Chessboard(elem, boardProps);
-    // board.current.enableSquareSelect(squareSelectHandler);
     boardFen.current = emptyFen;
     return () => { if (board.current && board.current.removeArrows) board.current.removeArrows() }
-  },
-    [borderType, cssClass, showCoordinates, moveFromMarker, moveToMarker,
-      elemId, orientation
-    ])
+  }, [borderType, cssClass, showCoordinates, elemId, orientation ]);
 
   useEffect(() => {
     // Only run setOrientation if the new orientation is different from prevOrientation.
