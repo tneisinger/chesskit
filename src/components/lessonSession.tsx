@@ -829,7 +829,7 @@ const LessonSession = ({ lesson }: Props) => {
 
   return (
     <div className={containerClasses.join(' ')}>
-      <div className="flex flex-row w-full">
+      <div className="flex flex-row">
         <div className="flex flex-col items-center">
           <h2 className="text-[2rem] h-12">{lesson.title} Lesson</h2>
           {chessboard}
