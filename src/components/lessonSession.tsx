@@ -48,6 +48,9 @@ import LessonSessionInfo from '@/components/lessonSessionInfo';
 import useEvaler from '@/hooks/useChessEvaler';
 import LessonControls from './lessonControls';
 
+// The arrow type that will be used throughout this component unless otherwise specified
+const blueArrowType = ARROW_TYPE.info;
+
 enum MobileTab {
   Moves = 'Moves',
   Engine = 'Engine',
@@ -511,7 +514,7 @@ const LessonSession = ({ lesson }: Props) => {
     const nextMoves = getNextMoves();
     if (nextMoves.length < 1) return;
     const arrows = nextMoves.map(
-      (m) => ({ type: ARROW_TYPE.info, from: m.from, to: m.to })
+      (m) => ({ type: blueArrowType, from: m.from, to: m.to })
     );
     dispatch({ type: 'clearMarkersAndSetArrows', arrows: arrows });
   }
@@ -682,7 +685,7 @@ const LessonSession = ({ lesson }: Props) => {
       if (best == undefined || best.lanLine.length < 1) return;
       const engineMove = lanToShortMove(best.lanLine[0]);
       const arrow = {
-        type: ARROW_TYPE.default,
+        type: blueArrowType,
         from: engineMove.from,
         to: engineMove.to
       };
