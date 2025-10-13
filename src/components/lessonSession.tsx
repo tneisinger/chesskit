@@ -511,7 +511,7 @@ const LessonSession = ({ lesson }: Props) => {
     const nextMoves = getNextMoves();
     if (nextMoves.length < 1) return;
     const arrows = nextMoves.map(
-      (m) => ({ type: ARROW_TYPE.default, from: m.from, to: m.to })
+      (m) => ({ type: ARROW_TYPE.info, from: m.from, to: m.to })
     );
     dispatch({ type: 'clearMarkersAndSetArrows', arrows: arrows });
   }
