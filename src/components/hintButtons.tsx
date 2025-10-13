@@ -42,7 +42,15 @@ const HintButtons = ({
         >Show Move</button>
       );
     } else {
-      return <button onClick={handleHintBtnClick} disabled={disabled}>Hint</button>;
+      return (
+        <button
+          className='cursor-pointer'
+          onClick={handleHintBtnClick}
+          disabled={disabled}
+        >
+          Hint
+        </button>
+      );
     }
   }
 

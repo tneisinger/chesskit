@@ -79,6 +79,7 @@ const LessonSessionInfo = ({
         {mode !== Mode.Edit && (
           <>
             <button
+              className='cursor-pointer'
               onClick={restartCurrentLine}
             >
               Restart Line
@@ -93,6 +94,7 @@ const LessonSessionInfo = ({
             )}
             {isLineComplete && !areAllLinesComplete() && (
               <button
+                className='cursor-pointer'
                 onClick={setupNextLine}
               >
                 Next Line
