@@ -286,6 +286,7 @@ function setupNewLesson(
     isLoading: false,
     hasChessboardLoaded: false,
     hasChessboardMoved: false,
+    hasFirstLoadCompleted: true,
     lineProgressIdx: 0,
     mode: nextMode,
   };
@@ -535,8 +536,8 @@ const LessonSession = ({ lesson }: Props) => {
       return lesson.pgn !== prevLesson!.pgn;
     }
 
-    // Do nothing if the lesson hasn't changed and isLoading is false
-    if (!s.isLoading && !isDifferentLesson() && !wasPgnUpdated()) {
+    // Do nothing if the lesson hasn't changed and hasFirstLoadCompleted
+    if (s.hasFirstLoadCompleted && !isDifferentLesson() && !wasPgnUpdated()) {
       return;
     }
 
@@ -562,12 +563,13 @@ const LessonSession = ({ lesson }: Props) => {
     }
 
     resetEvaler();
+    reset();
     dispatch({
       type: 'setupNewLesson',
       lines,
       nextMode,
     });
-  }, [lesson, prevLesson, resetEvaler, s.mode, s.lines, s.isLoading])
+  }, [lesson, prevLesson, resetEvaler, s.mode, s.lines, s.hasFirstLoadCompleted])
 
   useEffect(() => {
     // If currentMove hasn't actually changed, do nothing

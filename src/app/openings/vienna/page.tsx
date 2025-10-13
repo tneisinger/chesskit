@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import LessonSession from '@/components/lessonSession';
 import { Lesson } from '@/types/lesson';
 import { PieceColor } from '@/types/chess'
@@ -32,14 +34,60 @@ d4) 7. Nd5 Qd8 (7... Qd7 8. exd6+ Kd8 9. dxc7+ Qxc7 10. Nxc7 Kxc7) 8. exd6+ Be6
 12. Nc6+) 5. Nf3 d6 6. d4 dxe5 7. Qe2 Be7 8. Qxe5 Nf6 9. Bxf4 *
 `;
 
-const Page = () => {
-  const lesson: Lesson = {
-    title: 'Vienna Game',
-    userColor: PieceColor.WHITE,
-    pgn,
-  };
+const antiLondonPgn = `
+1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 (4. dxc5 e6 5. Nf3 Bxc5) (4. Nc3 cxd4 5. exd4
+a6) 4... Nc6 5. dxc5 (5. Nd2 Qb6 (5... Bf5 6. Ngf3 Qb6) 6. Qb3 (6. Qc2 g6 7.
+Ngf3 Bg7 8. h3 O-O 9. Be2 Bf5) (6. Qc1 cxd4 7. exd4 Bf5) 6... c4 7. Qxb6 (7. Qa3
+e5) 7... axb6 8. a3 (8. Bg5 b5 9. Bxf6 exf6) 8... b5 9. Ngf3 (9. e4 Nxe4) (9.
+Rc1 Bf5 10. Ngf3 h6 11. Be2 e6 12. O-O Nd7 13. h3 Nb6 14. Rfe1 (14. Bd1 Na4 15.
+Bxa4 bxa4 16. Bh2 (16. Rfe1 Bd3 17. e4 Kd7 18. exd5 exd5 19. Ne5+ Nxe5 20. Rxe5
+Ra5) 16... Ra6 17. Rfe1 Bd3 18. e4 dxe4 19. Nxe4 Kd7) 14... Na4) 9... b4 10.
+cxb4 Nxb4) (5. Nf3 g6 6. h3 (6. Bb5 Qb6) 6... Bg7) (5. Bb5 Qb6 6. Qb3 (6. a4 e6)
+6... c4 7. Qa4 e6 8. Nf3 Bd7 9. Nbd2 Nh5 10. O-O Nxf4 11. exf4) 5... e5 6. Bg3 *
+`;
 
-  return <LessonSession lesson={lesson}/>;
+const fantasyPgn = `
+1. e4 c6 2. d4 d5 3. f3 dxe4 (3... Nf6 4. e5 Nfd7 5. c3 e6 6. f4 c5 7. Nf3)
+(3... g6 4. Nc3 Bg7 5. e5 (5. Be3 e6 6. Qd2 Ne7 7. O-O-O O-O 8. h4 h5 9. g4))
+(3... e6 4. Nc3 Nf6 (4... Bb4 5. Ne2) 5. e5) (3... Qb6 4. a4 (4. c3 e5 5. Qe2)
+4... dxe4 (4... e5 5. dxe5) (4... Qa5+ 5. c3) 5. a5) (3... c5 4. exd5 Qxd5 5.
+Ne2 cxd4 6. Nbc3 Qe6 7. Qxd4) 4. fxe4 e5 (4... Nf6 5. e5 Nd5 (5... Ne4 6. Nf3)
+6. c4 Nb6 (6... Nb4 7. a3 Qxd4 8. axb4 Qh4+ 9. Kd2 Bf5 10. Nf3 Qf2+ 11. Qe2) 7.
+Nc3 Bf5 8. Nf3 e6 9. Bd3) (4... g6 5. Nc3 Bg7 6. Nf3 c5 (6... Nf6 7. e5 Nd5 8.
+Bd3) 7. dxc5) 5. Nf3 Bg4 (5... exd4 6. Bc4 Nf6 7. O-O Bc5 8. Ng5 O-O 9. Nxf7 (9.
+e5 Nd5 10. Qd3 g6 11. Ne4) 9... Rxf7 (9... Qe7 10. Ne5+ Be6 11. Bxe6+) 10. Bxf7+
+Kxf7 11. Qh5+ Kg8 (11... g6 12. Qxh7+) 12. Qxc5) 6. Bc4 Nf6 (6... Nd7 7. c3 Ngf6
+8. Qb3 Qe7 9. Qxb7 Rb8 (9... Nb6 10. Qxc6+) 10. Qxc6) 7. Bxf7+ Kxf7 8. Nxe5+ Kg8
+9. Nxg4 *
+`;
+
+const lesson: Lesson = {
+  title: 'Vienna Game',
+  userColor: PieceColor.WHITE,
+  pgn,
+};
+
+const antiLondonLesson: Lesson = {
+  title: 'Anti-London',
+  userColor: PieceColor.BLACK,
+  pgn: antiLondonPgn,
+}
+
+const fantasyLesson: Lesson = {
+  title: 'Fantasy Variation',
+  userColor: PieceColor.WHITE,
+  pgn: fantasyPgn,
+}
+
+const Page = () => {
+  const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
+
+  return (
+    <>
+      <LessonSession lesson={currentLesson}/>
+      <button onClick={() => setCurrentLesson(fantasyLesson)}>Change Lesson</button>
+    </>
+  );
 }
 
 export default Page;
