@@ -84,7 +84,12 @@ interface State {
   restartedLine: ShortMove[] | null,
   lines: Record<string, LineStats>,
   lineProgressIdx: number,
+
+  // The current active mode
   mode: Mode,
+
+  // The mode to return to (either Mode.Practice or Mode.Learn)
+  fallbackMode: Mode,
 }
 
 const initialState: State = {
@@ -115,7 +120,8 @@ const initialState: State = {
   restartedLine: null,
   lines: {},
   lineProgressIdx: 0,
-  mode: Mode.Practice,
+  mode: Mode.Learn,
+  fallbackMode: Mode.Learn,
 }
 
 interface ClearMoveSound {
@@ -176,11 +182,13 @@ interface SetLineProgressIdx {
 
 interface SetupNextLine {
   type: 'setupNextLine'
+  nextMode: Mode,
 }
 
 interface RestartCurrentLine {
   type: 'restartCurrentLine'
   restartedLine: ShortMove[],
+  nextMode: Mode,
 }
 
 interface DeclareLineComplete {
@@ -257,10 +265,10 @@ function reducer(s: State, a: Action): State {
       newState = { ...s, lineProgressIdx: a.idx };
       break;
     case 'setupNextLine':
-      newState = setupNextLine(s);
+      newState = setupNextLine(s, a.nextMode);
       break;
     case 'restartCurrentLine':
-      newState = restartCurrentLine(s, a.restartedLine);
+      newState = restartCurrentLine(s, a.restartedLine, a.nextMode);
       break;
     case 'declareLineComplete':
       newState = declareLineComplete(s, a.completedLine);
@@ -289,10 +297,11 @@ function setupNewLesson(
     hasFirstLoadCompleted: true,
     lineProgressIdx: 0,
     mode: nextMode,
+    fallbackMode: nextMode,
   };
 }
 
-function setupNextLine(s: State): State {
+function setupNextLine(s: State, nextMode: Mode): State {
   const incompleteLines: string[] = [];
   Object.entries(s.lines).forEach(([k, v]) => {
     if (!v.isComplete) incompleteLines.push(k);
@@ -304,11 +313,12 @@ function setupNextLine(s: State): State {
     restartedLine: null,
     lineProgressIdx: 0,
     isEvaluatorOn: false,
-    mode: Mode.Practice,
+    mode: nextMode,
+    fallbackMode: nextMode,
   };
 }
 
-function restartCurrentLine(s: State, restartedLine: ShortMove[]): State {
+function restartCurrentLine(s: State, restartedLine: ShortMove[], nextMode: Mode): State {
   const lines = { ...s.lines };
   if (s.recentlyCompletedLine) lines[s.recentlyCompletedLine].isComplete = false;
   const incompleteLines: string[] = [];
@@ -328,7 +338,8 @@ function restartCurrentLine(s: State, restartedLine: ShortMove[]): State {
     restartedLine,
     lineProgressIdx: 0,
     isEvaluatorOn: false,
-    mode: Mode.Practice,
+    mode: nextMode,
+    fallbackMode: nextMode,
   };
 }
 
@@ -431,18 +442,19 @@ const LessonSession = ({ lesson }: Props) => {
     if (currentMove && currentMove.previous) undoLastMove();
   }, [currentMove, undoLastMove]);
 
-  const restartCurrentLine = useCallback(() => {
+  const restartCurrentLine = useCallback((nextMode: Mode) => {
     reset();
     const restartedLine = history.slice(0, s.lineProgressIdx);
     dispatch({
       type: 'restartCurrentLine',
       restartedLine,
+      nextMode,
     });
   }, [reset, history, s.lineProgressIdx]);
 
-  const setupNextLine = useCallback(() => {
+  const setupNextLine = useCallback((nextMode: Mode) => {
     reset();
-    dispatch({ type: 'setupNextLine' });
+    dispatch({ type: 'setupNextLine', nextMode })
   }, [reset]);
 
   const getNextMoves = useCallback((
@@ -511,14 +523,14 @@ const LessonSession = ({ lesson }: Props) => {
     dispatch({ type: 'setMarkers', markers })
   }
 
-  const showMoves = () => {
+  const showMoves = useCallback(() => {
     const nextMoves = getNextMoves();
     if (nextMoves.length < 1) return;
     const arrows = nextMoves.map(
       (m) => ({ type: blueArrowType, from: m.from, to: m.to })
     );
     dispatch({ type: 'clearMarkersAndSetArrows', arrows: arrows });
-  }
+  }, [getNextMoves]);
 
   useEffect(() => {
     return () => window.clearTimeout(timeoutRef.current);
@@ -536,7 +548,7 @@ const LessonSession = ({ lesson }: Props) => {
       return lesson.pgn !== prevLesson!.pgn;
     }
 
-    // Do nothing if the lesson hasn't changed and hasFirstLoadCompleted
+    // Do nothing if hasFirstLoadCompleted and the lesson hasn't changed.
     if (s.hasFirstLoadCompleted && !isDifferentLesson() && !wasPgnUpdated()) {
       return;
     }
@@ -550,11 +562,11 @@ const LessonSession = ({ lesson }: Props) => {
     });
 
     // Determine the next mode
-    let nextMode = Mode.Practice;
+    let nextMode = s.fallbackMode;
     if (sanLines.length < 1) nextMode = Mode.Edit;
 
     if (wasPgnUpdated()) {
-      nextMode = s.mode;
+      nextMode = s.fallbackMode;
       // For any lines that are unchanged, keep their completion status
       const newLines = Object.keys(lines);
       Object.keys(s.lines).forEach((k) => {
@@ -582,8 +594,42 @@ const LessonSession = ({ lesson }: Props) => {
   }, [currentMove, previousMove, s.markers.length, s.arrows.length]);
 
   useEffect(() => {
-    // If we aren't in practice mode, do nothing
-    if (s.mode !== Mode.Practice) return;
+    // If we're in practice mode and the currentMove hasn't changed, make sure that
+    // any arrows and markers have been removed from the board.
+    if (s.mode === Mode.Practice && areCmMovesEqual(currentMove, previousMove)) {
+      dispatch({ type: 'removeAllMarkersAndArrows' });
+    }
+
+    // When in Learn mode and it is the player's turn, show arrows representing the correct move(s).
+    if (s.mode === Mode.Learn && !isOpponentsTurn()) {
+
+      // To avoid code repitition, define this function here. This function will setup a
+      // timeout to run showMoves after a short wait, which will draw arrows on the board.
+      // This function will either be called from afterChessboardMoveDo, or not. See below.
+      const setupTimeout = () => {
+        timeoutRef.current = window.setTimeout(() => {
+          showMoves();
+          timeoutRef.current = 0;
+        }, 600);
+      }
+
+      // If the currentMove hasn't changed, the board will not animate, so don't wait for afterChessboardMoveDo.
+      if (areCmMovesEqual(currentMove, previousMove)) { setupTimeout();
+
+      // If the currentMove has changed, we want to wait until after chessboard animation
+      } else {
+        afterChessboardMoveDo.current.push(() => {
+          setupTimeout();
+        });
+      }
+    }
+  }, [currentMove, previousMove, s.mode, isOpponentsTurn, showMoves])
+
+  // This useEffect handles automatic opponent moves and wrong move animation
+  // in Practice mode and Learn mode.
+  useEffect(() => {
+    // If we aren't in practice mode or learn mode, do nothing
+    if (s.mode !== Mode.Practice && s.mode !== Mode.Learn) return;
 
     // If currentMove is undefined, do nothing
     if (currentMove == undefined) return;
@@ -757,6 +803,7 @@ const LessonSession = ({ lesson }: Props) => {
       lines={s.lines}
       lineProgressIdx={s.lineProgressIdx}
       mode={s.mode}
+      fallbackMode={s.fallbackMode}
       setupNextLine={setupNextLine}
       restartCurrentLine={restartCurrentLine}
     />
@@ -861,7 +908,7 @@ const LessonSession = ({ lesson }: Props) => {
                 onEditModeBtnClick={handleEditModeBtnClick}
                 onDeleteMoveBtnClick={handleDeleteMoveBtnClick}
                 onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
-                onPracticeBtnClick={setupNextLine}
+                setupNextLine={setupNextLine}
               />
             </div>
             {arrowButtons}

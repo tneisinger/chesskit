@@ -15,7 +15,7 @@ interface Props {
   onEditModeBtnClick: () => void;
   onDeleteMoveBtnClick: () => void;
   onDiscardChangesBtnClick: () => void;
-  onPracticeBtnClick: () => void;
+  setupNextLine: (nextMode: Mode) => void;
 }
 
 const LessonControls = ({
@@ -27,7 +27,7 @@ const LessonControls = ({
   onEditModeBtnClick,
   onDeleteMoveBtnClick,
   onDiscardChangesBtnClick,
-  onPracticeBtnClick,
+  setupNextLine,
 }: Props) => {
   // const zState = useStore((state) => state);
 
@@ -105,7 +105,7 @@ const LessonControls = ({
               Discard Changes
             </Button>
             <Button
-              onClick={onPracticeBtnClick}
+              onClick={() => setupNextLine(Mode.Practice)}
               buttonSize={ButtonSize.Small}
             >
               Practice Mode

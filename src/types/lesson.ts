@@ -11,7 +11,8 @@ export interface LineStats {
 }
 
 export enum Mode {
-  Edit = 'Edit',
-  Explore = 'Explore',
+  Learn = 'Learn',
   Practice = 'Practice',
+  Explore = 'Explore',
+  Edit = 'Edit',
 }
