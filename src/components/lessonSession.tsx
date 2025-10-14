@@ -480,8 +480,34 @@ const LessonSession = ({ lesson }: Props) => {
   }, [currentMove, reset, history, s.lineProgressIdx]);
 
   const setupNextLine = useCallback((nextMode: Mode) => {
-    reset();
-    dispatch({ type: 'setupNextLine', nextMode })
+    // Change the mode right away, so that any useEffects will see the new mode.
+    dispatch({ type: 'changeMode', mode: nextMode })
+
+    // To avoid code repitition, define this function here. This function will setup a
+    // timeout to run the restart logic after a short wait. This function will either run
+    // afterChessBoardMoveDo, or not. See below.
+    const setupTimeout = () => {
+      timeoutRef.current = window.setTimeout(() => {
+        reset();
+        dispatch({ type: 'setupNextLine', nextMode })
+        timeoutRef.current = 0;
+      }, 300);
+    }
+
+    // If the currentMove is undefined, the board will not animate, so don't
+    // wait for afterChessboardMoveDo.
+    if (currentMove === undefined) {
+      setupTimeout();
+
+    // If the currentMove is defined, that means the board is not in the
+    // starting position and the board is going to animate to the starting
+    // position. We want to run setupTimeout after the chessboard animation.
+    } else {
+      afterChessboardMoveDo.current.push(() => {
+        setupTimeout();
+      });
+      setCurrentMove(undefined);
+    }
   }, [reset]);
 
   const getNextMoves = useCallback((
