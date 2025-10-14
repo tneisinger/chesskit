@@ -196,8 +196,9 @@ interface DeclareLineComplete {
   completedLine: string,
 }
 
-interface SwitchToEditMode {
-  type: 'switchToEditMode'
+interface ChangeMode {
+  type: 'changeMode',
+  mode: Mode,
 }
 
 type Action =
@@ -216,7 +217,7 @@ type Action =
   | SetupNextLine
   | RestartCurrentLine
   | DeclareLineComplete
-  | SwitchToEditMode
+  | ChangeMode
 
 function reducer(s: State, a: Action): State {
   let newState: State;
@@ -273,8 +274,8 @@ function reducer(s: State, a: Action): State {
     case 'declareLineComplete':
       newState = declareLineComplete(s, a.completedLine);
       break;
-    case 'switchToEditMode':
-      newState = { ...s, mode: Mode.Edit };
+    case 'changeMode':
+      newState = { ...s, mode: a.mode };
       break;
     default:
       assertUnreachable(a);
@@ -443,14 +444,40 @@ const LessonSession = ({ lesson }: Props) => {
   }, [currentMove, undoLastMove]);
 
   const restartCurrentLine = useCallback((nextMode: Mode) => {
-    reset();
-    const restartedLine = history.slice(0, s.lineProgressIdx);
-    dispatch({
-      type: 'restartCurrentLine',
-      restartedLine,
-      nextMode,
-    });
-  }, [reset, history, s.lineProgressIdx]);
+    // Change the mode right away, so that any useEffects will see the new mode.
+    dispatch({ type: 'changeMode', mode: nextMode })
+
+    // To avoid code repitition, define this function here. This function will setup a
+    // timeout to run the restart logic after a short wait. This function will either run
+    // afterChessBoardMoveDo, or not. See below.
+    const setupTimeout = () => {
+      timeoutRef.current = window.setTimeout(() => {
+        reset();
+        const restartedLine = history.slice(0, s.lineProgressIdx);
+        dispatch({
+          type: 'restartCurrentLine',
+          restartedLine,
+          nextMode,
+        });
+        timeoutRef.current = 0;
+      }, 300);
+    }
+
+    // If the currentMove is undefined, the board will not animate, so don't
+    // wait for afterChessboardMoveDo.
+    if (currentMove === undefined) {
+      setupTimeout();
+
+    // If the currentMove is defined, that means the board is not in the
+    // starting position and the board is going to animate to the starting
+    // position. We want to run setupTimeout after the chessboard animation.
+    } else {
+      afterChessboardMoveDo.current.push(() => {
+        setupTimeout();
+      });
+      setCurrentMove(undefined);
+    }
+  }, [currentMove, reset, history, s.lineProgressIdx]);
 
   const setupNextLine = useCallback((nextMode: Mode) => {
     reset();
@@ -487,7 +514,7 @@ const LessonSession = ({ lesson }: Props) => {
 
   const handleEditModeBtnClick = useCallback(() => {
     if (s.mode === Mode.Edit) return;
-    dispatch({ type: 'switchToEditMode' });
+    dispatch({ type: 'changeMode', mode: Mode.Edit })
   }, [s.mode]);
 
   const handleDeleteMoveBtnClick = useCallback(() => {
