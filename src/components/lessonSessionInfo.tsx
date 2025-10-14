@@ -13,8 +13,9 @@ interface Props extends HintButtonsProps {
   lines: Record<string, LineStats>
   lineProgressIdx: number;
   mode: Mode;
-  setupNextLine: () => void;
-  restartCurrentLine: () => void;
+  fallbackMode: Mode;
+  setupNextLine: (nextMode: Mode) => void;
+  restartCurrentLine: (nextMode: Mode) => void;
 }
 
 const LessonSessionInfo = ({
@@ -25,6 +26,7 @@ const LessonSessionInfo = ({
   lines,
   lineProgressIdx,
   mode,
+  fallbackMode,
   isLineComplete,
   setupNextLine,
   restartCurrentLine,
@@ -56,6 +58,7 @@ const LessonSessionInfo = ({
   const shouldShowHintBtns = (): boolean => {
     if (isSessionLoading) return false;
     if (isLineComplete) return false;
+    if (mode === Mode.Learn) return false;
     if (areAllLinesComplete()) return false;
     return true;
   }
@@ -80,10 +83,21 @@ const LessonSessionInfo = ({
           <>
             <button
               className='cursor-pointer'
-              onClick={restartCurrentLine}
+              onClick={() => restartCurrentLine(fallbackMode)}
             >
               Restart Line
             </button>
+
+            {/* This button restarts the current line in the alternate mode (either Learn or Practice) */}
+            <button
+              className='cursor-pointer'
+              onClick={() => fallbackMode === Mode.Learn ?
+                  restartCurrentLine(Mode.Practice) : restartCurrentLine(Mode.Learn)
+              }
+            >
+              {fallbackMode === Mode.Learn ? Mode.Practice : Mode.Learn} Line
+            </button>
+
             {shouldShowHintBtns() && (
               <HintButtons
                 currentMove={currentMove}
@@ -95,7 +109,7 @@ const LessonSessionInfo = ({
             {isLineComplete && !areAllLinesComplete() && (
               <button
                 className='cursor-pointer'
-                onClick={setupNextLine}
+                onClick={() => setupNextLine(fallbackMode)}
               >
                 Next Line
               </button>
