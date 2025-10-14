@@ -36,7 +36,7 @@ const MovesDisplay = ({
     }
   }, [currentMove]);
 
-  const classes = ['flex flex-col overflow-y-scroll w-full flex-1 min-h-0 px-3'];
+  const classes = ['flex flex-col overflow-y-scroll no-scrollbar w-full flex-1 min-h-0 px-3'];
   if (useMobileLayout) classes.push('flex-row flex-wrap content-start');
 
   return (

@@ -848,7 +848,7 @@ const LessonSession = ({ lesson }: Props) => {
             <div className="bg-[#292724] w-full p-2">
               {engineDisplay}
             </div>
-            <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll bg-[#37342f]">
+            <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-[#37342f]">
               {movesDisplay}
             </div>
             <div className="border border-black border-t-0 w-full bg-[#37342f]">
