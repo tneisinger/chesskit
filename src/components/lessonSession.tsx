@@ -90,6 +90,12 @@ interface State {
 
   // The mode to return to (either Mode.Practice or Mode.Learn)
   fallbackMode: Mode,
+
+  // The index of the current chapter in lesson.chapters
+  currentChapterIdx: number,
+
+  // The index of the chapter from which the current State.lines was derived
+  linesChapterIdx: number | undefined,
 }
 
 const initialState: State = {
@@ -122,6 +128,8 @@ const initialState: State = {
   lineProgressIdx: 0,
   mode: Mode.Learn,
   fallbackMode: Mode.Learn,
+  currentChapterIdx: 0,
+  linesChapterIdx: undefined,
 }
 
 interface ClearMoveSound {
@@ -173,6 +181,7 @@ interface SetupNewLesson {
   type: 'setupNewLesson',
   lines: Record<string, LineStats>,
   nextMode: Mode,
+  linesChapterIdx: number,
 }
 
 interface SetLineProgressIdx {
@@ -201,6 +210,11 @@ interface ChangeMode {
   mode: Mode,
 }
 
+interface ChangeChapterIdx {
+  type: 'changeChapterIdx',
+  idx: number,
+}
+
 type Action =
   | ClearMoveSound
   | SetIsChessboardMoving
@@ -218,6 +232,7 @@ type Action =
   | RestartCurrentLine
   | DeclareLineComplete
   | ChangeMode
+  | ChangeChapterIdx
 
 function reducer(s: State, a: Action): State {
   let newState: State;
@@ -260,7 +275,7 @@ function reducer(s: State, a: Action): State {
       newState = { ...s, selectedMobileTab: a.value, isEvaluatorOn };
       break;
     case 'setupNewLesson':
-      newState = setupNewLesson(s, a.lines, a.nextMode);
+      newState = setupNewLesson(s, a.lines, a.linesChapterIdx, a.nextMode);
       break;
     case 'setLineProgressIdx':
       newState = { ...s, lineProgressIdx: a.idx };
@@ -277,6 +292,9 @@ function reducer(s: State, a: Action): State {
     case 'changeMode':
       newState = { ...s, mode: a.mode };
       break;
+    case 'changeChapterIdx':
+      newState = { ...s, currentChapterIdx: a.idx };
+      break;
     default:
       assertUnreachable(a);
   }
@@ -286,11 +304,13 @@ function reducer(s: State, a: Action): State {
 function setupNewLesson(
   s: State,
   lines: Record<string, LineStats>,
+  linesChapterIdx: number,
   nextMode: Mode,
 ): State {
   return {
     ...s,
     lines,
+    linesChapterIdx,
     recentlyCompletedLine: null,
     isLoading: false,
     hasChessboardLoaded: false,
@@ -510,6 +530,12 @@ const LessonSession = ({ lesson }: Props) => {
     }
   }, [reset]);
 
+  const changeChapter = useCallback((idx: number) => {
+    if (s.currentChapterIdx === idx) return;
+    dispatch({ type: 'changeChapterIdx', idx });
+    setupNextLine(s.fallbackMode);
+  }, [s.currentChapterIdx, s.fallbackMode, setupNextLine]);
+
   const getNextMoves = useCallback((
     options?: { incompleteLinesOnly: boolean }
   ): ShortMove[] => {
@@ -550,20 +576,20 @@ const LessonSession = ({ lesson }: Props) => {
 
   const handleDiscardChangesBtnClick = useCallback(() => {
     const currentMoveLine = getLanLineFromCmMove(currentMove);
-    cmchess.current.loadPgn(lesson.pgn);
+    cmchess.current.loadPgn(lesson.chapters[s.currentChapterIdx].pgn);
     const newHistory = cmchess.current.history();
     const lastCommonMove = getLastMoveOfLine(currentMoveLine, newHistory);
     setHistory(newHistory);
     setCurrentMove(lastCommonMove);
-  }, [currentMove, cmchess, lesson, setCurrentMove, setHistory]);
+  }, [currentMove, cmchess, lesson.chapters, setCurrentMove, setHistory, s.currentChapterIdx]);
 
   const putAllLessonLinesInHistory = useCallback(() => {
     const currentMoveLine = getLanLineFromCmMove(currentMove);
-    cmchess.current.loadPgn(lesson.pgn);
+    cmchess.current.loadPgn(lesson.chapters[s.currentChapterIdx].pgn);
     const newCurrentMove = addLineToCmChess(cmchess.current, currentMoveLine);
     setHistory(cmchess.current.history());
     setCurrentMove(newCurrentMove);
-  }, [cmchess, lesson.pgn, setHistory, currentMove, setCurrentMove]);
+  }, [cmchess, lesson.chapters, setHistory, currentMove, setCurrentMove, s.currentChapterIdx]);
 
   const giveHint = () => {
     const nextMoves = getNextMoves();
@@ -589,52 +615,72 @@ const LessonSession = ({ lesson }: Props) => {
     return () => window.clearTimeout(timeoutRef.current);
   }, [])
 
+  // This useEffect handles updates after a new lesson, chapter changes, or pgn changes
   useEffect(() => {
+
+    // This function contains everything that this useEffect may do.
+    // This function may not run. See below.
+    const performUpdate = () => {
+      // Create the new lines object
+      const sanLines = getLinesFromPGN(lesson.chapters[s.currentChapterIdx].pgn);
+      const lanLines = sanLines.map((l) => convertSanLineToLanLine(l.split(/\s+/)));
+      const lines: Record<string, LineStats> = {};
+      lanLines.forEach((line) => {
+        lines[line.join(' ')] = { isComplete: false };
+      });
+
+      // Determine the next mode
+      let nextMode = s.fallbackMode;
+      if (sanLines.length < 1) nextMode = Mode.Edit;
+
+      if (wasPgnUpdated()) {
+        nextMode = s.fallbackMode;
+        // For any lines that are unchanged, keep their completion status
+        const newLines = Object.keys(lines);
+        Object.keys(s.lines).forEach((k) => {
+          if (newLines.includes(k)) lines[k] = s.lines[k];
+        });
+      }
+
+      resetEvaler();
+      reset();
+      dispatch({
+        type: 'setupNewLesson',
+        lines,
+        linesChapterIdx: s.currentChapterIdx,
+        nextMode,
+      });
+    };
+
     const isDifferentLesson = (): boolean => {
       if (lesson == undefined) return false;
       if (prevLesson == undefined) return true;
       return lesson.title !== prevLesson.title;
     };
 
+    const isDifferentChapter = (): boolean => {
+      return s.currentChapterIdx !== s.linesChapterIdx;
+    }
+
     const wasPgnUpdated = (): boolean => {
       if (isDifferentLesson()) return false;
-      return lesson.pgn !== prevLesson!.pgn;
+      return lesson.chapters[s.currentChapterIdx].pgn !== prevLesson!.chapters[s.currentChapterIdx].pgn;
     }
 
-    // Do nothing if hasFirstLoadCompleted and the lesson hasn't changed.
-    if (s.hasFirstLoadCompleted && !isDifferentLesson() && !wasPgnUpdated()) {
+    if (!s.hasFirstLoadCompleted) {
+      performUpdate();
+      return;
+    } else if (isDifferentLesson()) {
+      performUpdate();
+      return;
+    } else if (wasPgnUpdated()) {
+      performUpdate();
+      return;
+    } else if (isDifferentChapter()) {
+      performUpdate();
       return;
     }
-
-    // Create the new lines object
-    const sanLines = getLinesFromPGN(lesson.pgn);
-    const lanLines = sanLines.map((l) => convertSanLineToLanLine(l.split(/\s+/)));
-    const lines: Record<string, LineStats> = {};
-    lanLines.forEach((line) => {
-      lines[line.join(' ')] = { isComplete: false };
-    });
-
-    // Determine the next mode
-    let nextMode = s.fallbackMode;
-    if (sanLines.length < 1) nextMode = Mode.Edit;
-
-    if (wasPgnUpdated()) {
-      nextMode = s.fallbackMode;
-      // For any lines that are unchanged, keep their completion status
-      const newLines = Object.keys(lines);
-      Object.keys(s.lines).forEach((k) => {
-        if (newLines.includes(k)) lines[k] = s.lines[k];
-      });
-    }
-
-    resetEvaler();
-    reset();
-    dispatch({
-      type: 'setupNewLesson',
-      lines,
-      nextMode,
-    });
-  }, [lesson, prevLesson, resetEvaler, s.mode, s.lines, s.hasFirstLoadCompleted])
+  }, [lesson, prevLesson, resetEvaler, s.mode, s.lines, s.hasFirstLoadCompleted, s.currentChapterIdx, s.linesChapterIdx])
 
   useEffect(() => {
     // If currentMove hasn't actually changed, do nothing
@@ -935,12 +981,23 @@ const LessonSession = ({ lesson }: Props) => {
   return (
     <div className={containerClasses.join(' ')}>
       <div className="flex flex-row">
+        <div
+          className="mt-12 mr-2 w-[275px] flex-col items-center bg-[#37342f]"
+          style={{ height: boardSize }}
+        >
+          <h3>Chapters</h3>
+          {lesson.chapters.map((_chapter, idx) => 
+            <div key={idx} className="m-2">
+              <button onClick={() => changeChapter(idx)}>Chapter {idx + 1}</button>
+            </div>
+          )}
+        </div>
         <div className="flex flex-col items-center">
           <h2 className="text-[2rem] h-12">{lesson.title} Lesson</h2>
           {chessboard}
           <div className="mt-3 w-full">{lessonSessionInfo}</div>
         </div>
-        <div className="mt-12 ml-2 w-[300px]">
+        <div className="mt-12 ml-2 w-[275px]">
           <div
             style={{ height: boardSize }}
             className="flex flex-col flex-1 items-center w-full"

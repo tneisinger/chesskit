@@ -1,9 +1,13 @@
 import { PieceColor } from '@/types/chess'
 
+export interface Chapter {
+  pgn: string,
+}
+
 export interface Lesson {
   title: string;
   userColor: PieceColor;
-  pgn: string;
+  chapters: Chapter[];
 }
 
 export interface LineStats {
