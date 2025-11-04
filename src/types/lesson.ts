@@ -1,6 +1,7 @@
 import { PieceColor } from '@/types/chess'
 
 export interface Chapter {
+  title: string,
   pgn: string,
 }
 

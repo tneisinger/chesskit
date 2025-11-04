@@ -986,9 +986,14 @@ const LessonSession = ({ lesson }: Props) => {
           style={{ height: boardSize }}
         >
           <h3>Chapters</h3>
-          {lesson.chapters.map((_chapter, idx) => 
+          {lesson.chapters.map((chapter, idx) =>
             <div key={idx} className="m-2">
-              <button onClick={() => changeChapter(idx)}>Chapter {idx + 1}</button>
+              <button
+                style={{fontWeight: s.linesChapterIdx === idx ? 'bold' : 'normal'}}
+                onClick={() => changeChapter(idx)}
+              >
+                {idx + 1} - {chapter.title}
+              </button>
             </div>
           )}
         </div>
