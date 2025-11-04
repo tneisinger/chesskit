@@ -982,7 +982,7 @@ const LessonSession = ({ lesson }: Props) => {
     <div className={containerClasses.join(' ')}>
       <div className="flex flex-row">
         <div
-          className="mt-12 mr-2 w-[275px] flex-col items-center bg-[#37342f]"
+          className="mt-12 mr-2 w-[275px] flex-col items-center bg-background-page"
           style={{ height: boardSize }}
         >
           <h3>Chapters</h3>
@@ -1010,10 +1010,10 @@ const LessonSession = ({ lesson }: Props) => {
             <div className="bg-[#292724] w-full p-2">
               {engineDisplay}
             </div>
-            <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-[#37342f]">
+            <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
               {movesDisplay}
             </div>
-            <div className="border border-black border-t-0 w-full bg-[#37342f]">
+            <div className="border border-black border-t-0 w-full bg-background-page">
               <LessonControls
                 lines={Object.keys(s.lines)}
                 currentMove={currentMove}
