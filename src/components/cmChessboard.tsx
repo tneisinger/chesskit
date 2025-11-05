@@ -369,7 +369,13 @@ const CmChessboard = ({
       },
       extensions: [
         { class: Arrows, props: {sprite: '/assets/extensions/arrows/arrows.svg'}},
-        { class: Markers, props: {sprite: '/assets/extensions/markers/markers.svg'}},
+        {
+          class: Markers,
+          props: {
+            sprite: '/assets/extensions/markers/markers.svg',
+            autoMarkers: null,
+          }
+        },
       ]
     }
 
