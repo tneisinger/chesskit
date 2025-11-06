@@ -71,7 +71,6 @@ interface State {
   nextBoardMoveSound: MoveSound | null,
   boardFenOverride: string | null,
   isChessboardMoving: boolean,
-  boardSize: number | undefined,
 
   // These state variables are used to trigger the automatic opponent move after
   // puzzlesOrGameId changes if animateOpponentMoveBeforePuzzlePos is true.
@@ -113,7 +112,6 @@ const initialState: State = {
   nextBoardMoveSound: null,
   boardFenOverride: null,
   isChessboardMoving: false,
-  boardSize: undefined,
 
   // These state variables are used to trigger the automatic opponent move after
   // puzzlesOrGameId changes if animateOpponentMoveBeforePuzzlePos is true.
@@ -397,8 +395,23 @@ const LessonSession = ({ lesson }: Props) => {
 
   const [s, dispatch] = useReducer(reducer, initialState);
 
+  // Determine the board size
   const windowSize = useWindowSize();
-  const boardSize = calculateBoardSize(windowSize);
+  let boardSize: number;
+  const defaultBoardSize = 750;
+  if (windowSize.width && windowSize.width < defaultBoardSize) {
+    boardSize = windowSize.width;
+  } else {
+    if (windowSize.width == undefined || windowSize.height == undefined) {
+      boardSize = defaultBoardSize;
+    } else {
+      // These values are based on the current layout and will need to updated if the
+      // layout changes.
+      const maxBoardWidth = windowSize.width - 600;
+      const maxBoardHeight = windowSize.height - 150;
+      boardSize = Math.min(maxBoardWidth, maxBoardHeight);
+    }
+  }
 
   const {
     setupEvalerForNewGame,
@@ -998,7 +1011,7 @@ const LessonSession = ({ lesson }: Props) => {
           )}
         </div>
         <div className="flex flex-col items-center">
-          <h2 className="text-[2rem] h-12">{lesson.title} Lesson</h2>
+          <h2 className="text-[2rem] h-12">{lesson.title}</h2>
           {chessboard}
           <div className="mt-3 w-full">{lessonSessionInfo}</div>
         </div>
