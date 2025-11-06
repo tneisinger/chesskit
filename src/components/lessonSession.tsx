@@ -473,7 +473,7 @@ const LessonSession = ({ lesson }: Props) => {
 
   const performWrongAnswerActions = useCallback(() => {
     dispatch({ type: 'triggerWrongAnswerBlink' });
-    if (currentMove && currentMove.previous) undoLastMove();
+    if (currentMove) undoLastMove();
   }, [currentMove, undoLastMove]);
 
   const restartCurrentLine = useCallback((nextMode: Mode) => {
