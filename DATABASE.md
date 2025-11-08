@@ -31,9 +31,29 @@ npm run db:studio    # Open Drizzle Studio (visual database browser)
 | `lastLogin` | TIMESTAMP | Last login timestamp, optional |
 | `preferences` | JSON | User preferences (darkMode, soundEnabled, boardTheme) |
 
+### Lessons Table
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-incrementing primary key |
+| `title` | TEXT | Lesson title, required |
+| `userColor` | TEXT | Player color ('WHITE' or 'BLACK'), required |
+| `chapters` | JSON | Array of Chapter objects (title, notes, pgn), required |
+| `createdAt` | TIMESTAMP | Lesson creation time (auto-generated) |
+| `updatedAt` | TIMESTAMP | Last update time (auto-generated) |
+
+**Chapter JSON Structure:**
+```typescript
+interface Chapter {
+  title: string;
+  notes?: string;
+  pgn: string;  // PGN notation with variations
+}
+```
+
 ## Usage Examples
 
-### Basic Queries
+### User Queries
 
 ```typescript
 import { db } from "@/db";
@@ -64,20 +84,68 @@ await db.update(users)
 await db.delete(users).where(eq(users.id, 1));
 ```
 
+### Lesson Queries
+
+```typescript
+import { db } from "@/db";
+import { lessons } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { PieceColor } from "@/types/chess";
+
+// Insert a lesson
+const newLesson = await db.insert(lessons).values({
+  title: "Vienna Game",
+  userColor: PieceColor.WHITE,
+  chapters: [
+    {
+      title: "Main Line",
+      notes: "The most common continuation",
+      pgn: "1. e4 e5 2. Nc3 Nf6 3. f4..."
+    },
+    {
+      title: "Gambit Variation",
+      pgn: "1. e4 e5 2. Nc3 Nf6 3. f4 exf4..."
+    }
+  ]
+}).returning();
+
+// Query all lessons
+const allLessons = await db.select().from(lessons);
+
+// Find lesson by ID
+const lesson = await db.select()
+  .from(lessons)
+  .where(eq(lessons.id, 1));
+
+// Update lesson
+await db.update(lessons)
+  .set({
+    title: "Vienna Game - Updated",
+    updatedAt: new Date()
+  })
+  .where(eq(lessons.id, 1));
+
+// Delete a lesson
+await db.delete(lessons).where(eq(lessons.id, 1));
+```
+
 ### TypeScript Types
 
 The schema exports type-safe interfaces:
 
 ```typescript
-import type { User, InsertUser } from "@/db/schema";
+import type { User, InsertUser, Lesson, InsertLesson } from "@/db/schema";
 
 // User: Full user object from database
 // InsertUser: Type for creating new users (omits auto-generated fields)
+
+// Lesson: Full lesson object from database
+// InsertLesson: Type for creating new lessons (omits auto-generated fields)
 ```
 
 ## Adding New Tables
 
-When you need to add more tables (Lessons, Chapters, UserProgress, etc.):
+When you need to add more tables (UserProgress, etc.):
 
 1. **Update the schema** in `src/db/schema.ts`:
    ```typescript
