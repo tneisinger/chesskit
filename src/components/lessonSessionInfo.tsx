@@ -37,12 +37,6 @@ const LessonSessionInfo = ({
     return Object.values(lines).every((line) => line.isComplete);
   }, [lines]);
 
-  const getLinesCompletedRatio = useCallback((): string => {
-    const completedLines = Object.values(lines).filter((line) => line.isComplete).length;
-    const totalLines = Object.values(lines).length;
-    return `${completedLines}/${totalLines}`;
-  }, [lines]);
-
   const classes = ['w-full flex flex-row items-center justify-between min-h-[34px]'];
   // if (shouldUseMobileLayout(windowSize)) {
     // Add mobile layout styles if needed
@@ -75,9 +69,6 @@ const LessonSessionInfo = ({
 
   return (
     <div className={classes.join(' ')}>
-      <div>
-        <span>Lines Completed: {getLinesCompletedRatio()}</span>
-      </div>
       <div className="[&>*+*]:ml-4">
         {mode !== Mode.Edit && (
           <>

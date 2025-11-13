@@ -45,6 +45,7 @@ import usePrevious from '@/hooks/usePrevious';
 import LessonSessionInfo from '@/components/lessonSessionInfo';
 import useEvaler from '@/hooks/useChessEvaler';
 import LessonControls from './lessonControls';
+import LessonChapters from './lessonChapters';
 import type { Viewport } from 'next'
 
 export const viewport: Viewport = {
@@ -946,10 +947,9 @@ const LessonSession = ({ lesson }: Props) => {
     />
   );
 
-  const containerClasses = ['flex flex-col items-center w-full mt-3'];
+  const containerClasses = ['flex flex-col items-center w-full'];
 
   if (shouldUseMobileLayout(windowSize)) {
-    containerClasses.push('mt-0');
     const divHeight = windowSize.height;
 
     return (
@@ -961,7 +961,17 @@ const LessonSession = ({ lesson }: Props) => {
           <h2 className="text-2xl">{lesson.title}</h2>
         </div>
         {chessboard}
-        {lessonSessionInfo}
+        <div className='p-2 flex flex-row w-screen'>
+          {lessonSessionInfo}
+        </div>
+        <LessonChapters
+          lesson={lesson}
+          currentChapterIdx={s.linesChapterIdx ?? 0}
+          lines={s.lines}
+          changeChapter={changeChapter}
+          height={150}
+          width={boardSize}
+        />
         {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
         {/*   {lessonSessionInfo} */}
         {/* </div> */}
@@ -1002,29 +1012,21 @@ const LessonSession = ({ lesson }: Props) => {
 
   return (
     <div className={containerClasses.join(' ')}>
+      <h2 className="text-[2rem] h-12">{lesson.title}</h2>
       <div className="flex flex-row">
-        <div
-          className="mt-12 mr-2 w-[275px] flex-col items-center bg-background-page"
-          style={{ height: boardSize }}
-        >
-          <h3>Chapters</h3>
-          {lesson.chapters.map((chapter, idx) =>
-            <div key={idx} className="m-2">
-              <button
-                style={{fontWeight: s.linesChapterIdx === idx ? 'bold' : 'normal'}}
-                onClick={() => changeChapter(idx)}
-              >
-                {idx + 1} - {chapter.title}
-              </button>
-            </div>
-          )}
-        </div>
+        <LessonChapters
+          lesson={lesson}
+          currentChapterIdx={s.linesChapterIdx ?? 0}
+          lines={s.lines}
+          changeChapter={changeChapter}
+          height={boardSize}
+          width={275}
+        />
         <div className="flex flex-col items-center">
-          <h2 className="text-[2rem] h-12">{lesson.title}</h2>
           {chessboard}
           <div className="mt-3 w-full">{lessonSessionInfo}</div>
         </div>
-        <div className="mt-12 ml-2 w-[275px]">
+        <div className="ml-2 w-[275px]">
           <div
             style={{ height: boardSize }}
             className="flex flex-col flex-1 items-center w-full"
