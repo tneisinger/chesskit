@@ -37,8 +37,6 @@ import ArrowButtons from '@/components/arrowButtons';
 import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
 import {
-  calculateBoardSize,
-  getWindowHeightMinusNavbarHeight,
   shouldUseMobileLayout
 } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
@@ -47,6 +45,14 @@ import usePrevious from '@/hooks/usePrevious';
 import LessonSessionInfo from '@/components/lessonSessionInfo';
 import useEvaler from '@/hooks/useChessEvaler';
 import LessonControls from './lessonControls';
+import type { Viewport } from 'next'
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 
 // The arrow type that will be used throughout this component unless otherwise specified
 const blueArrowType = ARROW_TYPE.info;
@@ -926,7 +932,7 @@ const LessonSession = ({ lesson }: Props) => {
       history={history}
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
-      // useMobileLayout={shouldUseMobileLayout(zState.windowSize)}
+      useMobileLayout={shouldUseMobileLayout(windowSize)}
       showVariations={s.mode !== Mode.Practice}
     />
   );
@@ -936,54 +942,54 @@ const LessonSession = ({ lesson }: Props) => {
       history={history}
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
-      // excludeStartAndEndBtns={shouldUseMobileLayout(zState.windowSize)}
+      excludeStartAndEndBtns={shouldUseMobileLayout(windowSize)}
     />
   );
 
   const containerClasses = ['flex flex-col items-center w-full mt-3'];
 
-  // if (shouldUseMobileLayout(zState.windowSize)) {
-  //   containerClasses.push('mt-0');
-  //   const divHeight = getWindowHeightMinusNavbarHeight(zState.windowSize);
+  if (shouldUseMobileLayout(windowSize)) {
+    containerClasses.push('mt-0');
+    const divHeight = windowSize.height;
 
-  //   return (
-  //     <div
-  //       style={{ height: divHeight }}
-  //       className={containerClasses.join(' ')}
-  //     >
-  //       {chessboard}
+    return (
+      <div
+        style={{ height: divHeight }}
+        className={containerClasses.join(' ')}
+      >
+        {chessboard}
 
-  //       <div className="min-h-[60px] flex w-full flex-row justify-around items-center">
-  //         {'lessonSessionInfo'}
-  //       </div>
-  //       <div className="flex-1 p-0 w-screen bg-[#292724] overflow-y-scroll border-t-8 border-[#292724]">
-  //         {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
-  //         {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
-  //       </div>
-  //       <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]">
-  //         <IconButton
-  //           icon={Svg.SwoopyArrow}
-  //           onClick={() => dispatch({
-  //             type: 'changeSelectedMobileTab',
-  //             value: MobileTab.Moves,
-  //           })}
-  //           text={'Moves'}
-  //           isHighlighted={s.selectedMobileTab === MobileTab.Moves}
-  //         />
-  //         <IconButton
-  //           icon={Svg.Lightbulb}
-  //           onClick={() => dispatch({
-  //             type: 'changeSelectedMobileTab',
-  //             value: MobileTab.Engine,
-  //           })}
-  //           text={'Engine'}
-  //           isHighlighted={s.selectedMobileTab === MobileTab.Engine}
-  //         />
-  //         {arrowButtons}
-  //       </div>
-  //     </div>
-  //   );
-  // }
+        {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
+        {/*   {lessonSessionInfo} */}
+        {/* </div> */}
+        {/* <div className="flex-1 p-0 w-screen bg-[#292724] overflow-y-scroll border-t-8 border-[#292724]"> */}
+        {/*   {s.selectedMobileTab === MobileTab.Moves && movesDisplay} */}
+        {/*   {s.selectedMobileTab === MobileTab.Engine && engineDisplay} */}
+        {/* </div> */}
+        {/* <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]"> */}
+        {/*   <IconButton */}
+        {/*     icon={Svg.SwoopyArrow} */}
+        {/*     onClick={() => dispatch({ */}
+        {/*       type: 'changeSelectedMobileTab', */}
+        {/*       value: MobileTab.Moves, */}
+        {/*     })} */}
+        {/*     text={'Moves'} */}
+        {/*     isHighlighted={s.selectedMobileTab === MobileTab.Moves} */}
+        {/*   /> */}
+        {/*   <IconButton */}
+        {/*     icon={Svg.Lightbulb} */}
+        {/*     onClick={() => dispatch({ */}
+        {/*       type: 'changeSelectedMobileTab', */}
+        {/*       value: MobileTab.Engine, */}
+        {/*     })} */}
+        {/*     text={'Engine'} */}
+        {/*     isHighlighted={s.selectedMobileTab === MobileTab.Engine} */}
+        {/*   /> */}
+        {/*   {arrowButtons} */}
+        {/* </div> */}
+      </div>
+    );
+  }
 
   const showDebugButtons = false;
 
