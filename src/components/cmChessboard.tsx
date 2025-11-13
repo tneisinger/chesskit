@@ -165,7 +165,7 @@ const CmChessboard = ({
   const allowSound = useRef(false);
   const allowNextSound = useRef(false);
 
-  const moveOverSquareEvent = useRef<MoveInputEvent | null>(null);
+  const validateMoveInputEvent = useRef<MoveInputEvent | null>(null);
 
   const playMoveSound = useCallback((san?: string, plyChange?: number) => {
     if (!allowSound.current) return;
@@ -250,7 +250,7 @@ const CmChessboard = ({
 
   const enableMoveInput = useCallback(() => {
     const handleMoveFinished = (event: MoveInputEvent) => {
-      const ev = moveOverSquareEvent.current;
+      const ev = validateMoveInputEvent.current;
       if (event.type !== INPUT_EVENT_TYPE.moveInputFinished) {
         throw new Error('Expected moveInputFinished event');
       }
@@ -269,7 +269,7 @@ const CmChessboard = ({
       // If the isMoveAllowed predicate is defined and that predicate determines that
       // the move is not allowed, then don't play the move.
       if (isMoveAllowed != undefined && !isMoveAllowed(shortMove)) {
-        moveOverSquareEvent.current = null;
+        validateMoveInputEvent.current = null;
         return;
       }
 
@@ -286,14 +286,15 @@ const CmChessboard = ({
         if (ev.squareFrom && ev.squareTo) {
           board.current?.movePiece(ev.squareFrom, ev.squareTo);
         }
-        moveOverSquareEvent.current = null;
+        validateMoveInputEvent.current = null;
         return;
       }
       if (moves.length === 1) performMove(shortMove);
-      moveOverSquareEvent.current = null;
+      validateMoveInputEvent.current = null;
     }
 
     const inputHandler = (event: MoveInputEvent) => {
+      console.log(event);
       if (!allowInteraction) return;
 
       // If the `limitMoveInputToColor` prop is defined, then do nothing if it is not
@@ -309,10 +310,10 @@ const CmChessboard = ({
           verbose: true
         });
         return moves.length > 0;
-      } else if (event.type === INPUT_EVENT_TYPE.movingOverSquare) {
-        moveOverSquareEvent.current = event;
+      } else if (event.type === INPUT_EVENT_TYPE.validateMoveInput) {
+        validateMoveInputEvent.current = event;
       } else if (event.type === INPUT_EVENT_TYPE.moveInputCanceled) {
-        moveOverSquareEvent.current = null;
+        validateMoveInputEvent.current = null;
       } else if (event.type === INPUT_EVENT_TYPE.moveInputFinished) {
         handleMoveFinished(event);
       }
