@@ -957,8 +957,11 @@ const LessonSession = ({ lesson }: Props) => {
         style={{ height: divHeight }}
         className={containerClasses.join(' ')}
       >
+        <div className="p-1">
+          <h2 className="text-2xl">{lesson.title}</h2>
+        </div>
         {chessboard}
-
+        {lessonSessionInfo}
         {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
         {/*   {lessonSessionInfo} */}
         {/* </div> */}

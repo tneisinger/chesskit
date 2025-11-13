@@ -85,7 +85,7 @@ const LessonSessionInfo = ({
               className='cursor-pointer'
               onClick={() => restartCurrentLine(fallbackMode)}
             >
-              Restart Line
+              Restart
             </button>
 
             {/* This button restarts the current line in the alternate mode (either Learn or Practice) */}
@@ -95,7 +95,7 @@ const LessonSessionInfo = ({
                   restartCurrentLine(Mode.Practice) : restartCurrentLine(Mode.Learn)
               }
             >
-              {fallbackMode === Mode.Learn ? Mode.Practice : Mode.Learn} Line
+              {fallbackMode === Mode.Learn ? Mode.Practice : Mode.Learn}
             </button>
 
             {shouldShowHintBtns() && (
