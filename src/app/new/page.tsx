@@ -54,6 +54,7 @@ export default function Home() {
         setArrows={setArrows}
         markers={markers}
         setMarkers={setMarkers}
+        boardSize={400}
       />
       <div className="p-2">
         <ArrowButtons

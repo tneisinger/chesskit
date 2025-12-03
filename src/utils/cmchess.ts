@@ -1,5 +1,5 @@
 import { Chess as CmChess, COLOR, Move } from 'cm-chess/src/Chess';
-import { MARKER_TYPE } from 'cm-chessboard/src/Chessboard';
+import { MarkerTypeConfig } from 'cm-chessboard/src/extensions/markers/Markers';
 import ChessJS from '@/chessjs';
 import { Square, Move as ChessJsMove } from 'chess.js';
 import { PieceColor, ShortMove } from '@/types/chess';
@@ -24,7 +24,7 @@ export function areMovesEqual(m1: Move | undefined, m2: Move | undefined): boole
 
 export interface Marker {
   square: string;
-  type: MARKER_TYPE;
+  type: MarkerTypeConfig;
 }
 
 /**
