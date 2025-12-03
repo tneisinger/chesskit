@@ -60,3 +60,31 @@ export async function createLesson(lesson: Lesson): Promise<{ success: boolean; 
 		return { success: false, error: "Failed to create lesson" };
 	}
 }
+
+export async function updateLesson(
+	originalTitle: string,
+	lesson: Lesson
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		// Check if the lesson exists
+		const existing = await getLessonByTitle(originalTitle);
+		if (!existing) {
+			return { success: false, error: "Lesson not found" };
+		}
+
+		// Update the lesson
+		await db
+			.update(lessons)
+			.set({
+				userColor: lesson.userColor,
+				chapters: lesson.chapters,
+				updatedAt: new Date(),
+			})
+			.where(eq(lessons.title, originalTitle));
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error updating lesson:", error);
+		return { success: false, error: "Failed to update lesson" };
+	}
+}

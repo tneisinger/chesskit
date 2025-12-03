@@ -18,12 +18,18 @@ export default async function Page() {
 			</div>
 			<ul className="flex flex-col gap-2">
 				{lessons.map((lesson) => (
-					<li key={lesson.title}>
+					<li key={lesson.title} className="flex items-center justify-between gap-4 p-2 rounded hover:bg-background-page">
 						<Link
 							href={`/openings/${encodeURIComponent(lesson.title)}`}
-							className="text-foreground hover:text-color-btn-primary-hover"
+							className="text-foreground hover:text-color-btn-primary-hover flex-1"
 						>
 							{lesson.title}
+						</Link>
+						<Link
+							href={`/openings/${encodeURIComponent(lesson.title)}/edit`}
+							className="text-sm text-[#aaa] hover:text-color-btn-primary-hover"
+						>
+							Edit
 						</Link>
 					</li>
 				))}
