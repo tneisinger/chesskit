@@ -38,3 +38,25 @@ export async function getAllLessons() {
 		chapters: dbLesson.chapters,
 	}));
 }
+
+export async function createLesson(lesson: Lesson): Promise<{ success: boolean; error?: string }> {
+	try {
+		// Check if a lesson with this title already exists
+		const existing = await getLessonByTitle(lesson.title);
+		if (existing) {
+			return { success: false, error: "A lesson with this title already exists" };
+		}
+
+		// Insert the new lesson
+		await db.insert(lessons).values({
+			title: lesson.title,
+			userColor: lesson.userColor,
+			chapters: lesson.chapters,
+		});
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error creating lesson:", error);
+		return { success: false, error: "Failed to create lesson" };
+	}
+}
