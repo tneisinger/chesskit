@@ -88,3 +88,21 @@ export async function updateLesson(
 		return { success: false, error: "Failed to update lesson" };
 	}
 }
+
+export async function deleteLesson(title: string): Promise<{ success: boolean; error?: string }> {
+	try {
+		// Check if the lesson exists
+		const existing = await getLessonByTitle(title);
+		if (!existing) {
+			return { success: false, error: "Lesson not found" };
+		}
+
+		// Delete the lesson
+		await db.delete(lessons).where(eq(lessons.title, title));
+
+		return { success: true };
+	} catch (error) {
+		console.error("Error deleting lesson:", error);
+		return { success: false, error: "Failed to delete lesson" };
+	}
+}
