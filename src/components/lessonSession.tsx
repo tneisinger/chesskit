@@ -893,6 +893,28 @@ const LessonSession = ({ lesson }: Props) => {
     </div>
   );
 
+  let chaptersDivHeight = boardSize;
+  let chaptersDivWidth = 275;
+  if (shouldUseMobileLayout(windowSize)) {
+    chaptersDivHeight = 150;
+    chaptersDivWidth = boardSize;
+  }
+
+  let lessonChapters: React.ReactNode = <></>;
+
+  if (lesson.chapters.length > 1) {
+    lessonChapters = (
+      <LessonChapters
+        lesson={lesson}
+        currentChapterIdx={s.linesChapterIdx ?? 0}
+        lines={s.lines}
+        changeChapter={changeChapter}
+        height={chaptersDivHeight}
+        width={chaptersDivWidth}
+      />
+    );
+  }
+
   const engineDisplay = (
     <EvalerDisplay
       isEngineOn={s.isEvaluatorOn}
@@ -964,14 +986,7 @@ const LessonSession = ({ lesson }: Props) => {
         <div className='p-2 flex flex-row w-screen'>
           {lessonSessionInfo}
         </div>
-        <LessonChapters
-          lesson={lesson}
-          currentChapterIdx={s.linesChapterIdx ?? 0}
-          lines={s.lines}
-          changeChapter={changeChapter}
-          height={150}
-          width={boardSize}
-        />
+        {lessonChapters}
         {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
         {/*   {lessonSessionInfo} */}
         {/* </div> */}
@@ -1014,14 +1029,7 @@ const LessonSession = ({ lesson }: Props) => {
     <div className={containerClasses.join(' ')}>
       <h2 className="text-[2rem] h-12">{lesson.title}</h2>
       <div className="flex flex-row">
-        <LessonChapters
-          lesson={lesson}
-          currentChapterIdx={s.linesChapterIdx ?? 0}
-          lines={s.lines}
-          changeChapter={changeChapter}
-          height={boardSize}
-          width={275}
-        />
+        {lessonChapters}
         <div className="flex flex-col items-center">
           {chessboard}
           <div className="mt-3 w-full">{lessonSessionInfo}</div>
