@@ -983,8 +983,9 @@ const LessonSession = ({ lesson }: Props) => {
           <h2 className="text-2xl">{lesson.title}</h2>
         </div>
         {chessboard}
-        <div className='p-2 flex flex-row w-screen'>
+        <div className='p-2 flex flex-row w-screen justify-between'>
           {lessonSessionInfo}
+          <div>{arrowButtons}</div>
         </div>
         {lessonChapters}
         {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
