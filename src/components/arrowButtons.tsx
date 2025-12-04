@@ -68,7 +68,7 @@ const ArrowButtons = ({
   }
 
   return (
-    <div className="m-1 mb-0 [&>button]:mr-2 [&>button:last-child]:mr-0">
+    <div className="m-2 mb-0 mr-4 [&>button]:mr-9 [&>button:last-child]:mr-0">
       {!excludeStartAndEndBtns && (
         <ArrowButton
           arrow={Svg.ArrowBeginning}

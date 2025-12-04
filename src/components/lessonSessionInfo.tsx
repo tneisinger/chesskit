@@ -37,7 +37,7 @@ const LessonSessionInfo = ({
     return Object.values(lines).every((line) => line.isComplete);
   }, [lines]);
 
-  const classes = ['w-full flex flex-row items-center justify-between min-h-[34px]'];
+  const classes = ['flex flex-row items-center justify-between min-h-[34px]'];
   // if (shouldUseMobileLayout(windowSize)) {
     // Add mobile layout styles if needed
   // }
@@ -69,7 +69,7 @@ const LessonSessionInfo = ({
 
   return (
     <div className={classes.join(' ')}>
-      <div className="[&>*+*]:ml-4">
+      <div className="[&>*+*]:ml-6">
         {mode !== Mode.Edit && (
           <>
             <button
