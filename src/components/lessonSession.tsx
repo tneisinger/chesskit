@@ -928,7 +928,7 @@ const LessonSession = ({ lesson }: Props) => {
       maxLineLength={3}
       numLines={numLines}
       isSwitchDisabled={s.mode === Mode.Practice}
-      switchDisabledMsg={'Complete a line to enable the engine'}
+      switchDisabledMsg={'Complete the line to unlock the engine'}
     />
   )
 
