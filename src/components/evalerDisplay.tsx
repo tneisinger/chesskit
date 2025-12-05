@@ -33,7 +33,7 @@
     gameEvals,
     evalerMaxDepth,
     numLines,
-    engineName = 'Engine unknown',
+    engineName = 'Engine loading...',
     engineLines,
     isSwitchDisabled = false,
     maxLineLength,
@@ -105,8 +105,8 @@
           <span className="text-xl w-12 text-right">
             {isEngineOn && makeEvaluationString(evaluation)}
           </span>
-          <div className="text-center h-8 flex flex-col justify-center items-center">
-            <div>{engineName.split(' ').slice(0, 1).join(' ')}</div>
+          <div className="text-center text-xs h-8 flex flex-col justify-center items-center">
+            <div>{engineName}</div>
             {depthString && (
               <div>{depthString}</div>
             )}

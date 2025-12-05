@@ -45,7 +45,7 @@ export default function useEvaler(
   const evalDepth = (options && options.evalDepth) || 20;
   const numLines = (options && options.numLines) || 1;
 
-  const { stockfish } = useStockfish();
+  const { stockfish, recommendation } = useStockfish();
 
   const prevShouldEvalAutomatically = usePrevious(shouldEvalAutomatically);
 
@@ -140,7 +140,9 @@ export default function useEvaler(
       const line = typeof event === 'object' ? event.data : event;
 
       const name = parseName(line);
-      if (name) setEngineName(name);
+      if (name) {
+        setEngineName(recommendation ? recommendation.title : undefined);
+      }
 
       if (parseIsStockfishReady(line)) setIsStockfishReady(true);
 
