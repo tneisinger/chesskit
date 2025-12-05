@@ -123,7 +123,7 @@
         </div>
         <div className="text-center my-3 h-5 [&>span]:font-bold">
           {(!isEngineOn && isSwitchDisabled && switchDisabledMsg) ? (
-            <div>{switchDisabledMsg}</div>
+            <div className="text-sm">{switchDisabledMsg}</div>
           ) : (
             <span style={{ color: moveJudgementColor(mj) }}>
               {makeMoveJudgementString(mj)}
