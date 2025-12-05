@@ -991,31 +991,30 @@ const LessonSession = ({ lesson }: Props) => {
         {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
         {/*   {lessonSessionInfo} */}
         {/* </div> */}
-        {/* <div className="flex-1 p-0 w-screen bg-[#292724] overflow-y-scroll border-t-8 border-[#292724]"> */}
-        {/*   {s.selectedMobileTab === MobileTab.Moves && movesDisplay} */}
-        {/*   {s.selectedMobileTab === MobileTab.Engine && engineDisplay} */}
-        {/* </div> */}
-        {/* <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]"> */}
-        {/*   <IconButton */}
-        {/*     icon={Svg.SwoopyArrow} */}
-        {/*     onClick={() => dispatch({ */}
-        {/*       type: 'changeSelectedMobileTab', */}
-        {/*       value: MobileTab.Moves, */}
-        {/*     })} */}
-        {/*     text={'Moves'} */}
-        {/*     isHighlighted={s.selectedMobileTab === MobileTab.Moves} */}
-        {/*   /> */}
-        {/*   <IconButton */}
-        {/*     icon={Svg.Lightbulb} */}
-        {/*     onClick={() => dispatch({ */}
-        {/*       type: 'changeSelectedMobileTab', */}
-        {/*       value: MobileTab.Engine, */}
-        {/*     })} */}
-        {/*     text={'Engine'} */}
-        {/*     isHighlighted={s.selectedMobileTab === MobileTab.Engine} */}
-        {/*   /> */}
-        {/*   {arrowButtons} */}
-        {/* </div> */}
+        <div className="flex-1 p-0 w-screen bg-[#292724] overflow-y-scroll border-t-8 border-[#292724]">
+          {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
+          {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
+        </div>
+        <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]">
+          <IconButton
+            icon={Svg.SwoopyArrow}
+            onClick={() => dispatch({
+              type: 'changeSelectedMobileTab',
+              value: MobileTab.Moves,
+            })}
+            text={'Moves'}
+            isHighlighted={s.selectedMobileTab === MobileTab.Moves}
+          />
+          <IconButton
+            icon={Svg.Lightbulb}
+            onClick={() => dispatch({
+              type: 'changeSelectedMobileTab',
+              value: MobileTab.Engine,
+            })}
+            text={'Engine'}
+            isHighlighted={s.selectedMobileTab === MobileTab.Engine}
+          />
+        </div>
       </div>
     );
   }
