@@ -17,6 +17,8 @@ import useStockfish from '@/hooks/useStockfish';
 import usePrevious from '@/hooks/usePrevious';
 // import useStore from '../zustand/store';
 
+const MAX_THREADS_USAGE = 0.5;
+
 interface Toolkit {
   evaluate: (fen: string, prevFen?: string) => void;
   setupEvalerForNewGame: (gameId?: string) => void;
@@ -289,8 +291,10 @@ export default function useEvaler(
     if (stockfish) {
       stockfish.onmessage = handleStockfishMessage;
       stockfish.postMessage('uci');
+      const numThreads = Math.max(1, Math.floor(recommendation!.threads * MAX_THREADS_USAGE));
+      stockfish.postMessage(`setoption name Threads value ${numThreads}`)
+      stockfish.postMessage('setoption name Hash value 1024')
       stockfish.postMessage(`setoption name MultiPV value ${numLines}`)
-      stockfish.postMessage('setoption name UCI_AnalyseMode value true');
       stockfish.postMessage('isready');
     }
   }, [stockfish, numLines, evalDepth]);
