@@ -87,7 +87,7 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 			supportsCORS,
 			isMobile,
 			reason: "WebAssembly not supported, using ASM-JS as fallback",
-			fileName: "stockfish-17.1-asm.js",
+			fileName: "stockfish-17.1-asm-341ff22.js",
 		};
 	}
 
@@ -100,7 +100,7 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 				supportsCORS,
 				isMobile,
 				reason: "Mobile device with CORS support, using lite multi-threaded engine (≈7MB)",
-				fileName: "stockfish-nnue-17.1-lite.js",
+				fileName: "stockfish-17.1-lite-51f59da.js",
 			};
 		} else {
 			return {
@@ -109,7 +109,7 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 				supportsCORS,
 				isMobile,
 				reason: "Mobile device without CORS support, using lite single-threaded engine (≈7MB)",
-				fileName: "stockfish-nnue-17.1-lite-single.js",
+				fileName: "stockfish-17.1-lite-single-03e3232.js",
 			};
 		}
 	}
@@ -122,7 +122,7 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 			supportsCORS,
 			isMobile,
 			reason: "Desktop with CORS support, using strongest multi-threaded engine (≈75MB)",
-			fileName: "stockfish-nnue-17.1.js",
+			fileName: "stockfish-17.1-8e4d048.js",
 		};
 	} else {
 		return {
@@ -131,7 +131,7 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 			supportsCORS,
 			isMobile,
 			reason: "Desktop without CORS support, using large single-threaded engine (≈75MB)",
-			fileName: "stockfish-nnue-17.1-single.js",
+			fileName: "stockfish-17.1-single-a496a04.js",
 		};
 	}
 }
