@@ -276,7 +276,7 @@ function reducer(s: State, a: Action): State {
       break;
     case 'changeSelectedMobileTab':
       let isEvaluatorOn = false;
-      if (a.value === MobileTab.Engine) isEvaluatorOn = true;
+      if (a.value === MobileTab.Engine && s.mode === Mode.Explore) isEvaluatorOn = true;
       newState = { ...s, selectedMobileTab: a.value, isEvaluatorOn };
       break;
     case 'setupNewLesson':
