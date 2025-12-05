@@ -19,6 +19,7 @@ export interface StockfishRecommendation {
 	reason: string;
 	fileName: string;
   title: string;
+	threads: number;
 }
 
 /**
@@ -46,6 +47,17 @@ function supportsCrossOriginIsolation(): boolean {
 	// Check if SharedArrayBuffer is available
 	// This indicates that the proper CORS headers are set
 	return typeof SharedArrayBuffer !== "undefined";
+}
+
+/**
+ * Gets the number of threads available on the user's device
+ */
+function getThreadCount(): number {
+	if (typeof navigator !== "undefined" && navigator.hardwareConcurrency) {
+		return navigator.hardwareConcurrency;
+	}
+	// Fallback to 1 if hardware concurrency is not available
+	return 1;
 }
 
 /**
@@ -79,6 +91,7 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 	const supportsWasm = supportsWebAssembly();
 	const supportsCORS = supportsCrossOriginIsolation();
 	const isMobile = isMobileDevice();
+	const threads = getThreadCount();
 
 	// Priority 1: If WASM is not supported, use ASM-JS (last resort)
 	if (!supportsWasm) {
@@ -89,7 +102,8 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 			isMobile,
 			reason: "WebAssembly not supported, using ASM-JS as fallback",
 			fileName: "stockfish-17.1-asm-341ff22.js",
-      title: "Stockfish 17.1 ASM-JS"
+      title: "Stockfish 17.1 ASM-JS",
+			threads,
 		};
 	}
 
@@ -103,7 +117,8 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 				isMobile,
 				reason: "Mobile device with CORS support, using lite multi-threaded engine (≈7MB)",
 				fileName: "stockfish-17.1-lite-51f59da.js",
-        title: "Stockfish 17.1 Lite MT"
+        title: "Stockfish 17.1 Lite MT",
+				threads,
 			};
 		} else {
 			return {
@@ -113,7 +128,8 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 				isMobile,
 				reason: "Mobile device without CORS support, using lite single-threaded engine (≈7MB)",
 				fileName: "stockfish-17.1-lite-single-03e3232.js",
-        title: "Stockfish 17.1 Lite ST"
+        title: "Stockfish 17.1 Lite ST",
+				threads,
 			};
 		}
 	}
@@ -127,7 +143,8 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 			isMobile,
 			reason: "Desktop with CORS support, using strongest multi-threaded engine (≈75MB)",
 			fileName: "stockfish-17.1-8e4d048.js",
-      title: "Stockfish 17.1 MT"
+      title: "Stockfish 17.1 MT",
+			threads,
 		};
 	} else {
 		return {
@@ -137,7 +154,8 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 			isMobile,
 			reason: "Desktop without CORS support, using large single-threaded engine (≈75MB)",
 			fileName: "stockfish-17.1-single-a496a04.js",
-      title: "Stockfish 17.1 ST"
+      title: "Stockfish 17.1 ST",
+			threads,
 		};
 	}
 }
@@ -175,5 +193,6 @@ export function logStockfishDetection(recommendation: StockfishRecommendation): 
 	console.log("WebAssembly Support:", recommendation.supportsWasm ? "✓" : "✗");
 	console.log("CORS/SharedArrayBuffer:", recommendation.supportsCORS ? "✓" : "✗");
 	console.log("Mobile Device:", recommendation.isMobile ? "Yes" : "No");
+	console.log("Available Threads:", recommendation.threads);
 	console.groupEnd();
 }
