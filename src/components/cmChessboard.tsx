@@ -294,7 +294,6 @@ const CmChessboard = ({
     }
 
     const inputHandler = (event: MoveInputEvent) => {
-      console.log(event);
       if (!allowInteraction) return;
 
       // If the `limitMoveInputToColor` prop is defined, then do nothing if it is not
