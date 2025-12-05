@@ -7,7 +7,7 @@ import type { NextPage } from 'next'
 import useStockfish from '@/hooks/useStockfish';
 
 const Stockfish: NextPage = () => {
-  const stockfish = useStockfish();
+  const { stockfish, isLoading, error, recommendation } = useStockfish();
 
   const bottomDiv = useRef<HTMLDivElement | null>(null);
 
@@ -36,9 +36,34 @@ const Stockfish: NextPage = () => {
     setInputText('');
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-xl">Loading Stockfish engine...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Stockfish</h1>
+        <div className="p-4 bg-[rgba(173,31,31,0.2)] border border-color-btn-danger rounded">
+          <p className="font-bold mb-2">Error loading engine:</p>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1>Stockfish</h1>
+      {recommendation && (
+        <p className="text-sm text-[#aaa] mb-2">
+          Using {recommendation.flavor} engine
+        </p>
+      )}
       <Link
         href="https://gist.github.com/aliostad/f4470274f39d29b788c1b09519e67372"
         target="_blank"

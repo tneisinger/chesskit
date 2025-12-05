@@ -45,7 +45,7 @@ export default function useEvaler(
   const evalDepth = (options && options.evalDepth) || 20;
   const numLines = (options && options.numLines) || 1;
 
-  const stockfish = useStockfish();
+  const { stockfish } = useStockfish();
 
   const prevShouldEvalAutomatically = usePrevious(shouldEvalAutomatically);
 
