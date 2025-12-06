@@ -19,8 +19,11 @@ const IconButton = ({
   isHighlighted = true
 }: Props) => {
 
-  const classes = ['bg-transparent border-none'];
-  const iconClasses = ['brightness-[0.42]'];
+  const classes = ['bg-transparent border-none flex items-center justify-center flex-col'];
+  let iconClasses = ['invert-25'];
+  if (isHighlighted) {
+    iconClasses = ['invert-75'];
+  }
   const textClasses = ['text-[0.65rem] text-[#777]'];
 
   if (isHighlighted) {
