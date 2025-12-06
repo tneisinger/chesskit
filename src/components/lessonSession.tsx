@@ -60,6 +60,7 @@ export const viewport: Viewport = {
 const blueArrowType = ARROW_TYPE.info;
 
 enum MobileTab {
+  Chapters = 'Chapters',
   Moves = 'Moves',
   Engine = 'Engine',
 }
@@ -633,6 +634,9 @@ const LessonSession = ({ lesson }: Props) => {
   }, [getNextMoves]);
 
   useEffect(() => {
+    if (lesson.chapters.length > 1) {
+      dispatch({ type: 'changeSelectedMobileTab', value: MobileTab.Chapters })
+    }
     return () => window.clearTimeout(timeoutRef.current);
   }, [])
 
@@ -897,13 +901,16 @@ const LessonSession = ({ lesson }: Props) => {
   let chaptersDivHeight = boardSize;
   let chaptersDivWidth = 275;
   if (shouldUseMobileLayout(windowSize)) {
-    chaptersDivHeight = 150;
-    chaptersDivWidth = boardSize;
+    chaptersDivHeight = 180;
+    chaptersDivWidth = boardSize - 8;
   }
 
   let lessonChapters: React.ReactNode = <></>;
 
-  if (lesson.chapters.length > 1) {
+  let isMoreThanOneChapter = false;
+  if (lesson.chapters.length > 1) isMoreThanOneChapter = true;
+
+  if (isMoreThanOneChapter) {
     lessonChapters = (
       <LessonChapters
         lesson={lesson}
@@ -989,15 +996,26 @@ const LessonSession = ({ lesson }: Props) => {
             {lessonSessionInfo}
             <div>{arrowButtons}</div>
           </div>
-          {lessonChapters}
           {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
           {/*   {lessonSessionInfo} */}
           {/* </div> */}
           <div className="flex-1 p-0 w-screen bg-[#292724] overflow-y-scroll border-t-8 border-[#292724]">
+            {s.selectedMobileTab === MobileTab.Chapters && lessonChapters}
             {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
             {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
           </div>
           <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]">
+            {isMoreThanOneChapter &&
+              <IconButton
+                icon={Svg.Bookmark}
+                onClick={() => dispatch({
+                  type: 'changeSelectedMobileTab',
+                  value: MobileTab.Chapters,
+                })}
+                text={'Chapters'}
+                isHighlighted={s.selectedMobileTab === MobileTab.Chapters}
+              />
+            }
             <IconButton
               icon={Svg.SwoopyArrow}
               onClick={() => dispatch({
