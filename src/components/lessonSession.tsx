@@ -6,6 +6,7 @@ import React, {
   useRef,
   useCallback,
 } from 'react';
+import { ScrollLock } from '@/components/ScrollLock';
 import { Lesson, LineStats, Mode } from '@/types/lesson';
 import {
   areCmMovesEqual,
@@ -975,47 +976,49 @@ const LessonSession = ({ lesson }: Props) => {
     const divHeight = windowSize.height;
 
     return (
-      <div
-        style={{ height: divHeight }}
-        className={containerClasses.join(' ')}
-      >
-        <div className="p-1">
-          <h2 className="text-2xl">{lesson.title}</h2>
+      <ScrollLock>
+        <div
+          style={{ height: divHeight }}
+          className={containerClasses.join(' ')}
+        >
+          <div className="p-1">
+            <h2 className="text-2xl">{lesson.title}</h2>
+          </div>
+          {chessboard}
+          <div className='p-2 flex flex-row w-screen justify-between'>
+            {lessonSessionInfo}
+            <div>{arrowButtons}</div>
+          </div>
+          {lessonChapters}
+          {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
+          {/*   {lessonSessionInfo} */}
+          {/* </div> */}
+          <div className="flex-1 p-0 w-screen bg-[#292724] overflow-y-scroll border-t-8 border-[#292724]">
+            {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
+            {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
+          </div>
+          <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]">
+            <IconButton
+              icon={Svg.SwoopyArrow}
+              onClick={() => dispatch({
+                type: 'changeSelectedMobileTab',
+                value: MobileTab.Moves,
+              })}
+              text={'Moves'}
+              isHighlighted={s.selectedMobileTab === MobileTab.Moves}
+            />
+            <IconButton
+              icon={Svg.Lightbulb}
+              onClick={() => dispatch({
+                type: 'changeSelectedMobileTab',
+                value: MobileTab.Engine,
+              })}
+              text={'Engine'}
+              isHighlighted={s.selectedMobileTab === MobileTab.Engine}
+            />
+          </div>
         </div>
-        {chessboard}
-        <div className='p-2 flex flex-row w-screen justify-between'>
-          {lessonSessionInfo}
-          <div>{arrowButtons}</div>
-        </div>
-        {lessonChapters}
-        {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
-        {/*   {lessonSessionInfo} */}
-        {/* </div> */}
-        <div className="flex-1 p-0 w-screen bg-[#292724] overflow-y-scroll border-t-8 border-[#292724]">
-          {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
-          {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
-        </div>
-        <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]">
-          <IconButton
-            icon={Svg.SwoopyArrow}
-            onClick={() => dispatch({
-              type: 'changeSelectedMobileTab',
-              value: MobileTab.Moves,
-            })}
-            text={'Moves'}
-            isHighlighted={s.selectedMobileTab === MobileTab.Moves}
-          />
-          <IconButton
-            icon={Svg.Lightbulb}
-            onClick={() => dispatch({
-              type: 'changeSelectedMobileTab',
-              value: MobileTab.Engine,
-            })}
-            text={'Engine'}
-            isHighlighted={s.selectedMobileTab === MobileTab.Engine}
-          />
-        </div>
-      </div>
+      </ScrollLock>
     );
   }
 
@@ -1026,48 +1029,50 @@ const LessonSession = ({ lesson }: Props) => {
   };
 
   return (
-    <div className={containerClasses.join(' ')}>
-      <h2 className="text-[2rem] h-12">{lesson.title}</h2>
-      <div className="flex flex-row">
-        {lessonChapters}
-        <div className="flex flex-col items-center">
-          {chessboard}
-          <div className="mt-3 w-full">{lessonSessionInfo}</div>
-        </div>
-        <div className="ml-2 w-[275px]">
-          <div
-            style={{ height: boardSize }}
-            className="flex flex-col flex-1 items-center w-full"
-          >
-            <div className="bg-[#292724] w-full p-2">
-              {engineDisplay}
+    <ScrollLock>
+      <div className={containerClasses.join(' ')}>
+        <h2 className="text-[2rem] h-12">{lesson.title}</h2>
+        <div className="flex flex-row">
+          {lessonChapters}
+          <div className="flex flex-col items-center">
+            {chessboard}
+            <div className="mt-3 w-full">{lessonSessionInfo}</div>
+          </div>
+          <div className="ml-2 w-[275px]">
+            <div
+              style={{ height: boardSize }}
+              className="flex flex-col flex-1 items-center w-full"
+            >
+              <div className="bg-[#292724] w-full p-2">
+                {engineDisplay}
+              </div>
+              <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
+                {movesDisplay}
+              </div>
+              <div className="border border-black border-t-0 w-full bg-background-page">
+                <LessonControls
+                  lines={Object.keys(s.lines)}
+                  currentMove={currentMove}
+                  lesson={lesson}
+                  history={history}
+                  mode={s.mode}
+                  onEditModeBtnClick={handleEditModeBtnClick}
+                  onDeleteMoveBtnClick={handleDeleteMoveBtnClick}
+                  onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
+                  setupNextLine={setupNextLine}
+                />
+              </div>
+              {arrowButtons}
             </div>
-            <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
-              {movesDisplay}
-            </div>
-            <div className="border border-black border-t-0 w-full bg-background-page">
-              <LessonControls
-                lines={Object.keys(s.lines)}
-                currentMove={currentMove}
-                lesson={lesson}
-                history={history}
-                mode={s.mode}
-                onEditModeBtnClick={handleEditModeBtnClick}
-                onDeleteMoveBtnClick={handleDeleteMoveBtnClick}
-                onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
-                setupNextLine={setupNextLine}
-              />
-            </div>
-            {arrowButtons}
           </div>
         </div>
+        {showDebugButtons && (
+          <>
+            <button onClick={debug}>debug!</button>
+          </>
+        )}
       </div>
-      {showDebugButtons && (
-        <>
-          <button onClick={debug}>debug!</button>
-        </>
-      )}
-    </div>
+    </ScrollLock>
   );
 };
 

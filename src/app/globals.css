@@ -28,11 +28,16 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  width: 100%;
+}
+
+/* Styles for pages that need fixed viewport (no scrolling) */
+html.scroll-lock,
+body.scroll-lock {
   height: 100vh;
   height: 100dvh; /* Dynamic viewport height for mobile browsers */
   overflow: hidden;
   position: fixed;
-  width: 100%;
 }
 
 @utility no-scrollbar {
