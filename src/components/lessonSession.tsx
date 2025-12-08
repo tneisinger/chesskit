@@ -297,7 +297,11 @@ function reducer(s: State, a: Action): State {
       newState = declareLineComplete(s, a.completedLine);
       break;
     case 'changeMode':
-      newState = { ...s, mode: a.mode };
+      let fallbackMode = s.fallbackMode;
+      if (a.mode === Mode.Learn || a.mode === Mode.Practice) {
+        fallbackMode = a.mode;
+      }
+      newState = { ...s, mode: a.mode, fallbackMode };
       break;
     case 'changeChapterIdx':
       newState = { ...s, currentChapterIdx: a.idx };
@@ -749,6 +753,13 @@ const LessonSession = ({ lesson }: Props) => {
     }
   }, [currentMove, previousMove, s.mode, isOpponentsTurn, showMoves])
 
+  useEffect(() => {
+    if (s.mode !== Mode.Learn) return;
+    if (isOpponentsTurn()) return;
+    if (prevMode === Mode.Learn) return;
+    showMoves();
+  }, [s.mode]);
+
   // This useEffect handles automatic opponent moves and wrong move animation
   // in Practice mode and Learn mode.
   useEffect(() => {
@@ -956,6 +967,7 @@ const LessonSession = ({ lesson }: Props) => {
       fallbackMode={s.fallbackMode}
       setupNextLine={setupNextLine}
       restartCurrentLine={restartCurrentLine}
+      changeMode={(mode: Mode) => dispatch({ type: 'changeMode', mode })}
     />
   );
 

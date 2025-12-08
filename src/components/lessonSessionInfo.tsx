@@ -18,6 +18,7 @@ interface Props extends HintButtonsProps {
   fallbackMode: Mode;
   setupNextLine: (nextMode: Mode) => void;
   restartCurrentLine: (nextMode: Mode) => void;
+  changeMode: (newMode: Mode) => void;
 }
 
 const LessonSessionInfo = ({
@@ -33,6 +34,7 @@ const LessonSessionInfo = ({
   isLineComplete,
   setupNextLine,
   restartCurrentLine,
+  changeMode,
 }: Props) => {
   // const { windowSize } = useStore((state) => state);
 
@@ -41,6 +43,14 @@ const LessonSessionInfo = ({
   const areAllLinesComplete = useCallback((): boolean => {
     return Object.values(lines).every((line) => line.isComplete);
   }, [lines]);
+
+  // Returns the next mode to toggle to (either Learn or Practice)
+  const getNextToggleMode = useCallback((): Mode => {
+    if (mode !== Mode.Learn && mode !== Mode.Practice) {
+      return fallbackMode;
+    }
+    return (mode === Mode.Learn ? Mode.Practice : Mode.Learn);
+  }, [mode, fallbackMode]);
 
   const classes = ['flex flex-row items-center justify-between min-h-[34px]'];
   // if (shouldUseMobileLayout(windowSize)) {
@@ -88,14 +98,14 @@ const LessonSessionInfo = ({
             </button>
 
             {/* This button restarts the current line in the alternate mode (either Learn or Practice) */}
-            <button
-              className='cursor-pointer'
-              onClick={() => fallbackMode === Mode.Learn ?
-                  restartCurrentLine(Mode.Practice) : restartCurrentLine(Mode.Learn)
-              }
-            >
-              {fallbackMode === Mode.Learn ? Mode.Practice : Mode.Learn}
-            </button>
+            {!isLineComplete && (
+              <button
+                className='cursor-pointer'
+                onClick={() => changeMode(getNextToggleMode())}
+              >
+                {getNextToggleMode()}
+              </button>
+            )}
 
             {shouldShowHintBtns() && (
               <HintButtons
