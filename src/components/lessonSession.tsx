@@ -993,7 +993,9 @@ const LessonSession = ({ lesson }: Props) => {
   const containerClasses = ['flex flex-col items-center w-full'];
 
   if (shouldUseMobileLayout(windowSize)) {
-    const divHeight = windowSize.height;
+    // Account for navigation bar height (40px / 2.5rem / h-10)
+    const navBarHeight = 40;
+    const divHeight = (windowSize.height || 0) - navBarHeight;
 
     return (
       <ScrollLock>
