@@ -942,6 +942,7 @@ const LessonSession = ({ lesson }: Props) => {
 
   const lessonSessionInfo = (
     <LessonSessionInfo
+      lesson={lesson}
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
       history={history}

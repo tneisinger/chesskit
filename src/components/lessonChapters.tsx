@@ -1,7 +1,6 @@
-import React, { useMemo } from "react";
+import React from "react";
 import type { Lesson, LineStats } from "@/types/lesson";
-import { getLinesFromPGN } from "@/utils/pgn";
-import { convertSanLineToLanLine } from "@/utils/chess";
+import { useChapterCompletionRatios } from "@/hooks/useChapterCompletionRatios";
 
 interface Props {
 	lesson: Lesson;
@@ -20,28 +19,7 @@ const LessonChapters = ({
 	height,
   width,
 }: Props) => {
-	// Calculate completion ratio for each chapter
-	const chapterCompletionRatios = useMemo(() => {
-		return lesson.chapters.map((chapter) => {
-			const sanLines = getLinesFromPGN(chapter.pgn);
-			const lanLines = sanLines.map((l) =>
-				convertSanLineToLanLine(l.split(/\s+/)),
-			);
-
-			let completedCount = 0;
-			let totalCount = 0;
-
-			lanLines.forEach((line) => {
-				const lineKey = line.join(" ");
-				totalCount++;
-				if (lines[lineKey]?.isComplete) {
-					completedCount++;
-				}
-			});
-
-			return { completedCount, totalCount };
-		});
-	}, [lesson.chapters, lines]);
+	const chapterCompletionRatios = useChapterCompletionRatios(lesson, lines);
 
 	return (
 		<div
