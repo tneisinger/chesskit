@@ -5,6 +5,26 @@ import Link from "next/link";
 import { getAllLessons, deleteLesson } from "./actions";
 import type { Lesson } from "@/types/lesson";
 import Button, { ButtonStyle, ButtonSize } from "@/components/button";
+import PositionPreview from "@/components/PositionPreview";
+import { getLinesFromPGN } from "@/utils/pgn";
+
+/**
+ * Gets the first 3 moves from a lesson's first chapter
+ */
+function getFirst3Moves(lesson: Lesson): string[] {
+	if (lesson.chapters.length === 0) return [];
+
+	const firstChapter = lesson.chapters[0];
+	const lines = getLinesFromPGN(firstChapter.pgn);
+
+	if (lines.length === 0) return [];
+
+	// Get the first line and split it into moves
+	const moves = lines[0].split(/\s+/);
+
+	// Return first 3 moves
+	return moves.slice(0, 3);
+}
 
 export default function Page() {
 	const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -74,36 +94,55 @@ export default function Page() {
 					No lessons found. Create your first lesson to get started!
 				</p>
 			) : (
-				<ul className="flex flex-col gap-2">
-					{lessons.map((lesson) => (
-						<li
-							key={lesson.title}
-							className="flex items-center justify-between gap-4 p-2 rounded hover:bg-background-page"
-						>
-							<Link
-								href={`/openings/${encodeURIComponent(lesson.title)}`}
-								className="text-foreground hover:text-color-btn-primary-hover flex-1"
+				<ul className="flex flex-col gap-4">
+					{lessons.map((lesson) => {
+						const first3Moves = getFirst3Moves(lesson);
+						return (
+							<li
+								key={lesson.title}
+								className="flex items-center gap-4 p-4 rounded hover:bg-background-page border border-foreground/10"
 							>
-								{lesson.title}
-							</Link>
-							<div className="flex items-center gap-2">
+								{/* Board Preview */}
 								<Link
-									href={`/openings/${encodeURIComponent(lesson.title)}/edit`}
-									className="text-sm text-[#aaa] hover:text-color-btn-primary-hover px-2"
+									href={`/openings/${encodeURIComponent(lesson.title)}`}
+									className="flex-shrink-0"
 								>
-									Edit
+									<PositionPreview line={first3Moves} orientation={lesson.userColor} size={240} />
 								</Link>
-								<Button
-									buttonStyle={ButtonStyle.Danger}
-									buttonSize={ButtonSize.Small}
-									onClick={() => handleDelete(lesson.title)}
-									disabled={deletingLesson === lesson.title}
-								>
-									{deletingLesson === lesson.title ? "Deleting..." : "Delete"}
-								</Button>
-							</div>
-						</li>
-					))}
+
+								{/* Lesson Info */}
+								<div className="flex flex-col flex-1 gap-2">
+									<Link
+										href={`/openings/${encodeURIComponent(lesson.title)}`}
+										className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline"
+									>
+										{lesson.title}
+									</Link>
+									<div className="text-sm text-foreground/60">
+										{lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
+									</div>
+								</div>
+
+								{/* Action Buttons */}
+								<div className="flex items-center gap-2 flex-shrink-0">
+									<Link
+										href={`/openings/${encodeURIComponent(lesson.title)}/edit`}
+										className="text-sm text-[#aaa] hover:text-color-btn-primary-hover px-3 py-2 rounded hover:bg-foreground/10 no-underline"
+									>
+										Edit
+									</Link>
+									<Button
+										buttonStyle={ButtonStyle.Danger}
+										buttonSize={ButtonSize.Small}
+										onClick={() => handleDelete(lesson.title)}
+										disabled={deletingLesson === lesson.title}
+									>
+										{deletingLesson === lesson.title ? "Deleting..." : "Delete"}
+									</Button>
+								</div>
+							</li>
+						);
+					})}
 				</ul>
 			)}
 		</div>
