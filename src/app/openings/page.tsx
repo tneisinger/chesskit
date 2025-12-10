@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getAllLessons, deleteLesson } from "./actions";
 import type { Lesson } from "@/types/lesson";
 import Button, { ButtonStyle, ButtonSize } from "@/components/button";
-import PositionPreview from "@/components/PositionPreview";
+import LessonDisplay from "@/components/lessonDisplay";
 import { getLinesFromPGN } from "@/utils/pgn";
 
 /**
@@ -102,54 +102,15 @@ export default function Page() {
 				</p>
 			) : (
 				<ul className="flex flex-col gap-4">
-					{lessons.map((lesson) => {
-						const displayLine = getDisplayLine(lesson);
-						return (
-							<li
-								key={lesson.title}
-								className="flex items-center gap-4 p-4 rounded hover:bg-background-page border border-foreground/10"
-							>
-								{/* Board Preview */}
-								<Link
-									href={`/openings/${encodeURIComponent(lesson.title)}`}
-									className="flex-shrink-0"
-								>
-									<PositionPreview line={displayLine} orientation={lesson.userColor} size={240} />
-								</Link>
-
-								{/* Lesson Info */}
-								<div className="flex flex-col flex-1 gap-2">
-									<Link
-										href={`/openings/${encodeURIComponent(lesson.title)}`}
-										className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline"
-									>
-										{lesson.title}
-									</Link>
-									<div className="text-sm text-foreground/60">
-										{lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
-									</div>
-								</div>
-
-								{/* Action Buttons */}
-								<div className="flex items-center gap-2 flex-shrink-0">
-									<Link
-										href={`/openings/${encodeURIComponent(lesson.title)}/edit`}
-										className="text-sm text-[#aaa] hover:text-color-btn-primary-hover px-3 py-2 rounded hover:bg-foreground/10 no-underline"
-									>
-										Edit
-									</Link>
-									<Button
-										buttonStyle={ButtonStyle.Danger}
-										buttonSize={ButtonSize.Small}
-										onClick={() => handleDelete(lesson.title)}
-										disabled={deletingLesson === lesson.title}
-									>
-										{deletingLesson === lesson.title ? "Deleting..." : "Delete"}
-									</Button>
-								</div>
-							</li>
-						);
-					})}
+					{lessons.map((lesson) => (
+            <LessonDisplay
+              lesson={lesson}
+              boardSize={240}
+              handleDelete={handleDelete}
+              isDeletingLesson={deletingLesson === lesson.title}
+              key={lesson.title}
+            />
+          ))}
 				</ul>
 			)}
 		</div>
