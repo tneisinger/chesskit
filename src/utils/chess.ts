@@ -17,7 +17,7 @@ import { assertUnreachable, average, pluralizeWord } from '.';
 import { povDiff } from '@/utils/winningChances';
 import { ChessMoveColors } from '@/constants/colors';
 import { isBookPosition } from '@/utils/bookPositions';
-import { parse as parsePGN } from 'pgn-parser'
+import { parse } from 'pgn-parser'
 import { parseLanMove } from './stockfish';
 
 /**
@@ -605,7 +605,7 @@ export function makePgnStringFromHistory(history: Move[]): string {
   })
   const pgn = chessjs.pgn();
   try {
-    parsePGN(pgn);
+    parse(pgn);
     return pgn;
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -689,3 +689,22 @@ export function isThreefoldRepetition(
   return chessjs.isThreefoldRepetition();
 }
 
+export function parsePGN(pgn: string, options?: { allowIncomplete?: boolean }) {
+  if (options?.allowIncomplete) {
+    try {
+      return parse(pgn);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.name === 'SyntaxError') {
+          // Try adding a game result to the end and parsing again
+          try {
+            return parse(`${pgn} *`);
+          } catch {
+            throw error;
+          }
+        }
+      }
+      throw error;
+    }
+  }
+}
