@@ -15,6 +15,13 @@
       "when": 1762480747177,
       "tag": "0001_faulty_black_tom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1765392197647,
+      "tag": "0002_greedy_vapor",
+      "breakpoints": true
     }
   ]
 }

@@ -24,6 +24,7 @@ export const lessons = sqliteTable("lessons", {
 	chapters: text("chapters", { mode: "json" })
 		.notNull()
 		.$type<Chapter[]>(),
+	displayLine: text("display_line", { mode: "json" }).$type<string[]>(),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.notNull()
 		.default(sql`(unixepoch())`),

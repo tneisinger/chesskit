@@ -9,9 +9,16 @@ import PositionPreview from "@/components/PositionPreview";
 import { getLinesFromPGN } from "@/utils/pgn";
 
 /**
- * Gets the first 3 moves from a lesson's first chapter
+ * Gets the display line for a lesson.
+ * If displayLine is set, uses that. Otherwise, gets the first 3 moves from the first chapter.
  */
-function getFirst3Moves(lesson: Lesson): string[] {
+function getDisplayLine(lesson: Lesson): string[] {
+	// Use displayLine if it exists
+	if (lesson.displayLine && lesson.displayLine.length > 0) {
+		return lesson.displayLine;
+	}
+
+	// Fallback to first 3 moves from first chapter
 	if (lesson.chapters.length === 0) return [];
 
 	const firstChapter = lesson.chapters[0];
@@ -96,7 +103,7 @@ export default function Page() {
 			) : (
 				<ul className="flex flex-col gap-4">
 					{lessons.map((lesson) => {
-						const first3Moves = getFirst3Moves(lesson);
+						const displayLine = getDisplayLine(lesson);
 						return (
 							<li
 								key={lesson.title}
@@ -107,7 +114,7 @@ export default function Page() {
 									href={`/openings/${encodeURIComponent(lesson.title)}`}
 									className="flex-shrink-0"
 								>
-									<PositionPreview line={first3Moves} orientation={lesson.userColor} size={240} />
+									<PositionPreview line={displayLine} orientation={lesson.userColor} size={240} />
 								</Link>
 
 								{/* Lesson Info */}

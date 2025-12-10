@@ -10,6 +10,7 @@ export interface Lesson {
   title: string;
   userColor: PieceColor;
   chapters: Chapter[];
+  displayLine?: string[],
 }
 
 export interface LineStats {
