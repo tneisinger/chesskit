@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { Lesson } from "@/types/lesson";
 import Link from "next/link";
 import Button, { ButtonStyle, ButtonSize } from "@/components/button";
@@ -60,17 +61,25 @@ export default function LessonDisplay({
   isDeletingLesson,
 }: LessonDisplayProps) {
   const displayLine = getDisplayLine(lesson);
+  const [isHovered, setIsHovered] = useState(false);
   return (
     <li
       key={lesson.title}
       className="flex items-center gap-4 p-4 rounded hover:bg-background-page border border-foreground/10"
+      onMouseEnter={(_e) => setIsHovered(true)}
+      onMouseLeave={(_e) => setIsHovered(false)}
     >
       {/* Board Preview */}
       <Link
         href={`/openings/${encodeURIComponent(lesson.title)}`}
         className="flex-shrink-0"
       >
-        <PositionPreview line={displayLine} orientation={lesson.userColor} size={boardSize} />
+        <PositionPreview
+          line={displayLine}
+          orientation={lesson.userColor}
+          size={boardSize}
+          cycleLineMoves={isHovered}
+        />
       </Link>
 
       {/* Lesson Info */}
