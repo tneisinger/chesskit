@@ -10,10 +10,11 @@ import 'cm-chessboard/assets/chessboard.css';
 interface PositionPreviewProps {
 	/**
 	 * Array of PGN moves in standard algebraic notation (e.g., ["e4", "e5", "Nf3"])
+   * This defines the position that will be displayed.
 	 */
 	line: string[];
 	/**
-	* The orientation of the board ('white' or 'black')
+	 * The orientation of the board ('white' or 'black')
 	 */
 	orientation: PieceColor;
 	/**
@@ -24,6 +25,10 @@ interface PositionPreviewProps {
 	 * Optional CSS class for styling
 	 */
 	className?: string;
+	/**
+	 * A boolean indicating whether to cycle through line moves
+	 */
+  cycleLineMoves?: boolean;
 }
 
 /**
@@ -33,9 +38,13 @@ export default function PositionPreview({
 	line,
   orientation,
 	size = 200,
-	className = ''
+	className = '',
+  cycleLineMoves = false,
 }: PositionPreviewProps) {
 	const boardRef = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<number>(0);
+  const moveIndexRef = useRef<number | null>(null);
+
 	const [board, setBoard] = useState<Chessboard | null>(null);
 	const [fen, setFen] = useState<string>('');
 
@@ -79,6 +88,49 @@ export default function PositionPreview({
 			newBoard.destroy();
 		};
 	}, []);
+
+  // Cycle through line moves if enabled
+  useEffect(() => {
+    if (!board) return;
+    if (!cycleLineMoves) {
+      window.clearInterval(intervalRef.current);
+      moveIndexRef.current = null;
+      const chess = new ChessJS();
+      line.forEach((move) => chess.move(move));
+      board.setPosition(chess.fen(), false);
+      return;
+    }
+    intervalRef.current = window.setInterval(() => {
+      if (moveIndexRef.current === null) {
+        moveIndexRef.current = 0;
+      } else if (moveIndexRef.current > line.length) {
+        moveIndexRef.current = 0;
+      } else {
+        moveIndexRef.current = moveIndexRef.current + 1;
+      }
+
+    if (moveIndexRef.current === null) {
+      const chess = new ChessJS();
+      line.forEach((move) => chess.move(move));
+      board.setPosition(chess.fen(), false);
+      return;
+    }
+
+    if (moveIndexRef.current > line.length) return;
+
+    const chess = new ChessJS();
+    for (let i = 0; i < moveIndexRef.current; i++) {
+      chess.move(line[i]);
+    }
+    board.setPosition(chess.fen(), true);
+    }, 1000);
+  }, [cycleLineMoves]);
+
+
+  // Clear interval on unmount
+  useEffect(() => {
+    return () => window.clearInterval(intervalRef.current);
+  }, [])
 
 	// Update board position when FEN changes
 	useEffect(() => {
