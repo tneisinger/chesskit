@@ -26,6 +26,7 @@ export async function getLessonByTitle(
 		title: dbLesson.title,
 		userColor: dbLesson.userColor as PieceColor,
 		chapters: dbLesson.chapters,
+		displayLine: dbLesson.displayLine ?? undefined,
 	};
 }
 
@@ -36,6 +37,7 @@ export async function getAllLessons() {
 		title: dbLesson.title,
 		userColor: dbLesson.userColor as PieceColor,
 		chapters: dbLesson.chapters,
+		displayLine: dbLesson.displayLine ?? undefined,
 	}));
 }
 
@@ -52,6 +54,7 @@ export async function createLesson(lesson: Lesson): Promise<{ success: boolean; 
 			title: lesson.title,
 			userColor: lesson.userColor,
 			chapters: lesson.chapters,
+			displayLine: lesson.displayLine ?? null,
 		});
 
 		return { success: true };
@@ -78,6 +81,7 @@ export async function updateLesson(
 			.set({
 				userColor: lesson.userColor,
 				chapters: lesson.chapters,
+				displayLine: lesson.displayLine ?? null,
 				updatedAt: new Date(),
 			})
 			.where(eq(lessons.title, originalTitle));

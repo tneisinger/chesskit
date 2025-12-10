@@ -4,6 +4,8 @@ import { useState } from "react";
 import Button, { ButtonStyle } from "@/components/button";
 import { PieceColor } from "@/types/chess";
 import type { Chapter, Lesson } from "@/types/lesson";
+import { parsePGN } from "@/utils/chess";
+import { makePgnParserErrorMsg } from "@/utils/pgn";
 
 interface LessonFormProps {
 	initialLesson?: Lesson;
@@ -27,16 +29,62 @@ export default function LessonForm({
 	const [chapters, setChapters] = useState<Chapter[]>(
 		initialLesson?.chapters || [{ title: "", pgn: "" }]
 	);
+	const [displayLine, setDisplayLine] = useState<string>(() => {
+		// Convert displayLine array to PGN format with move numbers
+		if (initialLesson?.displayLine && initialLesson.displayLine.length > 0) {
+			const moves = initialLesson.displayLine;
+			let pgnString = "";
+			for (let i = 0; i < moves.length; i++) {
+				if (i % 2 === 0) {
+					// White's move - add move number
+					pgnString += `${Math.floor(i / 2) + 1}. ${moves[i]} `;
+				} else {
+					// Black's move
+					pgnString += `${moves[i]} `;
+				}
+			}
+			return pgnString.trim();
+		}
+		return "";
+	});
 	const [error, setError] = useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	// Track validation errors for each chapter's PGN
+	const [chapterPgnErrors, setChapterPgnErrors] = useState<(string | null)[]>(
+		new Array(chapters.length).fill(null)
+	);
+
+	// Track validation error for displayLine
+	const [displayLineError, setDisplayLineError] = useState<string | null>(null);
+
+	/**
+	 * Validates PGN string and returns error message if invalid
+	 */
+	const validatePgn = (pgnString: string): string | null => {
+		if (!pgnString.trim()) {
+			return null; // Empty PGN is handled by form validation
+		}
+		try {
+			const parsed = parsePGN(pgnString, { allowIncomplete: true });
+			if (!parsed || parsed.length === 0) {
+				return "Invalid PGN format";
+			}
+			return null;
+		} catch (error: any) {
+			return makePgnParserErrorMsg(error);
+		}
+	};
+
 	const addChapter = () => {
 		setChapters([...chapters, { title: "", pgn: "" }]);
+		setChapterPgnErrors([...chapterPgnErrors, null]);
 	};
 
 	const removeChapter = (index: number) => {
 		if (chapters.length > 1) {
 			setChapters(chapters.filter((_, i) => i !== index));
+			setChapterPgnErrors(chapterPgnErrors.filter((_, i) => i !== index));
 		}
 	};
 
@@ -48,6 +96,25 @@ export default function LessonForm({
 		const newChapters = [...chapters];
 		newChapters[index] = { ...newChapters[index], [field]: value };
 		setChapters(newChapters);
+
+		// Validate PGN when it changes
+		if (field === "pgn") {
+			const error = validatePgn(value);
+			const newErrors = [...chapterPgnErrors];
+			newErrors[index] = error;
+			setChapterPgnErrors(newErrors);
+		}
+	};
+
+	/**
+	 * Handles displayLine input change with validation
+	 */
+	const handleDisplayLineChange = (value: string) => {
+		setDisplayLine(value);
+
+		// Validate as PGN
+		const error = validatePgn(value);
+		setDisplayLineError(error);
 	};
 
 	const validateForm = (): boolean => {
@@ -70,6 +137,17 @@ export default function LessonForm({
 				setError(`Chapter ${i + 1} PGN data is required`);
 				return false;
 			}
+			// Check for PGN validation errors
+			if (chapterPgnErrors[i]) {
+				setError(`Chapter ${i + 1} has invalid PGN: ${chapterPgnErrors[i]}`);
+				return false;
+			}
+		}
+
+		// Check displayLine validation error
+		if (displayLineError) {
+			setError(`Display line has invalid PGN: ${displayLineError}`);
+			return false;
 		}
 
 		setError(null);
@@ -87,6 +165,21 @@ export default function LessonForm({
 		setError(null);
 
 		try {
+			// Parse displayLine from PGN format to array of moves
+			let displayLineArray: string[] | undefined = undefined;
+			if (displayLine.trim()) {
+				try {
+					const parsed = parsePGN(displayLine.trim(), { allowIncomplete: true });
+					if (parsed && parsed.length > 0 && parsed[0].moves) {
+						// Extract just the move notation (e.g., "e4", "Nf3") from parsed PGN
+						displayLineArray = parsed[0].moves.map((m) => m.move);
+					}
+				} catch (error) {
+					// If parsing fails, the validation should have caught it
+					console.error("Failed to parse displayLine:", error);
+				}
+			}
+
 			const result = await onSubmit({
 				title: title.trim(),
 				userColor,
@@ -94,6 +187,7 @@ export default function LessonForm({
 					title: ch.title.trim(),
 					pgn: ch.pgn.trim(),
 				})),
+				displayLine: displayLineArray,
 			});
 
 			if (!result.success) {
@@ -159,6 +253,29 @@ export default function LessonForm({
 				</div>
 			</div>
 
+			{/* Display Line */}
+			<div className="flex flex-col gap-2">
+				<label htmlFor="displayLine" className="font-bold">
+					Display Line (Optional)
+				</label>
+				<input
+					id="displayLine"
+					type="text"
+					value={displayLine}
+					onChange={(e) => handleDisplayLineChange(e.target.value)}
+					className={`p-3 rounded bg-background-page text-foreground border ${
+						displayLineError ? "border-color-btn-danger" : "border-[#444]"
+					}`}
+					placeholder="e.g. 1. e4 e5 2. Nf3"
+				/>
+				{displayLineError && (
+					<p className="text-sm text-color-btn-danger">{displayLineError}</p>
+				)}
+				<p className="text-sm text-[#aaa]">
+					Enter moves in PGN format (e.g., "1. e4 e5 2. Nf3"). This line will be used for the preview board on the lessons page.
+				</p>
+			</div>
+
 			{/* Chapters */}
 			<div className="flex flex-col gap-4">
 				<div className="flex items-center justify-between">
@@ -214,10 +331,15 @@ export default function LessonForm({
 								id={`chapter-pgn-${index}`}
 								value={chapter.pgn}
 								onChange={(e) => updateChapter(index, "pgn", e.target.value)}
-								className="p-2 rounded bg-background text-foreground border border-[#555] font-mono text-sm"
+								className={`p-2 rounded bg-background text-foreground border font-mono text-sm ${
+									chapterPgnErrors[index] ? "border-color-btn-danger" : "border-[#555]"
+								}`}
 								rows={6}
 								placeholder="1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5..."
 							/>
+							{chapterPgnErrors[index] && (
+								<p className="text-sm text-color-btn-danger">{chapterPgnErrors[index]}</p>
+							)}
 						</div>
 					</div>
 				))}

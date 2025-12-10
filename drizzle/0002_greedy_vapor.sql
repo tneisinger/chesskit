@@ -1,0 +1,1 @@
+ALTER TABLE `lessons` ADD `display_line` text;
