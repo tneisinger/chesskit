@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Lesson } from "@/types/lesson";
 import Link from "next/link";
 import Button, { ButtonStyle, ButtonSize } from "@/components/button";
@@ -69,15 +69,44 @@ export default function LessonDisplay({
 }: LessonDisplayProps) {
   const displayLine = getDisplayLine(lesson);
   const [isHovered, setIsHovered] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const elementRef = useRef<HTMLLIElement>(null);
 
 	const windowSize = useWindowSize();
 	const isMobile = windowSize.width ? windowSize.width <= 768 : false;
+
+  // Set up intersection observer for mobile devices
+  useEffect(() => {
+    if (!isMobile || !elementRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsVisible(entry.isIntersecting);
+        });
+      },
+      {
+        threshold: 0.5, // Consider visible when 50% of the element is in view
+        rootMargin: '0px',
+      }
+    );
+
+    observer.observe(elementRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isMobile]);
+
+  // On desktop: use hover state, on mobile: use visibility state
+  const shouldCycleLineMoves = isMobile ? isVisible : isHovered;
 
   const classes = ['flex flex-col items-center gap-4 p-6 rounded bg-background-page border border-foreground/10 max-w-96'];
   if (isModifiable) (classes.push('pb-1'));
 
   return (
     <li
+      ref={elementRef}
       key={lesson.title}
       className={classes.join(' ')}
       onMouseEnter={(_e) => setIsHovered(true)}
@@ -106,7 +135,7 @@ export default function LessonDisplay({
           line={displayLine}
           orientation={lesson.userColor}
           size={boardSize}
-          cycleLineMoves={isHovered}
+          cycleLineMoves={shouldCycleLineMoves}
         />
       </Link>
 
