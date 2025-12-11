@@ -25,6 +25,11 @@ interface LessonDisplayProps {
 		* A boolean indicating if the lesson is currently being deleted
 	 */
   isDeletingLesson: boolean;
+  /**
+   * A boolean indicating if the lesson is modifiable (editable/deletable)
+   * The default is false.
+   */
+  isModifiable?: boolean;
 }
 
 /**
@@ -60,6 +65,7 @@ export default function LessonDisplay({
   boardSize = 200,
   handleDelete,
   isDeletingLesson,
+  isModifiable = false,
 }: LessonDisplayProps) {
   const displayLine = getDisplayLine(lesson);
   const [isHovered, setIsHovered] = useState(false);
@@ -70,7 +76,7 @@ export default function LessonDisplay({
   return (
     <li
       key={lesson.title}
-      className="flex flex-col items-center gap-4 p-4 rounded bg-background-page border border-foreground/10 max-w-96"
+      className="flex flex-col items-center gap-4 p-6 rounded bg-background-page border border-foreground/10 max-w-96"
       onMouseEnter={(_e) => setIsHovered(true)}
       onMouseLeave={(_e) => setIsHovered(false)}
     >
@@ -101,23 +107,25 @@ export default function LessonDisplay({
         />
       </Link>
 
-      {/* Action Buttons */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <Link
-          href={`/openings/${encodeURIComponent(lesson.title)}/edit`}
-          className="text-sm text-[#aaa] hover:text-color-btn-primary-hover px-3 py-2 rounded hover:bg-foreground/10 no-underline"
-        >
-          Edit
-        </Link>
-        <Button
-          buttonStyle={ButtonStyle.Danger}
-          buttonSize={ButtonSize.Small}
-          onClick={() => handleDelete(lesson.title)}
-          disabled={isDeletingLesson}
-        >
-          {isDeletingLesson ? "Deleting..." : "Delete"}
-        </Button>
-      </div>
+      {/* Action Buttons - only render if isModifiable is true */}
+      {isModifiable && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link
+            href={`/openings/${encodeURIComponent(lesson.title)}/edit`}
+            className="text-sm text-[#aaa] hover:text-color-btn-primary-hover px-3 py-2 rounded hover:bg-foreground/10 no-underline"
+          >
+            Edit
+          </Link>
+          <Button
+            buttonStyle={ButtonStyle.Danger}
+            buttonSize={ButtonSize.Small}
+            onClick={() => handleDelete(lesson.title)}
+            disabled={isDeletingLesson}
+          >
+            {isDeletingLesson ? "Deleting..." : "Delete"}
+          </Button>
+        </div>
+      )}
     </li>
   )
 }
