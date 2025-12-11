@@ -6,6 +6,7 @@ import Link from "next/link";
 import Button, { ButtonStyle, ButtonSize } from "@/components/button";
 import PositionPreview from "@/components/PositionPreview";
 import { getLinesFromPGN } from "@/utils/pgn";
+import useWindowSize from '@/hooks/useWindowSize';
 
 interface LessonDisplayProps {
 	/**
@@ -62,25 +63,20 @@ export default function LessonDisplay({
 }: LessonDisplayProps) {
   const displayLine = getDisplayLine(lesson);
   const [isHovered, setIsHovered] = useState(false);
+
+	const windowSize = useWindowSize();
+	const isMobile = windowSize.width ? windowSize.width <= 768 : false;
+
+  const classes = ['flex items-center gap-4 p-4 rounded hover:bg-background-page border border-foreground/10'];
+  if (isMobile) classes.push('flex-col');
+
   return (
     <li
       key={lesson.title}
-      className="flex items-center gap-4 p-4 rounded hover:bg-background-page border border-foreground/10"
+      className={classes.join(' ')}
       onMouseEnter={(_e) => setIsHovered(true)}
       onMouseLeave={(_e) => setIsHovered(false)}
     >
-      {/* Board Preview */}
-      <Link
-        href={`/openings/${encodeURIComponent(lesson.title)}`}
-        className="flex-shrink-0"
-      >
-        <PositionPreview
-          line={displayLine}
-          orientation={lesson.userColor}
-          size={boardSize}
-          cycleLineMoves={isHovered}
-        />
-      </Link>
 
       {/* Lesson Info */}
       <div className="flex flex-col flex-1 gap-2">
@@ -94,6 +90,19 @@ export default function LessonDisplay({
           {lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
         </div>
       </div>
+
+      {/* Board Preview */}
+      <Link
+        href={`/openings/${encodeURIComponent(lesson.title)}`}
+        className="flex-shrink-0"
+      >
+        <PositionPreview
+          line={displayLine}
+          orientation={lesson.userColor}
+          size={boardSize}
+          cycleLineMoves={isHovered}
+        />
+      </Link>
 
       {/* Action Buttons */}
       <div className="flex items-center gap-2 flex-shrink-0">
