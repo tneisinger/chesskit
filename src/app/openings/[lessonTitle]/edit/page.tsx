@@ -39,7 +39,8 @@ export default function EditLessonPage({ params }: PageProps) {
 	const handleSubmit = async (updatedLesson: Lesson) => {
 		const result = await updateLesson(lessonTitle, updatedLesson);
 		if (result.success) {
-			router.push(`/openings/${encodeURIComponent(lessonTitle)}`);
+			// Redirect to the new lesson title (in case it was changed)
+			router.push(`/openings/${encodeURIComponent(updatedLesson.title)}`);
 		}
 		return result;
 	};

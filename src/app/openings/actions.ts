@@ -75,18 +75,42 @@ export async function updateLesson(
 			return { success: false, error: "Lesson not found" };
 		}
 
-		// Update the lesson
-		await db
-			.update(lessons)
-			.set({
+		// Check if the title has changed
+		const titleChanged = originalTitle !== lesson.title;
+
+		if (titleChanged) {
+			// If title changed, check if new title already exists
+			const newTitleExists = await getLessonByTitle(lesson.title);
+			if (newTitleExists) {
+				return { success: false, error: "A lesson with this title already exists" };
+			}
+
+			// Create new lesson with new title
+			await db.insert(lessons).values({
+				title: lesson.title,
 				userColor: lesson.userColor,
 				chapters: lesson.chapters,
 				displayLine: lesson.displayLine ?? null,
-				updatedAt: new Date(),
-			})
-			.where(eq(lessons.title, originalTitle));
+			});
 
-		return { success: true };
+			// Delete old lesson
+			await db.delete(lessons).where(eq(lessons.title, originalTitle));
+
+			return { success: true };
+		} else {
+			// Title hasn't changed, just update the lesson
+			await db
+				.update(lessons)
+				.set({
+					userColor: lesson.userColor,
+					chapters: lesson.chapters,
+					displayLine: lesson.displayLine ?? null,
+					updatedAt: new Date(),
+				})
+				.where(eq(lessons.title, originalTitle));
+
+			return { success: true };
+		}
 	} catch (error) {
 		console.error("Error updating lesson:", error);
 		return { success: false, error: "Failed to update lesson" };
