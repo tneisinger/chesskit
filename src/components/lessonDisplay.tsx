@@ -67,13 +67,10 @@ export default function LessonDisplay({
 	const windowSize = useWindowSize();
 	const isMobile = windowSize.width ? windowSize.width <= 768 : false;
 
-  const classes = ['flex items-center gap-4 p-4 rounded hover:bg-background-page border border-foreground/10'];
-  if (isMobile) classes.push('flex-col');
-
   return (
     <li
       key={lesson.title}
-      className={classes.join(' ')}
+      className="flex flex-col items-center gap-4 p-4 rounded hover:bg-background-page border border-foreground/10 max-w-96"
       onMouseEnter={(_e) => setIsHovered(true)}
       onMouseLeave={(_e) => setIsHovered(false)}
     >
@@ -82,11 +79,11 @@ export default function LessonDisplay({
       <div className="flex flex-col flex-1 gap-2">
         <Link
           href={`/openings/${encodeURIComponent(lesson.title)}`}
-          className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline"
+          className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline text-center"
         >
           {lesson.title}
         </Link>
-        <div className="text-sm text-foreground/60">
+        <div className="text-sm text-foreground/60 text-center">
           {lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
         </div>
       </div>

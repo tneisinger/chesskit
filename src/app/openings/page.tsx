@@ -38,6 +38,9 @@ export default function Page() {
 	const [deletingLesson, setDeletingLesson] = useState<string | null>(null);
 
 	useEffect(() => {
+		// Scroll to top on page load
+		window.scrollTo(0, 0);
+
 		const loadLessons = async () => {
 			const fetchedLessons = await getAllLessons();
 			setLessons(fetchedLessons);
@@ -100,11 +103,11 @@ export default function Page() {
 					No lessons found. Create your first lesson to get started!
 				</p>
 			) : (
-				<ul className="flex flex-col gap-4">
+				<ul className="flex flex-wrap gap-4">
 					{lessons.map((lesson) => (
             <LessonDisplay
               lesson={lesson}
-              boardSize={240}
+              boardSize={300}
               handleDelete={handleDelete}
               isDeletingLesson={deletingLesson === lesson.title}
               key={lesson.title}
