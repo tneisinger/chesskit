@@ -88,14 +88,14 @@ export default function Page() {
 	}
 
 	return (
-		<div className="flex flex-col gap-4 p-4">
-			<div className="flex items-center justify-between">
-				<h1 className="text-2xl font-bold">Openings</h1>
+		<div className="flex flex-col gap-4 p-4 pt-0">
+			<div className="sticky top-10 z-30 pt-4 pb-3 flex flex-col items-center justify-center bg-background mask-b-from-75% mask-b-to-100%">
+				<h1 className="text-3xl font-bold">Openings</h1>
 				<Link
 					href="/openings/create"
 					className="p-3 rounded bg-color-btn-primary hover:bg-color-btn-primary-hover text-white font-bold no-underline"
 				>
-					Create New Lesson
+					Create New Opening
 				</Link>
 			</div>
 			{lessons.length === 0 ? (
@@ -110,6 +110,7 @@ export default function Page() {
               boardSize={325}
               handleDelete={handleDelete}
               isDeletingLesson={deletingLesson === lesson.title}
+              isModifiable={true}
               key={lesson.title}
             />
           ))}

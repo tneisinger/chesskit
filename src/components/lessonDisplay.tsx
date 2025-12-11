@@ -73,10 +73,13 @@ export default function LessonDisplay({
 	const windowSize = useWindowSize();
 	const isMobile = windowSize.width ? windowSize.width <= 768 : false;
 
+  const classes = ['flex flex-col items-center gap-4 p-6 rounded bg-background-page border border-foreground/10 max-w-96'];
+  if (isModifiable) (classes.push('pb-1'));
+
   return (
     <li
       key={lesson.title}
-      className="flex flex-col items-center gap-4 p-6 rounded bg-background-page border border-foreground/10 max-w-96"
+      className={classes.join(' ')}
       onMouseEnter={(_e) => setIsHovered(true)}
       onMouseLeave={(_e) => setIsHovered(false)}
     >
