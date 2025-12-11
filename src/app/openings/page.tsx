@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAllLessons, deleteLesson } from "./actions";
 import type { Lesson } from "@/types/lesson";
-import Button, { ButtonStyle, ButtonSize } from "@/components/button";
 import LessonDisplay from "@/components/lessonDisplay";
 import { getLinesFromPGN } from "@/utils/pgn";
 
