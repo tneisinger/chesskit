@@ -70,7 +70,7 @@ export default function LessonDisplay({
   return (
     <li
       key={lesson.title}
-      className="flex flex-col items-center gap-4 p-4 rounded hover:bg-background-page border border-foreground/10 max-w-96"
+      className="flex flex-col items-center gap-4 p-4 rounded bg-background-page border border-foreground/10 max-w-96"
       onMouseEnter={(_e) => setIsHovered(true)}
       onMouseLeave={(_e) => setIsHovered(false)}
     >
