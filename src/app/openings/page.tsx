@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { getAllLessons, deleteLesson } from "./actions";
 import type { Lesson } from "@/types/lesson";
@@ -40,6 +40,12 @@ export default function Page() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [deletingLesson, setDeletingLesson] = useState<string | null>(null);
 	const [colorFilter, setColorFilter] = useState<ColorFilter>("all");
+
+  const handleFilterChange = useCallback((newFilter: ColorFilter) => {
+    if (colorFilter === newFilter) return; // No change
+    setColorFilter(newFilter);
+		window.scrollTo(0, 0);
+  }, [colorFilter]);
 
 	useEffect(() => {
 		// Scroll to top on page load
@@ -99,7 +105,7 @@ export default function Page() {
 
 	return (
 		<div className="flex flex-col gap-4 p-4 pt-0">
-			<div className="sticky top-10 z-30 pt-4 pb-4 flex flex-col items-center justify-center bg-background mask-b-from-80% mask-b-to-95%">
+			<div className="sticky top-10 z-30 pt-4 pb-4 flex flex-col items-center justify-center bg-background mask-b-from-85% mask-b-to-100%">
 				<h1 className="text-3xl font-bold">Openings</h1>
 
 				{/* Filter Controls */}
@@ -107,7 +113,7 @@ export default function Page() {
 					<span className="text-sm text-foreground/70">Filter by color:</span>
 					<div className="flex gap-2">
 						<button
-							onClick={() => setColorFilter("all")}
+							onClick={() => handleFilterChange("all")}
 							className={`px-3 py-1.5 rounded transition-colors text-sm font-medium ${
 								colorFilter === "all"
 									? "bg-btn-primary text-foreground"
@@ -117,7 +123,7 @@ export default function Page() {
 							All
 						</button>
 						<button
-							onClick={() => setColorFilter(PieceColor.WHITE)}
+							onClick={() => handleFilterChange(PieceColor.WHITE)}
 							className={`px-3 py-1.5 rounded transition-colors text-sm font-medium ${
 								colorFilter === PieceColor.WHITE
 									? "bg-btn-primary text-foreground"
@@ -127,7 +133,7 @@ export default function Page() {
 							White
 						</button>
 						<button
-							onClick={() => setColorFilter(PieceColor.BLACK)}
+							onClick={() => handleFilterChange(PieceColor.BLACK)}
 							className={`px-3 py-1.5 rounded transition-colors text-sm font-medium ${
 								colorFilter === PieceColor.BLACK
 									? "bg-btn-primary text-foreground"
