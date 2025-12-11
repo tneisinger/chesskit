@@ -215,13 +215,7 @@ export default function LessonForm({
 					onChange={(e) => setTitle(e.target.value)}
 					className="p-3 rounded bg-background-page text-foreground border border-[#444]"
 					placeholder="e.g. Italian Game"
-					disabled={isEdit}
 				/>
-				{isEdit && (
-					<p className="text-sm text-[#aaa]">
-						Note: Lesson title cannot be changed when editing
-					</p>
-				)}
 			</div>
 
 			{/* User Color */}
