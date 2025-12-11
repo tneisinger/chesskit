@@ -103,7 +103,7 @@ export default function Page() {
 					No lessons found. Create your first lesson to get started!
 				</p>
 			) : (
-				<ul className="flex flex-wrap justify-center gap-14">
+				<ul className="flex flex-wrap justify-center gap-12">
 					{lessons.map((lesson) => (
             <LessonDisplay
               lesson={lesson}
