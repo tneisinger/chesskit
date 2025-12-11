@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAllLessons, deleteLesson } from "./actions";
 import type { Lesson } from "@/types/lesson";
+import { PieceColor } from "@/types/chess";
 import LessonDisplay from "@/components/lessonDisplay";
 import { getLinesFromPGN } from "@/utils/pgn";
 
@@ -32,10 +33,13 @@ function getDisplayLine(lesson: Lesson): string[] {
 	return moves.slice(0, 3);
 }
 
+type ColorFilter = "all" | PieceColor;
+
 export default function Page() {
 	const [lessons, setLessons] = useState<Lesson[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [deletingLesson, setDeletingLesson] = useState<string | null>(null);
+	const [colorFilter, setColorFilter] = useState<ColorFilter>("all");
 
 	useEffect(() => {
 		// Scroll to top on page load
@@ -49,6 +53,12 @@ export default function Page() {
 
 		loadLessons();
 	}, []);
+
+	// Filter lessons based on selected color
+	const filteredLessons = lessons.filter((lesson) => {
+		if (colorFilter === "all") return true;
+		return lesson.userColor === colorFilter;
+	});
 
 	const handleDelete = async (title: string) => {
 		// Show confirmation dialog
@@ -89,8 +99,46 @@ export default function Page() {
 
 	return (
 		<div className="flex flex-col gap-4 p-4 pt-0">
-			<div className="sticky top-10 z-30 pt-4 pb-3 flex flex-col items-center justify-center bg-background mask-b-from-75% mask-b-to-100%">
+			<div className="sticky top-10 z-30 pt-4 pb-4 flex flex-col items-center justify-center bg-background mask-b-from-80% mask-b-to-95%">
 				<h1 className="text-3xl font-bold">Openings</h1>
+
+				{/* Filter Controls */}
+				<div className="flex items-center gap-3 mt-5 mb-2">
+					<span className="text-sm text-foreground/70">Filter by color:</span>
+					<div className="flex gap-2">
+						<button
+							onClick={() => setColorFilter("all")}
+							className={`px-3 py-1.5 rounded transition-colors text-sm font-medium ${
+								colorFilter === "all"
+									? "bg-btn-primary text-foreground"
+									: "bg-background-page text-foreground/70 hover:bg-foreground/10"
+							}`}
+						>
+							All
+						</button>
+						<button
+							onClick={() => setColorFilter(PieceColor.WHITE)}
+							className={`px-3 py-1.5 rounded transition-colors text-sm font-medium ${
+								colorFilter === PieceColor.WHITE
+									? "bg-btn-primary text-foreground"
+									: "bg-background-page text-foreground/70 hover:bg-foreground/10"
+							}`}
+						>
+							White
+						</button>
+						<button
+							onClick={() => setColorFilter(PieceColor.BLACK)}
+							className={`px-3 py-1.5 rounded transition-colors text-sm font-medium ${
+								colorFilter === PieceColor.BLACK
+									? "bg-btn-primary text-foreground"
+									: "bg-background-page text-foreground/70 hover:bg-foreground/10"
+							}`}
+						>
+							Black
+						</button>
+					</div>
+				</div>
+
 				<Link
 					href="/openings/create"
 					className="p-3 rounded bg-color-btn-primary hover:bg-color-btn-primary-hover text-white font-bold no-underline"
@@ -102,9 +150,13 @@ export default function Page() {
 				<p className="text-[#aaa]">
 					No lessons found. Create your first lesson to get started!
 				</p>
+			) : filteredLessons.length === 0 ? (
+				<p className="text-[#aaa] text-center">
+					No openings found with the selected filter.
+				</p>
 			) : (
 				<ul className="flex flex-wrap justify-center gap-12">
-					{lessons.map((lesson) => (
+					{filteredLessons.map((lesson) => (
             <LessonDisplay
               lesson={lesson}
               boardSize={325}
