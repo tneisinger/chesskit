@@ -983,6 +983,8 @@ const LessonSession = ({ lesson }: Props) => {
       setupNextLine={setupNextLine}
       restartCurrentLine={restartCurrentLine}
       changeMode={(mode: Mode) => dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode })}
+      currentChapterIdx={s.currentChapterIdx}
+      changeChapter={changeChapter}
     />
   );
 

@@ -19,6 +19,8 @@ interface Props extends HintButtonsProps {
   setupNextLine: (nextMode: Mode) => void;
   restartCurrentLine: (nextMode: Mode) => void;
   changeMode: (newMode: Mode) => void;
+  currentChapterIdx: number;
+  changeChapter: (idx: number) => void;
 }
 
 const LessonSessionInfo = ({
@@ -35,6 +37,8 @@ const LessonSessionInfo = ({
   setupNextLine,
   restartCurrentLine,
   changeMode,
+  currentChapterIdx,
+  changeChapter,
 }: Props) => {
   // const { windowSize } = useStore((state) => state);
 
@@ -43,6 +47,29 @@ const LessonSessionInfo = ({
   const areAllLinesComplete = useCallback((): boolean => {
     return lines.every((chapterLines) => Object.values(chapterLines).every((lineStats) => lineStats.isComplete));
   }, [lines]);
+
+  const isNextLineInAnotherChapter = useCallback((): boolean => {
+    if (!Object.values(lines[currentChapterIdx]).every((stats) => stats.isComplete)) return false;
+    if (areAllLinesComplete()) return false;
+    getIdxOfNextIncompleteChapter();
+    return true;
+  }, [lines, currentChapterIdx]);
+
+  const getIdxOfNextIncompleteChapter = useCallback((): number | null => {
+    const otherChapters = [];
+    for (let i = 1; i < lesson.chapters.length; i++) {
+      const idx = (currentChapterIdx + i) % lesson.chapters.length;
+      if (!Object.values(lines[idx]).every((stats) => stats.isComplete)) {
+        return idx;
+      }
+    }
+    return null;
+  }, [lines, currentChapterIdx]);
+
+  const handleChangeChapter = useCallback((idx: number | null) => {
+    if (idx == null) return;
+    changeChapter(idx);
+  }, [changeChapter]);
 
   // Returns the next mode to toggle to (either Learn or Practice)
   const getNextToggleMode = useCallback((): Mode => {
@@ -124,6 +151,14 @@ const LessonSessionInfo = ({
               </button>
             )}
           </>
+        )}
+        {isNextLineInAnotherChapter() && (
+          <button
+            className='cursor-pointer'
+            onClick={() => handleChangeChapter(getIdxOfNextIncompleteChapter())}
+          >
+            Next Chapter
+          </button>
         )}
         {areAllLinesComplete() && (
           <span>Done!</span>
