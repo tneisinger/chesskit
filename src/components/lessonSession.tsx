@@ -48,6 +48,7 @@ import useEvaler from '@/hooks/useChessEvaler';
 import LessonControls from './lessonControls';
 import LessonChapters from './lessonChapters';
 import type { Viewport } from 'next'
+import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -214,6 +215,7 @@ interface DeclareLineComplete {
 
 interface ChangeMode {
   type: 'changeMode',
+  lessonTitle: string,
   mode: Mode,
 }
 
@@ -299,6 +301,7 @@ function reducer(s: State, a: Action): State {
     case 'changeMode':
       let fallbackMode = s.fallbackMode;
       if (a.mode === Mode.Learn || a.mode === Mode.Practice) {
+        saveOpeningModeToLocalStorage(a.lessonTitle, a.mode);
         fallbackMode = a.mode;
       }
       newState = { ...s, mode: a.mode, fallbackMode };
@@ -492,7 +495,7 @@ const LessonSession = ({ lesson }: Props) => {
 
   const restartCurrentLine = useCallback((nextMode: Mode) => {
     // Change the mode right away, so that any useEffects will see the new mode.
-    dispatch({ type: 'changeMode', mode: nextMode })
+    dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: nextMode })
 
     // To avoid code repitition, define this function here. This function will setup a
     // timeout to run the restart logic after a short wait. This function will either run
@@ -528,7 +531,7 @@ const LessonSession = ({ lesson }: Props) => {
 
   const setupNextLine = useCallback((nextMode: Mode) => {
     // Change the mode right away, so that any useEffects will see the new mode.
-    dispatch({ type: 'changeMode', mode: nextMode })
+    dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: nextMode })
 
     // To avoid code repitition, define this function here. This function will setup a
     // timeout to run the restart logic after a short wait. This function will either run
@@ -593,7 +596,7 @@ const LessonSession = ({ lesson }: Props) => {
 
   const handleEditModeBtnClick = useCallback(() => {
     if (s.mode === Mode.Edit) return;
-    dispatch({ type: 'changeMode', mode: Mode.Edit })
+    dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: Mode.Edit })
   }, [s.mode]);
 
   const handleDeleteMoveBtnClick = useCallback(() => {
@@ -664,7 +667,7 @@ const LessonSession = ({ lesson }: Props) => {
 
     // This function contains everything that this useEffect may do.
     // This function may not run. See below.
-    const performUpdate = (options?: { keepLines: boolean }) => {
+    const performUpdate = (options?: { keepLines?: boolean, mode?: Mode }) => {
       // Create the new lines object
       let lines: Record<string, LineStats>[] = [{}];
       if (options && options.keepLines) {
@@ -675,11 +678,10 @@ const LessonSession = ({ lesson }: Props) => {
 
       // Determine the next mode
       let nextMode = s.fallbackMode;
-      if (Object.keys(lines[s.currentChapterIdx]).length < 1) nextMode = Mode.Edit;
 
-      if (wasPgnUpdated()) {
-        nextMode = s.fallbackMode;
-      }
+      if (options && options.mode) nextMode = options.mode;
+
+      if (Object.keys(lines[s.currentChapterIdx]).length < 1) nextMode = Mode.Edit;
 
       resetEvaler();
       reset();
@@ -707,7 +709,9 @@ const LessonSession = ({ lesson }: Props) => {
     }
 
     if (!s.hasFirstLoadCompleted) {
-      performUpdate();
+      // On the first load, load the opening mode from local storage
+      const mode = loadOpeningModeFromLocalStorage(lesson.title);
+      mode ? performUpdate({ mode }) : performUpdate();
       return;
     } else if (isDifferentLesson()) {
       performUpdate();
@@ -978,7 +982,7 @@ const LessonSession = ({ lesson }: Props) => {
       fallbackMode={s.fallbackMode}
       setupNextLine={setupNextLine}
       restartCurrentLine={restartCurrentLine}
-      changeMode={(mode: Mode) => dispatch({ type: 'changeMode', mode })}
+      changeMode={(mode: Mode) => dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode })}
     />
   );
 
