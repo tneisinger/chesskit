@@ -1094,7 +1094,7 @@ const LessonSession = ({ lesson }: Props) => {
               style={{ height: boardSize }}
               className="flex flex-col flex-1 items-center w-full"
             >
-              <div className="bg-[#292724] w-full p-2">
+              <div className="bg-background-page w-full p-2 rounded-sm">
                 {engineDisplay}
               </div>
               <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
