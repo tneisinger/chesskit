@@ -12,7 +12,7 @@ interface Props extends HintButtonsProps {
   history: Move[];
   isSessionLoading: boolean;
   isLineComplete: boolean;
-  lines: Record<string, LineStats>
+  lines: Record<string, LineStats>[];
   lineProgressIdx: number;
   mode: Mode;
   fallbackMode: Mode;
