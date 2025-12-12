@@ -959,10 +959,11 @@ const LessonSession = ({ lesson }: Props) => {
       engineName={engineName}
       engineLines={engineLines}
       isEvaluating={fenBeingEvaluated !== null}
-      maxLineLength={3}
+      maxLineLength={4}
       numLines={numLines}
       isSwitchDisabled={s.mode !== Mode.Explore}
       switchDisabledMsg={'Complete the line to unlock the engine'}
+      showMoveJudgements={false}
     />
   )
 
