@@ -24,14 +24,14 @@ export interface ChapterCompletionRatio {
  */
 export function useChapterCompletionRatios(
 	lesson: Lesson | undefined,
-	lines: Record<string, LineStats>
+	lines: Record<string, LineStats>[]
 ): ChapterCompletionRatio[] {
 	return useMemo(() => {
 		if (!lesson) {
 			return [];
 		}
 
-		return lesson.chapters.map((chapter) => {
+		return lesson.chapters.map((chapter, idx) => {
 			const sanLines = getLinesFromPGN(chapter.pgn);
 			const lanLines = sanLines.map((l) =>
 				convertSanLineToLanLine(l.split(/\s+/))
@@ -43,7 +43,7 @@ export function useChapterCompletionRatios(
 			lanLines.forEach((line) => {
 				const lineKey = line.join(' ');
 				totalCount++;
-				if (lines[lineKey]?.isComplete) {
+				if (lines[idx] && lines[idx][lineKey]?.isComplete) {
 					completedCount++;
 				}
 			});

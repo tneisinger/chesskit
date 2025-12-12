@@ -90,7 +90,7 @@ interface State {
 
   recentlyCompletedLine: string | null,
   restartedLine: ShortMove[] | null,
-  lines: Record<string, LineStats>,
+  lines: Record<string, LineStats>[],
   lineProgressIdx: number,
 
   // The current active mode
@@ -131,7 +131,7 @@ const initialState: State = {
 
   recentlyCompletedLine: null,
   restartedLine: null,
-  lines: {},
+  lines: [],
   lineProgressIdx: 0,
   mode: Mode.Learn,
   fallbackMode: Mode.Learn,
@@ -186,7 +186,7 @@ interface ChangeSelectedMobileTab {
 
 interface SetupNewLesson {
   type: 'setupNewLesson',
-  lines: Record<string, LineStats>,
+  lines: Record<string, LineStats>[],
   nextMode: Mode,
   linesChapterIdx: number,
 }
@@ -314,7 +314,7 @@ function reducer(s: State, a: Action): State {
 
 function setupNewLesson(
   s: State,
-  lines: Record<string, LineStats>,
+  lines: Record<string, LineStats>[],
   linesChapterIdx: number,
   nextMode: Mode,
 ): State {
@@ -352,9 +352,9 @@ function setupNextLine(s: State, nextMode: Mode): State {
 
 function restartCurrentLine(s: State, restartedLine: ShortMove[], nextMode: Mode): State {
   const lines = { ...s.lines };
-  if (s.recentlyCompletedLine) lines[s.recentlyCompletedLine].isComplete = false;
+  if (s.recentlyCompletedLine) lines[s.currentChapterIdx][s.recentlyCompletedLine].isComplete = false;
   const incompleteLines: string[] = [];
-  Object.entries(lines).forEach(([k, v]) => {
+  Object.entries(lines[s.currentChapterIdx]).forEach(([k, v]) => {
     if (!v.isComplete) incompleteLines.push(k);
   });
 
@@ -377,7 +377,7 @@ function restartCurrentLine(s: State, restartedLine: ShortMove[], nextMode: Mode
 
 function declareLineComplete(s: State, completedLine: string): State {
   const lines = { ...s.lines };
-  lines[completedLine].isComplete = true;
+  lines[s.currentChapterIdx][completedLine].isComplete = true;
   return {
     ...s,
     lines,
@@ -466,11 +466,12 @@ const LessonSession = ({ lesson }: Props) => {
   const getRelevantLessonLines = useCallback((
     options?: { incompleteLinesOnly: boolean }
   ): string[] => {
-    if (currentMove == undefined) return Object.keys(s.lines);
+    if (s.lines[s.currentChapterIdx] == undefined) return [];
+    if (currentMove == undefined) return Object.keys(s.lines[s.currentChapterIdx]);
     const currentMoveLine = getLanLineFromCmMove(currentMove);
     const relevantLines: string[] = [];
-    Object.keys(s.lines).forEach((k) => {
-      if (options?.incompleteLinesOnly && s.lines[k].isComplete) return;
+    Object.keys(s.lines[s.currentChapterIdx]).forEach((k) => {
+      if (options?.incompleteLinesOnly && s.lines[s.currentChapterIdx][k].isComplete) return;
       const line = k.split(' ');
       let isRelevant = true;
       for (let i = 0; i < currentMoveLine.length; i++) {
@@ -482,7 +483,7 @@ const LessonSession = ({ lesson }: Props) => {
       if (isRelevant) relevantLines.push(k);
     });
     return relevantLines;
-  }, [currentMove, s.lines]);
+  }, [currentMove, s.lines, s.currentChapterIdx]);
 
   const performWrongAnswerActions = useCallback(() => {
     dispatch({ type: 'triggerWrongAnswerBlink' });
@@ -647,28 +648,37 @@ const LessonSession = ({ lesson }: Props) => {
   // This useEffect handles updates after a new lesson, chapter changes, or pgn changes
   useEffect(() => {
 
+    const makeLines = (): Record<string, LineStats>[] => {
+      const result: Record<string, LineStats>[] = [];
+      lesson.chapters.forEach((chapter) => {
+        const chapterLines: Record<string, LineStats> = {};
+        const sanLines = getLinesFromPGN(chapter.pgn);
+        const lanLines = sanLines.map((l) => convertSanLineToLanLine(l.split(/\s+/)));
+        lanLines.forEach((line) => {
+          chapterLines[line.join(' ')] = { isComplete: false };
+        });
+        result.push(chapterLines);
+      });
+      return result;
+    }
+
     // This function contains everything that this useEffect may do.
     // This function may not run. See below.
-    const performUpdate = () => {
+    const performUpdate = (options?: { keepLines: boolean }) => {
       // Create the new lines object
-      const sanLines = getLinesFromPGN(lesson.chapters[s.currentChapterIdx].pgn);
-      const lanLines = sanLines.map((l) => convertSanLineToLanLine(l.split(/\s+/)));
-      const lines: Record<string, LineStats> = {};
-      lanLines.forEach((line) => {
-        lines[line.join(' ')] = { isComplete: false };
-      });
+      let lines: Record<string, LineStats>[] = [{}];
+      if (options && options.keepLines) {
+        lines = s.lines;
+      } else {
+        lines = makeLines();
+      }
 
       // Determine the next mode
       let nextMode = s.fallbackMode;
-      if (sanLines.length < 1) nextMode = Mode.Edit;
+      if (Object.keys(lines[s.currentChapterIdx]).length < 1) nextMode = Mode.Edit;
 
       if (wasPgnUpdated()) {
         nextMode = s.fallbackMode;
-        // For any lines that are unchanged, keep their completion status
-        const newLines = Object.keys(lines);
-        Object.keys(s.lines).forEach((k) => {
-          if (newLines.includes(k)) lines[k] = s.lines[k];
-        });
       }
 
       resetEvaler();
@@ -706,7 +716,8 @@ const LessonSession = ({ lesson }: Props) => {
       performUpdate();
       return;
     } else if (isDifferentChapter()) {
-      performUpdate();
+      // When changing chapters, keep record of which lines from other chapters have been completed.
+      performUpdate({ keepLines: true });
       return;
     }
   }, [lesson, prevLesson, resetEvaler, s.mode, s.lines, s.hasFirstLoadCompleted, s.currentChapterIdx, s.linesChapterIdx])
@@ -837,11 +848,11 @@ const LessonSession = ({ lesson }: Props) => {
       return areLinesEqual(relevantLine, currentLine);
     });
     if (matchingLine == undefined) return;
-    if (s.lines[matchingLine] == undefined) throw new Error('Line not found');
-    if (s.lines[matchingLine].isComplete) return;
+    if (s.lines[s.currentChapterIdx][matchingLine] == undefined) throw new Error('Line not found');
+    if (s.lines[s.currentChapterIdx][matchingLine].isComplete) return;
     dispatch({ type: 'declareLineComplete', completedLine: matchingLine })
   }, [s.lineProgressIdx, s.lines, cmchess, currentMove, getRelevantLessonLines,
-  s.recentlyCompletedLine])
+  s.recentlyCompletedLine, s.currentChapterIdx])
 
   // When the userColor is BLACK, this useEffect is necessary to perform the first
   // opponent move of each line.

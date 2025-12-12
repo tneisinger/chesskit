@@ -5,7 +5,7 @@ import { useChapterCompletionRatios } from "@/hooks/useChapterCompletionRatios";
 interface Props {
 	lesson: Lesson;
 	currentChapterIdx: number;
-	lines: Record<string, LineStats>;
+	lines: Record<string, LineStats>[];
 	changeChapter: (idx: number) => void;
 	height: number;
   width: number;
