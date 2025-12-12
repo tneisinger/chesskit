@@ -24,6 +24,7 @@
     maxLineLength?: number;
     includeOnOffSwitch?: boolean;
     switchDisabledMsg?: string;
+    showMoveJudgements?: boolean;
   }
 
   const EvalerDisplay = ({
@@ -40,6 +41,7 @@
     isEvaluating,
     includeOnOffSwitch = true,
     switchDisabledMsg,
+    showMoveJudgements = true,
   }: Props) => {
     // const { settings } = useStore((state) => state);
 
@@ -97,7 +99,7 @@
       console.log('debug');
     }
 
-    const mj = getMoveJudgement(currentMove, gameEvals);
+    const mj = showMoveJudgements ? getMoveJudgement(currentMove, gameEvals) : undefined;
 
     return (
       <div className="block w-full">
@@ -121,13 +123,17 @@
             )}
           </div>
         </div>
-        <div className="text-center my-3 h-5 [&>span]:font-bold">
+        <div className="text-center my-3 [&>span]:font-bold relative">
           {(!isEngineOn && isSwitchDisabled && switchDisabledMsg) ? (
-            <div className="text-sm">{switchDisabledMsg}</div>
+            <div className="text-sm absolute text-center w-full top-2">{switchDisabledMsg}</div>
           ) : (
-            <span style={{ color: moveJudgementColor(mj) }}>
-              {makeMoveJudgementString(mj)}
-            </span>
+            <>
+              {showMoveJudgements && (
+                <span style={{ color: moveJudgementColor(mj) }}>
+                  {makeMoveJudgementString(mj)}
+                </span>
+              )}
+            </>
           )}
         </div>
         <div>

@@ -14,17 +14,14 @@ const EvalerLine = ({ fen, line, maxLineLength = 5 }: Props) => {
   const sanLine = convertLanLineToSanLine(line.lanLine, fen);
 
   return (
-    <div className="py-[3px] h-[1.6rem]">
+    <div className="py-[3px] h-[1.6rem] text-sm">
       <span className="inline-block w-10 text-right">{makeScoreString(line.score)}</span>
-      <span className="inline-block w-[30px] text-center">{'->'}</span>
+      <span className="inline-block w-[24px] text-center">{'->'}</span>
       <span className="inline-block text-center">
         {sanLine.slice(0, maxLineLength).map((move, i) =>
           <span key={`${line.multipv} ${i}`} className="inline-block text-center [&+span]:ml-2">
             {move}
           </span>
-        )}
-        {sanLine.length > maxLineLength && (
-          <span className="inline-block text-center [&+span]:ml-2">...</span>
         )}
       </span>
     </div>
