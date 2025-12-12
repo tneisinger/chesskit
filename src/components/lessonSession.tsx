@@ -354,7 +354,7 @@ function setupNextLine(s: State, nextMode: Mode): State {
 }
 
 function restartCurrentLine(s: State, restartedLine: ShortMove[], nextMode: Mode): State {
-  const lines = { ...s.lines };
+  const lines = [ ...s.lines ];
   if (s.recentlyCompletedLine) lines[s.currentChapterIdx][s.recentlyCompletedLine].isComplete = false;
   const incompleteLines: string[] = [];
   Object.entries(lines[s.currentChapterIdx]).forEach(([k, v]) => {
@@ -379,7 +379,7 @@ function restartCurrentLine(s: State, restartedLine: ShortMove[], nextMode: Mode
 }
 
 function declareLineComplete(s: State, completedLine: string): State {
-  const lines = { ...s.lines };
+  const lines = [ ...s.lines ];
   lines[s.currentChapterIdx][completedLine].isComplete = true;
   return {
     ...s,

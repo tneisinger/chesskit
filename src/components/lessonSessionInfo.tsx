@@ -41,7 +41,7 @@ const LessonSessionInfo = ({
 	const ratio = useChapterCompletionRatios(lesson, lines)[0];
 
   const areAllLinesComplete = useCallback((): boolean => {
-    return Object.values(lines).every((line) => line.isComplete);
+    return lines.every((chapterLines) => Object.values(chapterLines).every((lineStats) => lineStats.isComplete));
   }, [lines]);
 
   // Returns the next mode to toggle to (either Learn or Practice)
