@@ -5,6 +5,7 @@ import { lessons } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
+import { auth } from "@/lib/auth";
 
 export async function getLessonByTitle(
 	title: string,
@@ -43,6 +44,20 @@ export async function getAllLessons() {
 
 export async function createLesson(lesson: Lesson): Promise<{ success: boolean; error?: string }> {
 	try {
+		// Check authentication and authorization
+		const session = await auth();
+
+		if (!session?.user) {
+			return { success: false, error: "You must be logged in" };
+		}
+
+		if (session.user.role !== "admin") {
+			return {
+				success: false,
+				error: "Only administrators can create system lessons",
+			};
+		}
+
 		// Check if a lesson with this title already exists
 		const existing = await getLessonByTitle(lesson.title);
 		if (existing) {
@@ -69,6 +84,20 @@ export async function updateLesson(
 	lesson: Lesson
 ): Promise<{ success: boolean; error?: string }> {
 	try {
+		// Check authentication and authorization
+		const session = await auth();
+
+		if (!session?.user) {
+			return { success: false, error: "You must be logged in" };
+		}
+
+		if (session.user.role !== "admin") {
+			return {
+				success: false,
+				error: "Only administrators can edit system lessons",
+			};
+		}
+
 		// Check if the lesson exists
 		const existing = await getLessonByTitle(originalTitle);
 		if (!existing) {
@@ -119,6 +148,20 @@ export async function updateLesson(
 
 export async function deleteLesson(title: string): Promise<{ success: boolean; error?: string }> {
 	try {
+		// Check authentication and authorization
+		const session = await auth();
+
+		if (!session?.user) {
+			return { success: false, error: "You must be logged in" };
+		}
+
+		if (session.user.role !== "admin") {
+			return {
+				success: false,
+				error: "Only administrators can delete system lessons",
+			};
+		}
+
 		// Check if the lesson exists
 		const existing = await getLessonByTitle(title);
 		if (!existing) {

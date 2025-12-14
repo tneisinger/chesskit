@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { getAllLessons, deleteLesson } from "./actions";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
@@ -36,6 +37,8 @@ function getDisplayLine(lesson: Lesson): string[] {
 type ColorFilter = "all" | PieceColor;
 
 export default function Page() {
+	const { data: session } = useSession();
+	const isAdmin = session?.user?.role === "admin";
 	const [lessons, setLessons] = useState<Lesson[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [deletingLesson, setDeletingLesson] = useState<string | null>(null);
@@ -108,6 +111,19 @@ export default function Page() {
 			<div className="sticky top-10 z-30 pt-4 pb-4 flex flex-col items-center justify-center bg-background mask-b-from-85% mask-b-to-100%">
 				<h1 className="text-3xl font-bold">Openings</h1>
 
+				{/* Info banner for regular users */}
+				{session && !isAdmin && (
+					<div className="mt-4 p-3 bg-color-btn-primary/20 border border-color-btn-primary rounded text-sm max-w-md text-center">
+						These are system openings. To create your own openings, visit{" "}
+						<Link
+							href="/my-openings"
+							className="text-color-btn-primary hover:text-color-btn-primary-hover font-medium underline"
+						>
+							My Openings
+						</Link>
+					</div>
+				)}
+
 				{/* Filter Controls */}
 				<div className="flex items-center gap-3 mt-5 mb-2">
 					<span className="text-sm text-foreground/70">Filter by color:</span>
@@ -145,12 +161,15 @@ export default function Page() {
 					</div>
 				</div>
 
-				<Link
-					href="/openings/create"
-					className="p-3 rounded bg-color-btn-primary hover:bg-color-btn-primary-hover text-white font-bold no-underline"
-				>
-					Create New Opening
-				</Link>
+				{/* Create button only for admins */}
+				{isAdmin && (
+					<Link
+						href="/openings/create"
+						className="p-3 rounded bg-color-btn-primary hover:bg-color-btn-primary-hover text-white font-bold no-underline"
+					>
+						Create New Opening
+					</Link>
+				)}
 			</div>
 			{lessons.length === 0 ? (
 				<p className="text-[#aaa]">
@@ -168,7 +187,7 @@ export default function Page() {
               boardSize={325}
               handleDelete={handleDelete}
               isDeletingLesson={deletingLesson === lesson.title}
-              isModifiable={true}
+              isModifiable={isAdmin}
               key={lesson.title}
             />
           ))}
