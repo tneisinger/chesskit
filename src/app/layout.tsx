@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/Navigation";
 import "./globals.css";
 
@@ -28,10 +29,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Navigation />
-        <div className="flex justify-center max-w-[1440px] mx-auto">
-          {children}
-        </div>
+        <SessionProvider>
+          <Navigation />
+          <div className="flex justify-center max-w-[1440px] mx-auto">
+            {children}
+          </div>
+        </SessionProvider>
       </body>
     </html>
   );

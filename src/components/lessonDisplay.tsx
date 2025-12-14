@@ -30,6 +30,16 @@ interface LessonDisplayProps {
    * The default is false.
    */
   isModifiable?: boolean;
+  /**
+   * Optional custom URL for viewing the lesson
+   * Defaults to /openings/${title}
+   */
+  viewUrl?: string;
+  /**
+   * Optional custom URL for editing the lesson
+   * Defaults to /openings/${title}/edit
+   */
+  editUrl?: string;
 }
 
 /**
@@ -66,11 +76,17 @@ export default function LessonDisplay({
   handleDelete,
   isDeletingLesson,
   isModifiable = false,
+  viewUrl,
+  editUrl,
 }: LessonDisplayProps) {
   const displayLine = getDisplayLine(lesson);
   const [isHovered, setIsHovered] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const elementRef = useRef<HTMLLIElement>(null);
+
+  // Use custom URLs or default to system lesson URLs
+  const lessonViewUrl = viewUrl || `/openings/${encodeURIComponent(lesson.title)}`;
+  const lessonEditUrl = editUrl || `/openings/${encodeURIComponent(lesson.title)}/edit`;
 
 	const windowSize = useWindowSize();
 	const isMobile = windowSize.width ? windowSize.width <= 768 : false;
@@ -116,7 +132,7 @@ export default function LessonDisplay({
       {/* Lesson Info */}
       <div className="flex flex-col flex-1 gap-2">
         <Link
-          href={`/openings/${encodeURIComponent(lesson.title)}`}
+          href={lessonViewUrl}
           className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline text-center"
         >
           {lesson.title}
@@ -128,7 +144,7 @@ export default function LessonDisplay({
 
       {/* Board Preview */}
       <Link
-        href={`/openings/${encodeURIComponent(lesson.title)}`}
+        href={lessonViewUrl}
         className="flex-shrink-0"
       >
         <PositionPreview
@@ -143,7 +159,7 @@ export default function LessonDisplay({
       {isModifiable && (
         <div className="flex items-center gap-2 flex-shrink-0">
           <Link
-            href={`/openings/${encodeURIComponent(lesson.title)}/edit`}
+            href={lessonEditUrl}
             className="text-sm text-[#aaa] hover:text-color-btn-primary-hover px-3 py-2 rounded hover:bg-foreground/10 no-underline"
           >
             Edit

@@ -22,6 +22,13 @@
       "when": 1765392197647,
       "tag": "0002_greedy_vapor",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1765725175081,
+      "tag": "0003_absurd_black_crow",
+      "breakpoints": true
     }
   ]
 }

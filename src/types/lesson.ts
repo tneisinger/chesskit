@@ -7,6 +7,7 @@ export interface Chapter {
 }
 
 export interface Lesson {
+  id?: number;
   title: string;
   userColor: PieceColor;
   chapters: Chapter[];
