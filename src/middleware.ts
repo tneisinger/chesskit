@@ -1,9 +1,12 @@
-import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth((req) => {
+export function middleware(req: NextRequest) {
 	const { pathname } = req.nextUrl;
-	const isLoggedIn = !!req.auth;
+
+	// Check for session token (NextAuth JWT)
+	const sessionToken = req.cookies.get("authjs.session-token") || req.cookies.get("__Secure-authjs.session-token");
+	const isLoggedIn = !!sessionToken;
 
 	// Public routes that don't require authentication
 	const publicRoutes = [
@@ -37,7 +40,7 @@ export default auth((req) => {
 	}
 
 	return NextResponse.next();
-});
+}
 
 export const config = {
 	matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
