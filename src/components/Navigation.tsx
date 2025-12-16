@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
@@ -28,12 +28,23 @@ export default function Navigation() {
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 	const pathname = usePathname();
 	const windowSize = useWindowSize();
-	const isMobile = windowSize.width ? windowSize.width <= 768 : false;
 	const { data: session, status } = useSession();
+
+  const [isMobile, setIsMobile] = useState(windowSize.width ? windowSize.width <= 768 : false);
 
 	const isLoading = status === "loading";
 	const isLoggedIn = !!session;
 	const navLinks = isLoggedIn ? authenticatedNavLinks : publicNavLinks;
+
+  useEffect(() => {
+    if (windowSize.width == undefined) return;
+    if (windowSize.width <= 768) {
+      setIsMobile(true);
+    } else if (windowSize.width > 768) {
+      setIsMobile(false);
+      setIsMobileMenuOpen(false); // Close mobile menu if switching to desktop
+    }
+  }, [windowSize.width]);
 
 	const toggleMobileMenu = () => {
 		setIsMobileMenuOpen(!isMobileMenuOpen);
