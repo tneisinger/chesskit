@@ -7,6 +7,8 @@ import { useSession, signOut } from 'next-auth/react';
 import SvgIcon, { Svg } from '@/components/svgIcon';
 import useWindowSize from '@/hooks/useWindowSize';
 
+const screenWidthBreakpoint = 992; // px
+
 interface NavLink {
 	href: string;
 	label: string;
@@ -30,7 +32,7 @@ export default function Navigation() {
 	const windowSize = useWindowSize();
 	const { data: session, status } = useSession();
 
-  const [isMobile, setIsMobile] = useState(windowSize.width ? windowSize.width <= 768 : false);
+  const [isMobile, setIsMobile] = useState(windowSize.width ? windowSize.width <= screenWidthBreakpoint : true);
 
 	const isLoading = status === "loading";
 	const isLoggedIn = !!session;
@@ -38,13 +40,13 @@ export default function Navigation() {
 
   useEffect(() => {
     if (windowSize.width == undefined) return;
-    if (windowSize.width <= 768) {
+    if (windowSize.width <= screenWidthBreakpoint) {
       setIsMobile(true);
-    } else if (windowSize.width > 768) {
+    } else if (windowSize.width > screenWidthBreakpoint) {
       setIsMobile(false);
       setIsMobileMenuOpen(false); // Close mobile menu if switching to desktop
     }
-  }, [windowSize.width]);
+  }, [windowSize]);
 
 	const toggleMobileMenu = () => {
 		setIsMobileMenuOpen(!isMobileMenuOpen);
