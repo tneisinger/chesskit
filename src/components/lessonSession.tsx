@@ -924,11 +924,11 @@ const LessonSession = ({ lesson }: Props) => {
     </div>
   );
 
-  let chaptersDivHeight = boardSize;
-  let chaptersDivWidth = 275;
+  let chaptersDivHeight = `${boardSize}px`;
+  let chaptersDivWidth = '275px';
   if (shouldUseMobileLayout(windowSize)) {
-    chaptersDivHeight = 180;
-    chaptersDivWidth = boardSize - 8;
+    chaptersDivHeight = '100%';
+    chaptersDivWidth = `${boardSize - 2}px`;
   }
 
   let lessonChapters: React.ReactNode = <></>;
@@ -943,8 +943,9 @@ const LessonSession = ({ lesson }: Props) => {
         currentChapterIdx={s.linesChapterIdx ?? 0}
         lines={s.lines}
         changeChapter={changeChapter}
-        height={chaptersDivHeight}
-        width={chaptersDivWidth}
+        heightStyle={chaptersDivHeight}
+        widthStyle={chaptersDivWidth}
+        useMobileLayout={shouldUseMobileLayout(windowSize) || false}
       />
     );
   }
@@ -1029,10 +1030,7 @@ const LessonSession = ({ lesson }: Props) => {
             {lessonSessionInfo}
             <div>{arrowButtons}</div>
           </div>
-          {/* <div className="min-h-[60px] flex w-full flex-row justify-around items-center"> */}
-          {/*   {lessonSessionInfo} */}
-          {/* </div> */}
-          <div className="flex-1 p-0 w-screen bg-[#292724] overflow-y-scroll border-t-8 border-[#292724]">
+          <div className="flex-1 p-0 w-screen bg-background-page overflow-y-scroll overflow-x-hidden">
             {s.selectedMobileTab === MobileTab.Chapters && lessonChapters}
             {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
             {s.selectedMobileTab === MobileTab.Engine && engineDisplay}

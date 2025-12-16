@@ -7,8 +7,9 @@ interface Props {
 	currentChapterIdx: number;
 	lines: Record<string, LineStats>[];
 	changeChapter: (idx: number) => void;
-	height: number;
-  width: number;
+	heightStyle: string;
+  widthStyle: string;
+  useMobileLayout: boolean;
 }
 
 const LessonChapters = ({
@@ -16,17 +17,18 @@ const LessonChapters = ({
 	currentChapterIdx,
 	lines,
 	changeChapter,
-	height,
-  width,
+	heightStyle,
+  widthStyle,
+  useMobileLayout,
 }: Props) => {
 	const chapterCompletionRatios = useChapterCompletionRatios(lesson, lines);
 
 	return (
 		<div
-			className="mr-2 w-[275px] flex flex-col bg-background-page"
-			style={{ height, width }}
+			className="mr-2 flex flex-col bg-background-page"
+			style={{ height: heightStyle, width: widthStyle }}
 		>
-			<div className="flex-1 overflow-y-auto">
+			<div className="flex-1 overflow-y-auto overflow-x-hidden">
 				{lesson.chapters.map((chapter, idx) => {
 					const isActive = currentChapterIdx === idx;
 					const { completedCount, totalCount } =
