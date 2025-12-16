@@ -51,7 +51,8 @@ export const config = {
 		 * - _next/image (image optimization files)
 		 * - favicon.ico (favicon file)
 		 * - Static assets (svg, png, jpg, jpeg, gif, webp, ico, css, js)
+		 * - Audio files (mp3, wav, ogg, m4a)
 		 */
-		"/((?!api|_next/static|_next/image|favicon.ico|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.gif|.*\\.webp|.*\\.ico|.*\\.css|.*\\.js).*)",
+		"/((?!api|_next/static|_next/image|favicon.ico|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.gif|.*\\.webp|.*\\.ico|.*\\.css|.*\\.js|.*\\.mp3|.*\\.wav|.*\\.ogg|.*\\.m4a).*)",
 	],
 };

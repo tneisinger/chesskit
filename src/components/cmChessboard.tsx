@@ -324,11 +324,19 @@ const CmChessboard = ({
   }, [allowInteraction, limitMoveInputToColor, isMoveAllowed, performMove]);
 
   const soundPlay = (sound: HTMLAudioElement): void => {
+    // Check if the audio element has a valid source before attempting to play
+    if (!sound.src && (!sound.children || sound.children.length === 0)) {
+      console.warn('Audio element has no source');
+      return;
+    }
+
     sound.play().catch((error) => {
       if (error.name && error.name === 'NotAllowedError') {
         console.warn(error.message);
+      } else if (error.name === 'NotSupportedError') {
+        console.warn('Audio element has no supported sources:', error.message);
       } else {
-        setTimeout(() => { throw error });
+        console.error('Error playing sound:', error);
       }
     })
   }
