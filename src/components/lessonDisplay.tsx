@@ -117,7 +117,7 @@ export default function LessonDisplay({
   // On desktop: use hover state, on mobile: use visibility state
   const shouldCycleLineMoves = isMobile ? isVisible : isHovered;
 
-  const classes = ['flex flex-col items-center gap-4 p-6 rounded bg-background-page border border-foreground/10 max-w-96'];
+  const classes = ['flex flex-col items-center gap-4 p-4 pt-3 rounded bg-background-page border border-foreground/10 max-w-96'];
   if (isModifiable) (classes.push('pb-1'));
 
   return (
@@ -130,50 +130,54 @@ export default function LessonDisplay({
     >
 
       {/* Lesson Info */}
-      <div className="flex flex-col flex-1 gap-2">
-        <Link
-          href={lessonViewUrl}
-          className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline text-center"
-        >
-          {lesson.title}
-        </Link>
-        <div className="text-sm text-foreground/60 text-center">
-          {lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
-        </div>
-      </div>
+      <Link href={lessonViewUrl}>
+        <div className="flex flex-col">
+          <div
+            className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline text-center mb-2"
+          >
+            {lesson.title}
+          </div>
 
-      {/* Board Preview */}
-      <Link
-        href={lessonViewUrl}
-        className="flex-shrink-0"
-      >
-        <PositionPreview
-          line={displayLine}
-          orientation={lesson.userColor}
-          size={boardSize}
-          cycleLineMoves={shouldCycleLineMoves}
-        />
+          {/* Board Preview */}
+          <PositionPreview
+            line={displayLine}
+            orientation={lesson.userColor}
+            size={boardSize}
+            cycleLineMoves={shouldCycleLineMoves}
+          />
+          <div className={`flex flex-row ${isModifiable ? 'justify-between' : 'justify-around'} mt-1`}>
+            <div className="text-sm text-foreground/60 text-center mt-3">
+              {lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
+            </div>
+
+            {/* Action Buttons - only render if isModifiable is true */}
+            {isModifiable && (
+              <div
+                className="flex items-center justify-right cursor-default"
+                onClick={(e) => {
+                  // Prevent link navigation when clicking near buttons
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+              >
+                <Link
+                  href={lessonEditUrl}
+                  className="text-[#ccc] hover:text-color-btn-primary-hover px-2 py-0 rounded hover:bg-foreground/20 no-underline"
+                >
+                  Edit
+                </Link>
+                <button
+                  onClick={() => handleDelete(lesson.title)}
+                  disabled={isDeletingLesson}
+                  className="text-[#ccc] cursor-pointer hover:text-color-btn-primary-hover px-2 py-0 my-2 ml-3 rounded hover:bg-foreground/20 no-underline"
+                >
+                  {isDeletingLesson ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </Link>
-
-      {/* Action Buttons - only render if isModifiable is true */}
-      {isModifiable && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Link
-            href={lessonEditUrl}
-            className="text-sm text-[#aaa] hover:text-color-btn-primary-hover px-3 py-2 rounded hover:bg-foreground/10 no-underline"
-          >
-            Edit
-          </Link>
-          <Button
-            buttonStyle={ButtonStyle.Danger}
-            buttonSize={ButtonSize.Small}
-            onClick={() => handleDelete(lesson.title)}
-            disabled={isDeletingLesson}
-          >
-            {isDeletingLesson ? "Deleting..." : "Delete"}
-          </Button>
-        </div>
-      )}
     </li>
   )
 }
