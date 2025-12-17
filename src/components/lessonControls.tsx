@@ -4,12 +4,15 @@ import { makePgnFromHistory, shortMoveToLan } from '../utils/chess';
 import { getVariations } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
 import { Lesson, Mode } from '../types/lesson'
+import { updateLesson } from '@/app/openings/actions';
+import { updateUserLesson } from '@/app/my-openings/actions';
 // import useStore from '../zustand/store';
 
 interface Props {
   lines: string[];
   currentMove: Move | undefined;
   lesson: Lesson;
+  currentChapterIdx: number;
   history: Move[];
   mode: Mode;
   onEditModeBtnClick: () => void;
@@ -22,6 +25,7 @@ const LessonControls = ({
   lines,
   currentMove,
   lesson,
+  currentChapterIdx,
   history,
   mode,
   onEditModeBtnClick,
@@ -33,14 +37,44 @@ const LessonControls = ({
 
   const [isHistorySameAsLesson, setIsHistorySameAsLesson] = useState(true);
 
-  const onSaveBtnClick = useCallback(() => {
-    console.log('Save functionality is not implemented yet');
-    // const pgn = makePgnFromHistory(history);
-    // const updatedLesson = { ...lesson };
-    // updatedLesson.pgn = pgn;
-    // zState.addLesson(updatedLesson);
-  // }, [history, lesson, zState]);
-  }, []);
+  const onSaveBtnClick = useCallback(async () => {
+    const newPgn = makePgnFromHistory(history);
+
+    // Create updated lesson with the new PGN for the current chapter
+    const updatedChapters = [...lesson.chapters];
+    updatedChapters[currentChapterIdx] = {
+      ...updatedChapters[currentChapterIdx],
+      pgn: newPgn,
+    };
+
+    const updatedLesson: Lesson = {
+      ...lesson,
+      chapters: updatedChapters,
+    };
+
+    try {
+      let result;
+
+      // Check if this is a user lesson (has id) or system lesson (uses title)
+      if (lesson.id !== undefined) {
+        // User lesson - update via updateUserLesson
+        result = await updateUserLesson(lesson.id, updatedLesson);
+      } else {
+        // System lesson - update via updateLesson
+        result = await updateLesson(lesson.title, updatedLesson);
+      }
+
+      if (result.success) {
+        // Reload the page to show the updated lesson
+        // window.location.reload();
+      } else {
+        alert(`Failed to save changes: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error saving lesson:', error);
+      alert('An unexpected error occurred while saving changes');
+    }
+  }, [history, lesson, currentChapterIdx]);
 
   // Whenever history or lines changes, check if history is the same as lesson
   // and update the `isHistorySameAsLesson` state accordingly
