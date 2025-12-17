@@ -130,54 +130,53 @@ export default function LessonDisplay({
     >
 
       {/* Lesson Info */}
-      <Link href={lessonViewUrl}>
-        <div className="flex flex-col">
+      <div className="flex flex-col">
+        <Link href={lessonViewUrl}>
           <div
             className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline text-center mb-2"
           >
             {lesson.title}
           </div>
+        </Link>
 
-          {/* Board Preview */}
+        {/* Board Preview */}
+        <Link href={lessonViewUrl}>
           <PositionPreview
             line={displayLine}
             orientation={lesson.userColor}
             size={boardSize}
             cycleLineMoves={shouldCycleLineMoves}
           />
-          <div className={`flex flex-row ${isModifiable ? 'justify-between' : 'justify-around'} mt-1`}>
+        </Link>
+        <div className={`flex flex-row ${isModifiable ? 'justify-between' : 'justify-around'} mt-1`}>
+          <Link href={lessonViewUrl}>
             <div className="text-sm text-foreground/60 text-center mt-3">
               {lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
             </div>
+          </Link>
 
-            {/* Action Buttons - only render if isModifiable is true */}
-            {isModifiable && (
-              <div
-                className="flex items-center justify-right cursor-default"
-                onClick={(e) => {
-                  // Prevent link navigation when clicking near buttons
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
+          {/* Action Buttons - only render if isModifiable is true */}
+          {isModifiable && (
+            <div
+              className="flex items-center justify-right cursor-default"
+            >
+              <Link
+                href={lessonEditUrl}
+                className="text-[#ccc] hover:text-color-btn-primary-hover px-2 py-0 rounded hover:bg-foreground/20 no-underline"
               >
-                <Link
-                  href={lessonEditUrl}
-                  className="text-[#ccc] hover:text-color-btn-primary-hover px-2 py-0 rounded hover:bg-foreground/20 no-underline"
-                >
-                  Edit
-                </Link>
-                <button
-                  onClick={() => handleDelete(lesson.title)}
-                  disabled={isDeletingLesson}
-                  className="text-[#ccc] cursor-pointer hover:text-color-btn-primary-hover px-2 py-0 my-2 ml-3 rounded hover:bg-foreground/20 no-underline"
-                >
-                  {isDeletingLesson ? "Deleting..." : "Delete"}
-                </button>
-              </div>
-            )}
-          </div>
+                Edit
+              </Link>
+              <button
+                onClick={() => handleDelete(lesson.title)}
+                disabled={isDeletingLesson}
+                className="text-[#ccc] cursor-pointer hover:text-color-btn-primary-hover px-2 py-0 my-2 ml-3 rounded hover:bg-foreground/20 no-underline"
+              >
+                {isDeletingLesson ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          )}
         </div>
-      </Link>
+      </div>
     </li>
   )
 }
