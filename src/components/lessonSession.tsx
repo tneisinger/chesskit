@@ -1107,6 +1107,7 @@ const LessonSession = ({ lesson }: Props) => {
                   lines={Object.keys(s.lines)}
                   currentMove={currentMove}
                   lesson={lesson}
+                  currentChapterIdx={s.currentChapterIdx}
                   history={history}
                   mode={s.mode}
                   onEditModeBtnClick={handleEditModeBtnClick}
