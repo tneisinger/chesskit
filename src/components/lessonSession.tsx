@@ -1080,7 +1080,11 @@ const LessonSession = ({ lesson }: Props) => {
   return (
     <ScrollLock>
       <div className={containerClasses.join(' ')}>
-        <h2 className="text-[2rem] h-12">{lesson.title}</h2>
+        <div style={{ width: `${boardSize + 8 + 275}px` }}> {/* boardSize + right col margin + right col width */}
+          <div className="text-center" style={{ width: isMoreThanOneChapter ? '100%' : `${boardSize}px` }}>
+          <h2 className="text-[2rem] h-12">{lesson.title}</h2>
+          </div>
+        </div>
         <div className="flex flex-row">
           {lessonChapters}
           <div className="flex flex-col items-center">
