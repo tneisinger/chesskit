@@ -24,8 +24,8 @@ const Button = ({
   ...props
 }: Props) => {
   const classes = [
-    'text-[#ccc]',
-    'hover:text-[#ddd]',
+    'text-[#ddd]',
+    'hover:text-[#eee]',
     'cursor-pointer',
     'px-2',
     'py-1',
@@ -44,7 +44,7 @@ const Button = ({
       classes.push('bg-color-btn-secondary', 'hover:bg-color-btn-secondary-hover');
       break;
     case ButtonStyle.Danger:
-      classes.push('bg-color-btn-danger', 'hover:bg-color-btn-danger-hover');
+      classes.push('!bg-[#c82333]', 'hover:!bg-[#b21f2e]');
       break;
     default:
       assertUnreachable(buttonStyle);
@@ -64,9 +64,9 @@ const Button = ({
   if (props.disabled) {
     classes.push(
       '!cursor-default',
-      '!text-[#ddd]',
-      '!bg-color-btn-disabled',
-      'hover:!bg-color-btn-disabled'
+      '!text-[#777]',
+      '!bg-foreground/10',
+      'hover:!bg-foreground/10',
     );
   }
 
