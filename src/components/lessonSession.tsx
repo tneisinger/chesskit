@@ -304,7 +304,7 @@ function reducer(s: State, a: Action): State {
         saveOpeningModeToLocalStorage(a.lessonTitle, a.mode);
         fallbackMode = a.mode;
       }
-      newState = { ...s, mode: a.mode, fallbackMode };
+      newState = { ...s, mode: a.mode, fallbackMode, arrows: [], markers: [] };
       break;
     case 'changeChapterIdx':
       newState = { ...s, currentChapterIdx: a.idx };
@@ -599,7 +599,7 @@ const LessonSession = ({ lesson }: Props) => {
     dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: Mode.Edit })
   }, [s.mode]);
 
-  const handleDeleteMoveBtnClick = useCallback(() => {
+  const deleteCurrentMove = useCallback(() => {
     if (currentMove == undefined) return;
     deleteMove(currentMove, true);
   }, [currentMove, deleteMove]);
@@ -962,7 +962,7 @@ const LessonSession = ({ lesson }: Props) => {
       isEvaluating={fenBeingEvaluated !== null}
       maxLineLength={4}
       numLines={numLines}
-      isSwitchDisabled={s.mode !== Mode.Explore}
+      isSwitchDisabled={s.mode === Mode.Learn || s.mode === Mode.Practice}
       switchDisabledMsg={'Complete the line to unlock the engine'}
       showMoveJudgements={false}
     />
@@ -1110,8 +1110,9 @@ const LessonSession = ({ lesson }: Props) => {
                   currentChapterIdx={s.currentChapterIdx}
                   history={history}
                   mode={s.mode}
+                  fallbackMode={s.fallbackMode}
                   onEditModeBtnClick={handleEditModeBtnClick}
-                  onDeleteMoveBtnClick={handleDeleteMoveBtnClick}
+                  deleteCurrentMove={deleteCurrentMove}
                   onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
                   setupNextLine={setupNextLine}
                 />
