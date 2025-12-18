@@ -6,7 +6,6 @@ import { Move } from 'cm-chess/src/Chess';
 import { Lesson, Mode } from '../types/lesson'
 import { updateLesson } from '@/app/openings/actions';
 import { updateUserLesson } from '@/app/my-openings/actions';
-// import useStore from '../zustand/store';
 
 interface Props {
   lines: string[];
@@ -21,7 +20,7 @@ interface Props {
   setupNextLine: (nextMode: Mode) => void;
 }
 
-const LessonControls = ({
+const EditLessonControls = ({
   lines,
   currentMove,
   lesson,
@@ -151,4 +150,4 @@ const LessonControls = ({
   );
 };
 
-export default LessonControls;
+export default EditLessonControls;
