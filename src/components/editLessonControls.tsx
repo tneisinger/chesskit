@@ -99,8 +99,8 @@ const EditLessonControls = ({
   }, [history, lines]);
 
   return (
-    <div className="flex flex-col flex-wrap items-center mb-2 [&_h4]:mt-1 [&_h4]:mb-3">
-      <h4>You are in {mode} Mode</h4>
+    <div className="flex flex-col flex-wrap items-center mb-1">
+      <h4 className='mt-2 mb-1'>You are in {mode} Mode</h4>
       {mode !== Mode.Edit && (
         <Button
           onClick={onEditModeBtnClick}
@@ -135,13 +135,13 @@ const EditLessonControls = ({
               disabled={isHistorySameAsLesson}
               buttonSize={ButtonSize.Small}
             >
-              Discard Changes
+              Undo Changes
             </Button>
             <Button
               onClick={() => setupNextLine(Mode.Practice)}
               buttonSize={ButtonSize.Small}
             >
-              Practice Mode
+              Cancel
             </Button>
           </div>
         </div>
