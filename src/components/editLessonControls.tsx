@@ -134,6 +134,14 @@ const EditLessonControls = ({
     setupNextLine(fallbackMode)
   }, [fallbackMode, doUnsavedChangesExist])
 
+  const onAddChapterBtnClick = useCallback(() => {
+    if (doUnsavedChangesExist()) {
+      window.alert("Save or undo your changes before adding a chapter.");
+      return;
+    }
+    console.log('adding chapter');
+  }, [doUnsavedChangesExist]);
+
   return (
     <div className="flex flex-col items-center mb-1">
       <h4 className='mt-2 mb-1'>You are in {mode} Mode</h4>
@@ -173,8 +181,9 @@ const EditLessonControls = ({
               Undo Changes
             </Button>
             <Button
-              onClick={() => console.log('Add chapter not implemented yet')}
+              onClick={onAddChapterBtnClick}
               buttonSize={ButtonSize.Small}
+              disabled={doUnsavedChangesExist()}
             >
               Add Chapter
             </Button>
