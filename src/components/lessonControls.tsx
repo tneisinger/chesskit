@@ -66,7 +66,7 @@ const LessonControls = ({
 
       if (result.success) {
         // Reload the page to show the updated lesson
-        // window.location.reload();
+        window.location.reload();
       } else {
         alert(`Failed to save changes: ${result.error}`);
       }
