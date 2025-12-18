@@ -1,7 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Button, { ButtonSize, ButtonStyle } from './button';
-import { makePgnFromHistory, shortMoveToLan } from '../utils/chess';
-import { getVariations } from '@/utils/cmchess';
+import { makePgnFromHistory } from '../utils/chess';
 import { Move } from 'cm-chess/src/Chess';
 import { Lesson, Mode } from '../types/lesson'
 import { updateLesson } from '@/app/openings/actions';
@@ -14,8 +13,9 @@ interface Props {
   currentChapterIdx: number;
   history: Move[];
   mode: Mode;
+  fallbackMode: Mode;
   onEditModeBtnClick: () => void;
-  onDeleteMoveBtnClick: () => void;
+  deleteCurrentMove: () => void;
   onDiscardChangesBtnClick: () => void;
   setupNextLine: (nextMode: Mode) => void;
 }
@@ -27,17 +27,54 @@ const EditLessonControls = ({
   currentChapterIdx,
   history,
   mode,
+  fallbackMode,
   onEditModeBtnClick,
-  onDeleteMoveBtnClick,
+  deleteCurrentMove,
   onDiscardChangesBtnClick,
   setupNextLine,
 }: Props) => {
-  // const zState = useStore((state) => state);
+  const [savedPgn, setSavedPgn] = useState('');
 
-  const [isHistorySameAsLesson, setIsHistorySameAsLesson] = useState(true);
+  const [timeEditModeEntered, setTimeEditModeEntered] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (lesson && lesson.chapters[currentChapterIdx]) {
+      setSavedPgn(lesson.chapters[currentChapterIdx].pgn);
+    }
+  }, [lesson, currentChapterIdx])
+
+  useEffect(() => {
+    if (mode === Mode.Edit) {
+      setTimeEditModeEntered(Date.now());
+    } else {
+      setTimeEditModeEntered(null);
+    }
+  }, [mode])
+
+  // This function is needed because the move history does not update instantly when switching to
+  // edit mode. Using this function in 'doUnsavedChangesExist' prevents that function from
+  // returning true for a brief moment while the history is being updated.
+  const hasBeenInEditModeForMoreThanTwoSeconds = useCallback(() => {
+    if (timeEditModeEntered == null) return false;
+    const currentTime = Date.now();
+    const diff = currentTime - timeEditModeEntered;
+    return diff > 1000;
+  }, [timeEditModeEntered])
+
+  const doUnsavedChangesExist = useCallback((newPgn?: string) => {
+    if (!hasBeenInEditModeForMoreThanTwoSeconds()) return false;
+    if (newPgn == undefined) newPgn = makePgnFromHistory(history);
+    return savedPgn !== newPgn;
+  }, [savedPgn, history, timeEditModeEntered]);
+
+  const handleDeleteMoveBtnClick = useCallback(() => {
+    deleteCurrentMove();
+  }, [deleteCurrentMove])
 
   const onSaveBtnClick = useCallback(async () => {
     const newPgn = makePgnFromHistory(history);
+    if (!doUnsavedChangesExist(newPgn)) return;
+
 
     // Create updated lesson with the new PGN for the current chapter
     const updatedChapters = [...lesson.chapters];
@@ -75,31 +112,8 @@ const EditLessonControls = ({
     }
   }, [history, lesson, currentChapterIdx]);
 
-  // Whenever history or lines changes, check if history is the same as lesson
-  // and update the `isHistorySameAsLesson` state accordingly
-  useEffect(() => {
-    const hLines = getVariations(history);
-    if (hLines.length !== lines.length) {
-      setIsHistorySameAsLesson(false);
-      return;
-    }
-    const hLanLines = hLines.map((l) =>
-      l.map((m) => shortMoveToLan(m)).join(' ')
-    );
-    for (let i = 0; i < lines.length; i++) {
-      const idx = hLanLines.indexOf(lines[i]);
-      if (idx === -1) {
-        setIsHistorySameAsLesson(false);
-        return;
-      } else {
-        hLanLines.splice(idx, 1);
-      }
-    }
-    setIsHistorySameAsLesson(hLanLines.length === 0);
-  }, [history, lines]);
-
   return (
-    <div className="flex flex-col flex-wrap items-center mb-1">
+    <div className="flex flex-col items-center mb-1">
       <h4 className='mt-2 mb-1'>You are in {mode} Mode</h4>
       {mode !== Mode.Edit && (
         <Button
@@ -110,42 +124,49 @@ const EditLessonControls = ({
         </Button>
       )}
       {mode === Mode.Edit && (
-        <div className="w-full flex flex-row">
-          <div className="flex flex-col w-1/2 items-center justify-center [&_button+button]:mt-2">
+        <>
+          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
             <Button
               onClick={onSaveBtnClick}
-              disabled={isHistorySameAsLesson}
+              disabled={!doUnsavedChangesExist()}
               buttonSize={ButtonSize.Small}
               buttonStyle={ButtonStyle.Danger}
             >
               Save Changes
             </Button>
             <Button
-              onClick={onDeleteMoveBtnClick}
+              onClick={handleDeleteMoveBtnClick}
               disabled={currentMove == undefined}
               buttonSize={ButtonSize.Small}
-              buttonStyle={ButtonStyle.Danger}
             >
               Delete Move
             </Button>
           </div>
-          <div className="flex flex-col w-1/2 items-center justify-center [&_button+button]:mt-2">
+          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
             <Button
               onClick={onDiscardChangesBtnClick}
-              disabled={isHistorySameAsLesson}
+              disabled={!doUnsavedChangesExist()}
               buttonSize={ButtonSize.Small}
             >
               Undo Changes
             </Button>
             <Button
-              onClick={() => setupNextLine(Mode.Practice)}
+              onClick={() => console.log('Add chapter not implemented yet')}
               buttonSize={ButtonSize.Small}
             >
-              Cancel
+              Add Chapter
             </Button>
           </div>
-        </div>
-      )}
+          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
+            <Button
+              onClick={() => setupNextLine(fallbackMode)}
+              buttonSize={ButtonSize.Small}
+            >
+              Stop Editing
+            </Button>
+          </div>
+      </>
+    )}
     </div >
   );
 };
