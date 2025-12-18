@@ -75,6 +75,14 @@ const EditLessonControls = ({
     const newPgn = makePgnFromHistory(history);
     if (!doUnsavedChangesExist(newPgn)) return;
 
+		// Show confirmation dialog
+		const confirmed = window.confirm(
+			'Are you sure you want to save these changes?'
+		);
+
+		if (!confirmed) {
+			return;
+		}
 
     // Create updated lesson with the new PGN for the current chapter
     const updatedChapters = [...lesson.chapters];
