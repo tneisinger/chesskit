@@ -24,14 +24,16 @@ const Button = ({
   ...props
 }: Props) => {
   const classes = [
-    'p-3',
-    'rounded',
+    'text-[#ccc]',
+    'hover:text-[#ddd]',
     'cursor-pointer',
+    'px-2',
+    'py-1',
+    'my-2',
+    'rounded',
+    'bg-foreground/10',
+    'hover:bg-foreground/20',
     'no-underline',
-    'text-white',
-    'font-bold',
-    'border-none',
-    '[text-shadow:1px_1px_1px_#333]',
   ];
 
   switch (buttonStyle) {
@@ -50,10 +52,10 @@ const Button = ({
 
   switch (buttonSize) {
     case ButtonSize.Normal:
-      // Normal size uses default padding (p-3)
+      // Normal size uses default padding
       break;
     case ButtonSize.Small:
-      classes.push('!p-2', '!font-normal');
+      classes.push('text-sm');
       break;
     default:
       assertUnreachable(buttonSize);
@@ -72,10 +74,5 @@ const Button = ({
     <button {...props} className={classes.join(' ')} />
   );
 };
-
-// For some reason we have to do this to satisfy the linter.
-// Button.propTypes = {
-//   disabled: PropTypes.bool
-// }
 
 export default Button;
