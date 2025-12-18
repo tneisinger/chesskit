@@ -120,6 +120,20 @@ const EditLessonControls = ({
     }
   }, [history, lesson, currentChapterIdx]);
 
+  const onStopEditingBtnClick = useCallback(() => {
+    if (doUnsavedChangesExist()) {
+      // Show confirmation dialog
+      const confirmed = window.confirm(
+        'You have unsaved changes that will be lost.\nDo you want to discard these changes?'
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+    setupNextLine(fallbackMode)
+  }, [fallbackMode, doUnsavedChangesExist])
+
   return (
     <div className="flex flex-col items-center mb-1">
       <h4 className='mt-2 mb-1'>You are in {mode} Mode</h4>
@@ -167,7 +181,7 @@ const EditLessonControls = ({
           </div>
           <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
             <Button
-              onClick={() => setupNextLine(fallbackMode)}
+              onClick={onStopEditingBtnClick}
               buttonSize={ButtonSize.Small}
             >
               Stop Editing
