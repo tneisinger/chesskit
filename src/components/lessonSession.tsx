@@ -45,8 +45,8 @@ import { getLinesFromPGN } from '@/utils/pgn';
 import usePrevious from '@/hooks/usePrevious';
 import LessonSessionInfo from '@/components/lessonSessionInfo';
 import useEvaler from '@/hooks/useChessEvaler';
-import LessonControls from './lessonControls';
-import LessonChapters from './lessonChapters';
+import LessonChapters from '@/components/lessonChapters';
+import EditLessonControls from '@/components/editLessonControls';
 import type { Viewport } from 'next'
 import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
 
@@ -1103,7 +1103,7 @@ const LessonSession = ({ lesson }: Props) => {
                 {movesDisplay}
               </div>
               <div className="border border-black border-t-0 w-full bg-background-page">
-                <LessonControls
+                <EditLessonControls
                   lines={Object.keys(s.lines)}
                   currentMove={currentMove}
                   lesson={lesson}
