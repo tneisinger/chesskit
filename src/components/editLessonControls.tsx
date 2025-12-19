@@ -5,6 +5,7 @@ import { Move } from 'cm-chess/src/Chess';
 import { Lesson, Mode } from '../types/lesson'
 import { updateLesson } from '@/app/openings/actions';
 import { updateUserLesson } from '@/app/my-openings/actions';
+import { getLinesFromPGN } from '@/utils/pgn';
 
 interface Props {
   lines: string[];
@@ -22,7 +23,6 @@ interface Props {
 }
 
 const EditLessonControls = ({
-  lines,
   currentMove,
   lesson,
   currentChapterIdx,
@@ -35,13 +35,13 @@ const EditLessonControls = ({
   setupNextLine,
   openAddNewChapterModal,
 }: Props) => {
-  const [savedPgn, setSavedPgn] = useState('');
+  const [savedLines, setSavedLines] = useState<string[]>([]);
 
   const [timeEditModeEntered, setTimeEditModeEntered] = useState<number | null>(null);
 
   useEffect(() => {
     if (lesson && lesson.chapters[currentChapterIdx]) {
-      setSavedPgn(lesson.chapters[currentChapterIdx].pgn);
+      setSavedLines(getLinesFromPGN(lesson.chapters[currentChapterIdx].pgn));
     }
   }, [lesson, currentChapterIdx])
 
@@ -66,8 +66,9 @@ const EditLessonControls = ({
   const doUnsavedChangesExist = useCallback((newPgn?: string) => {
     if (!hasBeenInEditModeForMoreThanTwoSeconds()) return false;
     if (newPgn == undefined) newPgn = makePgnFromHistory(history);
-    return savedPgn !== newPgn;
-  }, [savedPgn, history, timeEditModeEntered]);
+    const newLines = getLinesFromPGN(newPgn);
+    return !newLines.every((line) => savedLines.includes(line));
+  }, [savedLines, history, timeEditModeEntered, currentChapterIdx]);
 
   const handleDeleteMoveBtnClick = useCallback(() => {
     deleteCurrentMove();
