@@ -18,6 +18,7 @@ interface Props {
   deleteCurrentMove: () => void;
   onDiscardChangesBtnClick: () => void;
   setupNextLine: (nextMode: Mode) => void;
+  addNewChapter: (chapterTitle: string) => void;
 }
 
 const EditLessonControls = ({
@@ -32,6 +33,7 @@ const EditLessonControls = ({
   deleteCurrentMove,
   onDiscardChangesBtnClick,
   setupNextLine,
+  addNewChapter,
 }: Props) => {
   const [savedPgn, setSavedPgn] = useState('');
 
