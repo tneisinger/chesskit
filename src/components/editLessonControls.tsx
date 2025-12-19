@@ -18,7 +18,7 @@ interface Props {
   deleteCurrentMove: () => void;
   onDiscardChangesBtnClick: () => void;
   setupNextLine: (nextMode: Mode) => void;
-  addNewChapter: (chapterTitle: string) => void;
+  openAddNewChapterModal: () => void;
 }
 
 const EditLessonControls = ({
@@ -33,7 +33,7 @@ const EditLessonControls = ({
   deleteCurrentMove,
   onDiscardChangesBtnClick,
   setupNextLine,
-  addNewChapter,
+  openAddNewChapterModal,
 }: Props) => {
   const [savedPgn, setSavedPgn] = useState('');
 
@@ -141,7 +141,7 @@ const EditLessonControls = ({
       window.alert("Save or undo your changes before adding a chapter.");
       return;
     }
-    console.log('adding chapter');
+    openAddNewChapterModal();
   }, [doUnsavedChangesExist]);
 
   return (

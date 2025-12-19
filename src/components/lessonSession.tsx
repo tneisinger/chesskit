@@ -15,6 +15,7 @@ import {
   addLineToCmChess,
   Marker,
   getLastMoveOfLine,
+  loadPgnToCmChess,
 } from '@/utils/cmchess';
 import { MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers';
 import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
@@ -46,6 +47,7 @@ import LessonSessionInfo from '@/components/lessonSessionInfo';
 import useEvaler from '@/hooks/useChessEvaler';
 import LessonChapters from '@/components/lessonChapters';
 import EditLessonControls from '@/components/editLessonControls';
+import NewChapterModal from '@/components/newChapterModal';
 import type { Viewport } from 'next'
 import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
 import { useSearchParams } from 'next/navigation';
@@ -105,6 +107,8 @@ interface State {
 
   // The index of the chapter from which the current State.lines was derived
   linesChapterIdx: number | undefined,
+
+  showNewChapterModal: boolean,
 }
 
 const initialState: State = {
@@ -138,6 +142,7 @@ const initialState: State = {
   fallbackMode: Mode.Learn,
   currentChapterIdx: 0,
   linesChapterIdx: undefined,
+  showNewChapterModal: false,
 }
 
 interface ClearMoveSound {
@@ -224,6 +229,11 @@ interface ChangeChapterIdx {
   idx: number,
 }
 
+interface ShowNewChapterModal {
+  type: 'showNewChapterModal',
+  show: boolean,
+}
+
 type Action =
   | ClearMoveSound
   | SetIsChessboardMoving
@@ -242,6 +252,7 @@ type Action =
   | DeclareLineComplete
   | ChangeMode
   | ChangeChapterIdx
+  | ShowNewChapterModal
 
 function reducer(s: State, a: Action): State {
   let newState: State;
@@ -308,6 +319,9 @@ function reducer(s: State, a: Action): State {
       break;
     case 'changeChapterIdx':
       newState = { ...s, currentChapterIdx: a.idx };
+      break;
+    case 'showNewChapterModal':
+      newState = { ...s, showNewChapterModal: a.show };
       break;
     default:
       assertUnreachable(a);
@@ -570,8 +584,8 @@ const LessonSession = ({ lesson }: Props) => {
     }
   }, [reset]);
 
-  const addNewChapterToLesson = useCallback((chapterTitle: string) => {
-    console.log('addNewChapterToLesson', chapterTitle);
+  const openAddNewChapterModal = useCallback(() => {
+    dispatch({ type: 'showNewChapterModal', show: true });
   }, [lesson]);
 
   const changeChapter = useCallback((idx: number) => {
@@ -1102,7 +1116,10 @@ const LessonSession = ({ lesson }: Props) => {
         <div className="flex flex-row">
           {lessonChapters}
           <div className="flex flex-col items-center">
-            {chessboard}
+            <div className='relative' style={{ height: boardSize, width: boardSize }}>
+              <NewChapterModal show={s.showNewChapterModal} onClose={() => dispatch({ type: 'showNewChapterModal', show: false })} />
+              {chessboard}
+            </div>
             <div className="mt-3 w-full">{lessonSessionInfo}</div>
           </div>
           <div className="ml-2 w-[275px]">
@@ -1129,7 +1146,7 @@ const LessonSession = ({ lesson }: Props) => {
                   deleteCurrentMove={deleteCurrentMove}
                   onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
                   setupNextLine={setupNextLine}
-                  addNewChapter={addNewChapterToLesson}
+                  openAddNewChapterModal={openAddNewChapterModal}
                 />
               </div>
               {arrowButtons}
