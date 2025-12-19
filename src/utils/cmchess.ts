@@ -9,7 +9,9 @@ import {
   shortMoveToLan,
   lanToShortMove,
   areMovesEqual as areShortMovesEqual,
+  convertSanLineToLanLine,
 } from '@/utils/chess';
+import { getLinesFromPGN } from './pgn';
 
 export function areMovesEqual(m1: Move | undefined, m2: Move | undefined): boolean {
   if (m1 == undefined || m2 == undefined) return false;
@@ -225,4 +227,35 @@ export function deleteMoveFromCmChess(cmchess: CmChess, move: Move): CmChess {
   const newCmChess = new CmChess();
   lanLines.forEach((l) => addLineToCmChess(newCmChess, l));
   return newCmChess;
+}
+
+export function loadPgnIntoCmChess(pgn: string, cmchess: CmChess): CmChess {
+  try {
+    cmchess.loadPgn(pgn.trim());
+  } catch (error: any) {
+    if (error instanceof Error) {
+      if (error.name === 'SyntaxError') {
+        // Try to fix the pgn by adding a game result if missing
+        const fixedPgn = pgn + ' 1/2-1/2';
+        try {
+          cmchess.loadPgn(fixedPgn);
+          return cmchess;
+        } catch {
+          console.log(fixedPgn);
+          throw error;
+        }
+      }
+
+    } else if (error.toString().includes('IllegalMoveException')) {
+      // Some valid pgns cause cmchess to throw an IllegalMoveException.
+      // In that case, load the lines manually
+      cmchess = new CmChess();
+      getLinesFromPGN(pgn).forEach((line) => {
+        // Include if statement to satisfy the type checker.
+        if (cmchess) addLineToCmChess(cmchess, convertSanLineToLanLine(line.split(' ')));
+      });
+      return cmchess;
+    }
+  }
+  return cmchess;
 }
