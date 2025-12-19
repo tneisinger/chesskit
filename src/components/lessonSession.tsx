@@ -22,7 +22,6 @@ import { PieceColor, ShortMove } from '@/types/chess';
 import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
 import { assertUnreachable, getRandom } from '@/utils';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
-// import useStore from '../zustand/store';
 import {
   areMovesEqual,
   convertSanLineToLanLine,
@@ -49,6 +48,7 @@ import LessonChapters from '@/components/lessonChapters';
 import EditLessonControls from '@/components/editLessonControls';
 import type { Viewport } from 'next'
 import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
+import { useSearchParams } from 'next/navigation';
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -411,6 +411,16 @@ const LessonSession = ({ lesson }: Props) => {
 
   const [s, dispatch] = useReducer(reducer, initialState);
 
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (lesson == undefined) return;
+    const chapterIdxParam = searchParams.get('chapterIdx');
+    const idx = chapterIdxParam ? parseInt(chapterIdxParam) : 0;
+    if (idx > 0 && idx < lesson.chapters.length) dispatch({ type: 'changeChapterIdx', idx });
+  }, [lesson]);
+
+
   // Determine the board size
   const windowSize = useWindowSize();
   let boardSize: number;
@@ -559,6 +569,10 @@ const LessonSession = ({ lesson }: Props) => {
       setCurrentMove(undefined);
     }
   }, [reset]);
+
+  const addNewChapterToLesson = useCallback((chapterTitle: string) => {
+    console.log('addNewChapterToLesson', chapterTitle);
+  }, [lesson]);
 
   const changeChapter = useCallback((idx: number) => {
     if (s.currentChapterIdx === idx) return;
@@ -1115,6 +1129,7 @@ const LessonSession = ({ lesson }: Props) => {
                   deleteCurrentMove={deleteCurrentMove}
                   onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
                   setupNextLine={setupNextLine}
+                  addNewChapter={addNewChapterToLesson}
                 />
               </div>
               {arrowButtons}
