@@ -182,7 +182,7 @@ export default function LessonForm({
 
       const lessonChapters: Chapter[] = [];
       chapters.forEach((ch) => {
-        const pgn = cleanPGN(ch.pgn, { allowIncomplete: true });
+        const pgn = cleanPGN(ch.pgn);
         if (pgn == undefined) throw new Error(`Failed to clean PGN ${ch.pgn}`);
         lessonChapters.push({
           title: ch.title.trim(),
