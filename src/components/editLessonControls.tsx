@@ -8,7 +8,6 @@ import { updateUserLesson } from '@/app/my-openings/actions';
 import { getLinesFromPGN } from '@/utils/pgn';
 
 interface Props {
-  lines: string[];
   currentMove: Move | undefined;
   lesson: Lesson;
   currentChapterIdx: number;
@@ -124,6 +123,9 @@ const EditLessonControls = ({
   }, [history, lesson, currentChapterIdx]);
 
   const onStopEditingBtnClick = useCallback(() => {
+    // Don't allow the user to stop editing if there are no saved lines.
+    if (savedLines.length < 1) return;
+
     if (doUnsavedChangesExist()) {
       // Show confirmation dialog
       const confirmed = window.confirm(
@@ -195,6 +197,7 @@ const EditLessonControls = ({
             <Button
               onClick={onStopEditingBtnClick}
               buttonSize={ButtonSize.Small}
+              disabled={savedLines.length < 1}
             >
               Stop Editing
             </Button>
