@@ -15,7 +15,7 @@ import {
   addLineToCmChess,
   Marker,
   getLastMoveOfLine,
-  loadPgnToCmChess,
+  loadPgnIntoCmChess,
 } from '@/utils/cmchess';
 import { MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers';
 import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
@@ -643,7 +643,7 @@ const LessonSession = ({ lesson }: Props) => {
 
   const putAllLessonLinesInHistory = useCallback(() => {
     const currentMoveLine = getLanLineFromCmMove(currentMove);
-    cmchess.current.loadPgn(lesson.chapters[s.currentChapterIdx].pgn);
+    cmchess.current = loadPgnIntoCmChess(lesson.chapters[s.currentChapterIdx].pgn, cmchess.current)
     const newCurrentMove = addLineToCmChess(cmchess.current, currentMoveLine);
     setHistory(cmchess.current.history());
     setCurrentMove(newCurrentMove);
