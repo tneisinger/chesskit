@@ -708,3 +708,25 @@ export function parsePGN(pgn: string, options?: { allowIncomplete?: boolean }) {
     }
   }
 }
+
+export function cleanPGN(pgn: string, options?: { allowIncomplete?: boolean }): string | undefined {
+  if (options?.allowIncomplete) {
+    try {
+      parse(pgn);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.name === 'SyntaxError') {
+          // Try adding a game result to the end and parsing again
+          try {
+            parse(`${pgn} *`);
+          } catch {
+            throw error;
+          }
+          return `${pgn} *`;
+        }
+      }
+      throw error;
+    }
+    return pgn;
+  }
+}

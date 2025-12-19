@@ -4,7 +4,7 @@ import { useState } from "react";
 import Button, { ButtonStyle } from "@/components/button";
 import { PieceColor } from "@/types/chess";
 import type { Chapter, Lesson } from "@/types/lesson";
-import { parsePGN } from "@/utils/chess";
+import { parsePGN, cleanPGN } from "@/utils/chess";
 import { makePgnParserErrorMsg } from "@/utils/pgn";
 
 interface LessonFormProps {
@@ -180,13 +180,20 @@ export default function LessonForm({
 				}
 			}
 
+      const lessonChapters: Chapter[] = [];
+      chapters.forEach((ch) => {
+        const pgn = cleanPGN(ch.pgn, { allowIncomplete: true });
+        if (pgn == undefined) throw new Error(`Failed to clean PGN ${ch.pgn}`);
+        lessonChapters.push({
+          title: ch.title.trim(),
+          pgn,
+        })
+      });
+
 			const result = await onSubmit({
 				title: title.trim(),
 				userColor,
-				chapters: chapters.map((ch) => ({
-					title: ch.title.trim(),
-					pgn: ch.pgn.trim(),
-				})),
+				chapters: lessonChapters,
 				displayLine: displayLineArray,
 			});
 
@@ -296,7 +303,7 @@ export default function LessonForm({
 									buttonStyle={ButtonStyle.Danger}
 									onClick={() => removeChapter(index)}
 								>
-									Remove
+									Delete Chapter
 								</Button>
 							)}
 						</div>
