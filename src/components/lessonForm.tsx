@@ -133,12 +133,8 @@ export default function LessonForm({
 				setError(`Chapter ${i + 1} title is required`);
 				return false;
 			}
-			if (!chapters[i].pgn.trim()) {
-				setError(`Chapter ${i + 1} PGN data is required`);
-				return false;
-			}
-			// Check for PGN validation errors
-			if (chapterPgnErrors[i]) {
+			// Check for PGN validation errors (only if PGN is not empty)
+			if (chapters[i].pgn.trim() && chapterPgnErrors[i]) {
 				setError(`Chapter ${i + 1} has invalid PGN: ${chapterPgnErrors[i]}`);
 				return false;
 			}
@@ -182,8 +178,13 @@ export default function LessonForm({
 
       const lessonChapters: Chapter[] = [];
       chapters.forEach((ch) => {
-        const pgn = cleanPGN(ch.pgn);
-        if (pgn == undefined) throw new Error(`Failed to clean PGN ${ch.pgn}`);
+        // If PGN is empty, just use an empty string
+        let pgn = "";
+        if (ch.pgn.trim()) {
+          const cleanedPgn = cleanPGN(ch.pgn);
+          if (cleanedPgn == undefined) throw new Error(`Failed to clean PGN ${ch.pgn}`);
+          pgn = cleanedPgn;
+        }
         lessonChapters.push({
           title: ch.title.trim(),
           pgn,
@@ -281,13 +282,6 @@ export default function LessonForm({
 			<div className="flex flex-col gap-4">
 				<div className="flex items-center justify-between">
 					<h2 className="font-bold text-xl">Chapters</h2>
-					<Button
-						type="button"
-						buttonStyle={ButtonStyle.Secondary}
-						onClick={addChapter}
-					>
-						Add Chapter
-					</Button>
 				</div>
 
 				{chapters.map((chapter, index) => (
@@ -353,23 +347,33 @@ export default function LessonForm({
 				</div>
 			)}
 
-			{/* Submit and Cancel Buttons */}
-			<div className="flex gap-4">
-				<Button
-					type="submit"
-					buttonStyle={ButtonStyle.Primary}
-					disabled={isSubmitting}
-				>
-					{isSubmitting ? "Saving..." : submitButtonText}
-				</Button>
-				<Button
-					type="button"
-					buttonStyle={ButtonStyle.Secondary}
-					onClick={onCancel}
-					disabled={isSubmitting}
-				>
-					Cancel
-				</Button>
+			{/* Submit, Cancel, and Add Chapter Buttons */}
+      <div className="flex justify-between">
+        <div className="flex gap-4">
+          <Button
+            type="submit"
+            buttonStyle={ButtonStyle.Primary}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Saving..." : submitButtonText}
+          </Button>
+          <Button
+            type="button"
+            buttonStyle={ButtonStyle.Secondary}
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+        </div>
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={addChapter}
+          >
+            Add Chapter
+          </Button>
+        </div>
 			</div>
 		</form>
 	);
