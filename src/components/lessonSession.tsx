@@ -351,11 +351,16 @@ function setupNewLesson(
 }
 
 function setupNextLine(s: State, nextMode: Mode): State {
+  const numLines = Object.keys(s.lines[s.currentChapterIdx]).length;
   const incompleteLines: string[] = [];
-  Object.entries(s.lines).forEach(([k, v]) => {
-    if (!v.isComplete) incompleteLines.push(k);
+  Object.entries(s.lines[s.currentChapterIdx]).forEach(([k, v]) => {
+    if (v.isComplete === false) incompleteLines.push(k);
   });
-  if (incompleteLines.length < 1) throw new Error('No incomplete lines');
+  if (incompleteLines.length < 1 && numLines > 0) throw new Error('No incomplete lines');
+  if (numLines < 1) {
+    // If there are no lines at all, go to Edit mode
+    nextMode = Mode.Edit;
+  }
   return {
     ...s,
     recentlyCompletedLine: null,
@@ -1135,7 +1140,6 @@ const LessonSession = ({ lesson }: Props) => {
               </div>
               <div className="border border-black border-t-0 w-full bg-background-page">
                 <EditLessonControls
-                  lines={Object.keys(s.lines)}
                   currentMove={currentMove}
                   lesson={lesson}
                   currentChapterIdx={s.currentChapterIdx}
