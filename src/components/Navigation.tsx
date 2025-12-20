@@ -70,8 +70,8 @@ export default function Navigation() {
 	return (
 		<>
 			{/* Top Navigation Bar */}
-			<nav className="bg-background-page border-b border-foreground/10 sticky top-0 z-50">
-				<div className={`flex items-center h-10 px-4 ${isMobile ? 'justify-center relative' : 'justify-between'}`}>
+			<nav className="flex justify-center bg-background-page border-b border-foreground/10 sticky top-0 z-50">
+				<div className={`flex items-center h-10 px-4 w-full max-w-[1764px] ${isMobile ? 'justify-center relative' : 'justify-between'}`}>
 					{/* Left side - Mobile hamburger + brand */}
 					<div className="flex items-center">
 						{isMobile && (
