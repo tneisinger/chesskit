@@ -88,9 +88,7 @@ export default function EditUserLessonPage({ params }: PageProps) {
 				<LessonForm
 					initialLesson={lesson}
 					onSubmit={handleSubmit}
-					onCancel={handleCancel}
 					submitButtonText="Save Changes"
-					isEdit={true}
 				/>
 			</div>
 		</div>

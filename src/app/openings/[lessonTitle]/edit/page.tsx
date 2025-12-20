@@ -45,10 +45,6 @@ export default function EditLessonPage({ params }: PageProps) {
 		return result;
 	};
 
-	const handleCancel = () => {
-		router.push(`/openings/${encodeURIComponent(lessonTitle)}`);
-	};
-
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
@@ -68,9 +64,7 @@ export default function EditLessonPage({ params }: PageProps) {
 				<LessonForm
 					initialLesson={lesson}
 					onSubmit={handleSubmit}
-					onCancel={handleCancel}
 					submitButtonText="Save Changes"
-					isEdit={true}
 				/>
 			</div>
 		</div>

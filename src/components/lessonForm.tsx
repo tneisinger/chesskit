@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Button, { ButtonStyle } from "@/components/button";
 import { PieceColor } from "@/types/chess";
 import type { Chapter, Lesson } from "@/types/lesson";
@@ -10,7 +11,6 @@ import { makePgnParserErrorMsg } from "@/utils/pgn";
 interface LessonFormProps {
 	initialLesson?: Lesson;
 	onSubmit: (lesson: Lesson) => Promise<{ success: boolean; error?: string }>;
-	onCancel: () => void;
 	submitButtonText?: string;
 	isEdit?: boolean;
 }
@@ -18,10 +18,10 @@ interface LessonFormProps {
 export default function LessonForm({
 	initialLesson,
 	onSubmit,
-	onCancel,
 	submitButtonText = "Create Lesson",
-	isEdit = false,
 }: LessonFormProps) {
+	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [title, setTitle] = useState(initialLesson?.title || "");
 	const [userColor, setUserColor] = useState<PieceColor>(
 		initialLesson?.userColor || PieceColor.WHITE
@@ -148,6 +148,15 @@ export default function LessonForm({
 
 		setError(null);
 		return true;
+	};
+
+	const handleCancel = () => {
+		const returnUrl = searchParams.get('returnUrl');
+		if (returnUrl) {
+			router.push(returnUrl);
+		} else {
+			router.push('/');
+		}
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -360,7 +369,7 @@ export default function LessonForm({
           <Button
             type="button"
             buttonStyle={ButtonStyle.Secondary}
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={isSubmitting}
           >
             Cancel

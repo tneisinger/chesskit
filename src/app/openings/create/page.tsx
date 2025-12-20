@@ -16,17 +16,12 @@ export default function CreateLessonPage() {
 		return result;
 	};
 
-	const handleCancel = () => {
-		router.push("/openings");
-	};
-
 	return (
 		<div className="flex flex-col items-center min-h-screen p-4 sm:p-8">
 			<div className="w-full max-w-3xl">
 				<h1 className="text-2xl font-bold mb-6">Create New Lesson</h1>
 				<LessonForm
 					onSubmit={handleSubmit}
-					onCancel={handleCancel}
 					submitButtonText="Create Lesson"
 				/>
 			</div>

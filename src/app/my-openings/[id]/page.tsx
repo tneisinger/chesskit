@@ -1,4 +1,3 @@
-import React from "react";
 import { notFound, redirect } from "next/navigation";
 import LessonSession from "@/components/lessonSession";
 import { getUserLessonById } from "../actions";

@@ -25,10 +25,6 @@ export default function CreateUserLessonPage() {
 		return result;
 	};
 
-	const handleCancel = () => {
-		router.push("/my-openings");
-	};
-
 	if (status === "loading") {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
@@ -43,7 +39,6 @@ export default function CreateUserLessonPage() {
 				<h1 className="text-2xl font-bold mb-6">Create New Opening</h1>
 				<LessonForm
 					onSubmit={handleSubmit}
-					onCancel={handleCancel}
 					submitButtonText="Create Opening"
 				/>
 			</div>
