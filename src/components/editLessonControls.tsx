@@ -66,6 +66,7 @@ const EditLessonControls = ({
     if (!hasBeenInEditModeForMoreThanTwoSeconds()) return false;
     if (newPgn == undefined) newPgn = makePgnFromHistory(history);
     const newLines = getLinesFromPGN(newPgn);
+    if (newLines.length === 0 && savedLines.length === 0) return false;
     return !newLines.every((line) => savedLines.includes(line));
   }, [savedLines, history, timeEditModeEntered, currentChapterIdx]);
 
