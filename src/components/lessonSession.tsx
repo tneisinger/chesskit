@@ -446,7 +446,7 @@ const LessonSession = ({ lesson }: Props) => {
     if (lesson == undefined) return;
     const chapterIdxParam = searchParams.get('chapterIdx');
     const idx = chapterIdxParam ? parseInt(chapterIdxParam) : 0;
-    if (idx > 0 && idx < lesson.chapters.length) dispatch({ type: 'changeChapterIdx', idx });
+    if (idx >= 0 && idx < lesson.chapters.length) dispatch({ type: 'changeChapterIdx', idx });
   }, [lesson]);
 
 
@@ -797,6 +797,7 @@ const LessonSession = ({ lesson }: Props) => {
 
     const wasPgnUpdated = (): boolean => {
       if (isDifferentLesson()) return false;
+      if (lesson.chapters[s.currentChapterIdx] == undefined) return false;
       return lesson.chapters[s.currentChapterIdx].pgn !== prevLesson!.chapters[s.currentChapterIdx].pgn;
     }
 

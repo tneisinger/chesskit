@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Button, { ButtonSize, ButtonStyle } from './button';
 import { makePgnFromHistory } from '../utils/chess';
 import { Move } from 'cm-chess/src/Chess';
@@ -38,6 +39,9 @@ const EditLessonControls = ({
   doUnsavedChangesExist,
   savedLines,
 }: Props) => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const handleDeleteMoveBtnClick = useCallback(() => {
     deleteCurrentMove();
   }, [deleteCurrentMove])
@@ -116,6 +120,68 @@ const EditLessonControls = ({
     openAddNewChapterModal();
   }, [doUnsavedChangesExist]);
 
+  const onDeleteChapterBtnClick = useCallback(async () => {
+    // Don't allow deleting if it's the last chapter
+    if (lesson.chapters.length <= 1) {
+      alert('Cannot delete the last chapter. A lesson must have at least one chapter.');
+      return;
+    }
+
+		// Show confirmation dialog
+		const confirmed = window.confirm(
+			'Are you sure you want to delete this chapter?'
+		);
+
+		if (!confirmed) {
+			return;
+		}
+
+    try {
+      // Remove the current chapter from the chapters array
+      const updatedChapters = lesson.chapters.filter((_, idx) => idx !== currentChapterIdx);
+
+      // Calculate the next chapter index after deletion
+      let nextChapterIdx: number;
+      if (currentChapterIdx >= updatedChapters.length) {
+        // If we deleted the last chapter, wrap around to the first
+        nextChapterIdx = 0;
+      } else {
+        // Otherwise, stay at the same index (which now points to the next chapter)
+        nextChapterIdx = currentChapterIdx;
+      }
+
+      const updatedLesson: Lesson = {
+        ...lesson,
+        chapters: updatedChapters,
+      };
+
+      let result;
+
+      // Check if this is a user lesson (has id) or system lesson (uses title)
+      if (lesson.id !== undefined) {
+        // User lesson - update via updateUserLesson
+        result = await updateUserLesson(lesson.id, updatedLesson);
+      } else {
+        // System lesson - update via updateLesson
+        result = await updateLesson(lesson.title, updatedLesson);
+      }
+
+      if (result.success) {
+        // Create new URL with updated chapterIdx query parameter
+        const params = new URLSearchParams(searchParams);
+        params.set('chapterIdx', nextChapterIdx.toString());
+
+        // Redirect to the same page with the next chapter selected
+        router.push(`${pathname}?${params.toString()}`);
+      } else {
+        alert(`Failed to delete chapter: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+      alert('An unexpected error occurred while deleting the chapter');
+    }
+  }, [lesson, currentChapterIdx, router, pathname, searchParams]);
+
   return (
     <div className="flex flex-col items-center mb-1">
       <h4 className='mt-2 mb-1'>You are in {mode} Mode</h4>
@@ -131,6 +197,37 @@ const EditLessonControls = ({
         <>
           <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
             <Button
+              onClick={handleDeleteMoveBtnClick}
+              disabled={currentMove == undefined}
+              buttonSize={ButtonSize.Small}
+            >
+              Delete Move
+            </Button>
+            <Button
+              onClick={onStopEditingBtnClick}
+              buttonSize={ButtonSize.Small}
+              disabled={savedLines.length < 1}
+            >
+              Stop Editing
+            </Button>
+          </div>
+          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
+            <Button
+              onClick={onAddChapterBtnClick}
+              buttonSize={ButtonSize.Small}
+              disabled={doUnsavedChangesExist()}
+            >
+              Add Chapter
+            </Button>
+            <Button
+              onClick={onDeleteChapterBtnClick}
+              buttonSize={ButtonSize.Small}
+            >
+              Delete Chapter
+            </Button>
+          </div>
+          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
+            <Button
               onClick={onSaveBtnClick}
               disabled={!doUnsavedChangesExist()}
               buttonSize={ButtonSize.Small}
@@ -139,36 +236,11 @@ const EditLessonControls = ({
               Save Changes
             </Button>
             <Button
-              onClick={handleDeleteMoveBtnClick}
-              disabled={currentMove == undefined}
-              buttonSize={ButtonSize.Small}
-            >
-              Delete Move
-            </Button>
-          </div>
-          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
-            <Button
               onClick={onDiscardChangesBtnClick}
               disabled={!doUnsavedChangesExist()}
               buttonSize={ButtonSize.Small}
             >
               Undo Changes
-            </Button>
-            <Button
-              onClick={onAddChapterBtnClick}
-              buttonSize={ButtonSize.Small}
-              disabled={doUnsavedChangesExist()}
-            >
-              Add Chapter
-            </Button>
-          </div>
-          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
-            <Button
-              onClick={onStopEditingBtnClick}
-              buttonSize={ButtonSize.Small}
-              disabled={savedLines.length < 1}
-            >
-              Stop Editing
             </Button>
           </div>
       </>
