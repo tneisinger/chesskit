@@ -1,6 +1,5 @@
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { Move } from 'cm-chess/src/Chess';
-// import useStore from '../zustand/store'
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import HintButtons, { Props as HintButtonsProps } from '@/components/hintButtons';
 import { LineStats, Mode, Lesson } from '@/types/lesson';
@@ -40,7 +39,6 @@ const LessonSessionInfo = ({
   currentChapterIdx,
   changeChapter,
 }: Props) => {
-  // const { windowSize } = useStore((state) => state);
 
 	const ratio = useChapterCompletionRatios(lesson, lines)[0];
 
@@ -49,6 +47,7 @@ const LessonSessionInfo = ({
   }, [lines]);
 
   const isNextLineInAnotherChapter = useCallback((): boolean => {
+    if (lines[currentChapterIdx] === undefined) return false;
     if (!Object.values(lines[currentChapterIdx]).every((stats) => stats.isComplete)) return false;
     if (areAllLinesComplete()) return false;
     getIdxOfNextIncompleteChapter();
@@ -59,6 +58,7 @@ const LessonSessionInfo = ({
     const otherChapters = [];
     for (let i = 1; i < lesson.chapters.length; i++) {
       const idx = (currentChapterIdx + i) % lesson.chapters.length;
+      if (lines[idx] === undefined) continue;
       if (!Object.values(lines[idx]).every((stats) => stats.isComplete)) {
         return idx;
       }
@@ -152,7 +152,7 @@ const LessonSessionInfo = ({
             )}
           </>
         )}
-        {isNextLineInAnotherChapter() && (
+        {isNextLineInAnotherChapter() && mode !== Mode.Edit && (
           <button
             className='cursor-pointer'
             onClick={() => handleChangeChapter(getIdxOfNextIncompleteChapter())}

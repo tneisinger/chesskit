@@ -1,13 +1,21 @@
 import { useState, useRef, useEffect } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Modal from '@/components/modal';
 import Button from "@/components/button";
+import { Lesson } from '@/types/lesson';
+import { updateLesson } from '@/app/openings/actions';
+import { updateUserLesson } from '@/app/my-openings/actions';
 
 interface Props {
   show: boolean;
+  lesson: Lesson;
   onClose: () => void;
 }
 
-const NewChapterModal = ({ show, onClose }: Props) => {
+const NewChapterModal = ({ show, lesson, onClose }: Props) => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [title, setTitle] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -16,13 +24,67 @@ const NewChapterModal = ({ show, onClose }: Props) => {
   useEffect(() => {
   if (show && inputRef.current) {
     inputRef.current.focus();
+    setTitle('');
   }
     }, [show]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
+
+    if (!title.trim()) {
+      alert('Please enter a chapter title');
+      return;
+    }
+
 		setIsSubmitting(true);
-    console.log('New chapter title:', title);
+
+    try {
+      // Create new chapter with empty PGN
+      const newChapter = {
+        title: title.trim(),
+        pgn: '',
+      };
+
+      // Add the new chapter to the lesson's chapters array
+      const updatedChapters = [...lesson.chapters, newChapter];
+      const newChapterIdx = updatedChapters.length - 1;
+
+      const updatedLesson: Lesson = {
+        ...lesson,
+        chapters: updatedChapters,
+      };
+
+      let result;
+
+      // Check if this is a user lesson (has id) or system lesson (uses title)
+      if (lesson.id !== undefined) {
+        // User lesson - update via updateUserLesson
+        result = await updateUserLesson(lesson.id, updatedLesson);
+      } else {
+        // System lesson - update via updateLesson
+        result = await updateLesson(lesson.title, updatedLesson);
+      }
+
+      console.log('Update result:', result);
+
+      if (result.success) {
+        // Create new URL with chapterIdx query parameter
+        const params = new URLSearchParams(searchParams);
+        params.set('chapterIdx', newChapterIdx.toString());
+
+        // Redirect to the same page with the new chapter selected
+        router.push(`${pathname}?${params.toString()}`);
+        setIsSubmitting(false);
+        onClose();
+      } else {
+        alert(`Failed to create chapter: ${result.error}`);
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error('Error creating chapter:', error);
+      alert('An unexpected error occurred while creating the chapter');
+      setIsSubmitting(false);
+    }
 	};
 
   return (
