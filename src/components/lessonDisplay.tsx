@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import type { Lesson } from "@/types/lesson";
 import Link from "next/link";
 import Button, { ButtonStyle, ButtonSize } from "@/components/button";
@@ -79,6 +80,7 @@ export default function LessonDisplay({
   viewUrl,
   editUrl,
 }: LessonDisplayProps) {
+  const pathname = usePathname();
   const displayLine = getDisplayLine(lesson);
   const [isHovered, setIsHovered] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -86,7 +88,10 @@ export default function LessonDisplay({
 
   // Use custom URLs or default to system lesson URLs
   const lessonViewUrl = viewUrl || `/openings/${encodeURIComponent(lesson.title)}`;
-  const lessonEditUrl = editUrl || `/openings/${encodeURIComponent(lesson.title)}/edit`;
+  const baseEditUrl = editUrl || `/openings/${encodeURIComponent(lesson.title)}/edit`;
+
+  // Add returnUrl query parameter to edit URL
+  const lessonEditUrl = `${baseEditUrl}?returnUrl=${encodeURIComponent(pathname)}`;
 
 	const windowSize = useWindowSize();
 	const isMobile = windowSize.width ? windowSize.width <= 768 : false;

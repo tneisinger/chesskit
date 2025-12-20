@@ -7,32 +7,6 @@ import { getAllLessons, deleteLesson } from "./actions";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import LessonDisplay from "@/components/lessonDisplay";
-import { getLinesFromPGN } from "@/utils/pgn";
-
-/**
- * Gets the display line for a lesson.
- * If displayLine is set, uses that. Otherwise, gets the first 3 moves from the first chapter.
- */
-function getDisplayLine(lesson: Lesson): string[] {
-	// Use displayLine if it exists
-	if (lesson.displayLine && lesson.displayLine.length > 0) {
-		return lesson.displayLine;
-	}
-
-	// Fallback to first 3 moves from first chapter
-	if (lesson.chapters.length === 0) return [];
-
-	const firstChapter = lesson.chapters[0];
-	const lines = getLinesFromPGN(firstChapter.pgn);
-
-	if (lines.length === 0) return [];
-
-	// Get the first line and split it into moves
-	const moves = lines[0].split(/\s+/);
-
-	// Return first 3 moves
-	return moves.slice(0, 3);
-}
 
 type ColorFilter = "all" | PieceColor;
 
@@ -164,7 +138,7 @@ export default function Page() {
 				{/* Create button only for admins */}
 				{isAdmin && (
 					<Link
-						href="/openings/create"
+						href="/openings/create?returnUrl=/openings"
 						className="p-3 rounded bg-color-btn-primary hover:bg-color-btn-primary-hover text-white font-bold no-underline"
 					>
 						Create New Opening
@@ -188,6 +162,8 @@ export default function Page() {
               handleDelete={handleDelete}
               isDeletingLesson={deletingLesson === lesson.title}
               isModifiable={isAdmin}
+              viewUrl={`/openings/${encodeURIComponent(lesson.title)}`}
+              editUrl={`/openings/${encodeURIComponent(lesson.title)}/edit`}
               key={lesson.title}
             />
           ))}

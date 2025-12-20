@@ -132,7 +132,7 @@ export default function MyOpeningsPage() {
 				</div>
 
 				<Link
-					href="/my-openings/create"
+					href="/my-openings/create?returnUrl=/my-openings"
 					className="p-3 rounded bg-color-btn-primary hover:bg-color-btn-primary-hover text-white font-bold no-underline"
 				>
 					Create New Opening
