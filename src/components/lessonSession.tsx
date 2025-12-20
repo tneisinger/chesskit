@@ -335,6 +335,10 @@ function setupNewLesson(
   linesChapterIdx: number,
   nextMode: Mode,
 ): State {
+  let fallbackMode = s.fallbackMode;
+  if (nextMode === Mode.Learn || nextMode === Mode.Practice) {
+    fallbackMode = nextMode;
+  }
   return {
     ...s,
     lines,
@@ -346,7 +350,7 @@ function setupNewLesson(
     hasFirstLoadCompleted: true,
     lineProgressIdx: 0,
     mode: nextMode,
-    fallbackMode: nextMode,
+    fallbackMode,
   };
 }
 
@@ -479,6 +483,7 @@ const LessonSession = ({ lesson }: Props) => {
   const previousMove = usePrevious(currentMove);
   const prevLesson = usePrevious(lesson);
   const prevMode = usePrevious(s.mode);
+  const prevChapterIdx = usePrevious(s.currentChapterIdx);
 
   const isMoveAllowed = (move: ShortMove): boolean => {
     // CmChess does not allow variations on the first move, so do not allow the move if
@@ -596,8 +601,9 @@ const LessonSession = ({ lesson }: Props) => {
   const changeChapter = useCallback((idx: number) => {
     if (s.currentChapterIdx === idx) return;
     dispatch({ type: 'changeChapterIdx', idx });
+    if (s.mode === Mode.Edit) return;
     setupNextLine(s.fallbackMode);
-  }, [s.currentChapterIdx, s.fallbackMode, setupNextLine]);
+  }, [s.currentChapterIdx, s.fallbackMode, s.mode, setupNextLine]);
 
   const getNextMoves = useCallback((
     options?: { incompleteLinesOnly: boolean }
@@ -711,10 +717,9 @@ const LessonSession = ({ lesson }: Props) => {
 
       // Determine the next mode
       let nextMode = s.fallbackMode;
-
       if (options && options.mode) nextMode = options.mode;
-
       if (Object.keys(lines[s.currentChapterIdx]).length < 1) nextMode = Mode.Edit;
+      if (s.mode === Mode.Edit) nextMode = Mode.Edit;
 
       resetEvaler();
       reset();
@@ -928,7 +933,10 @@ const LessonSession = ({ lesson }: Props) => {
     if (s.mode === Mode.Edit && prevMode !== Mode.Edit) {
       putAllLessonLinesInHistory();
     }
-  }, [s.mode, prevMode, putAllLessonLinesInHistory])
+    if (s.currentChapterIdx !== prevChapterIdx && s.mode === Mode.Edit) {
+      putAllLessonLinesInHistory();
+    }
+  }, [s.mode, prevMode, putAllLessonLinesInHistory, s.currentChapterIdx, prevChapterIdx]);
 
   const chessboard = (
     <div className="relative">
