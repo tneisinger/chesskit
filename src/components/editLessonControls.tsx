@@ -19,6 +19,8 @@ interface Props {
   onDiscardChangesBtnClick: () => void;
   setupNextLine: (nextMode: Mode) => void;
   openAddNewChapterModal: () => void;
+  doUnsavedChangesExist: (newPgn?: string) => boolean;
+  savedLines: string[];
 }
 
 const EditLessonControls = ({
@@ -33,43 +35,9 @@ const EditLessonControls = ({
   onDiscardChangesBtnClick,
   setupNextLine,
   openAddNewChapterModal,
+  doUnsavedChangesExist,
+  savedLines,
 }: Props) => {
-  const [savedLines, setSavedLines] = useState<string[]>([]);
-
-  const [timeEditModeEntered, setTimeEditModeEntered] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (lesson && lesson.chapters[currentChapterIdx]) {
-      setSavedLines(getLinesFromPGN(lesson.chapters[currentChapterIdx].pgn));
-    }
-  }, [lesson, currentChapterIdx])
-
-  useEffect(() => {
-    if (mode === Mode.Edit) {
-      setTimeEditModeEntered(Date.now());
-    } else {
-      setTimeEditModeEntered(null);
-    }
-  }, [mode])
-
-  // This function is needed because the move history does not update instantly when switching to
-  // edit mode. Using this function in 'doUnsavedChangesExist' prevents that function from
-  // returning true for a brief moment while the history is being updated.
-  const hasBeenInEditModeForMoreThanTwoSeconds = useCallback(() => {
-    if (timeEditModeEntered == null) return false;
-    const currentTime = Date.now();
-    const diff = currentTime - timeEditModeEntered;
-    return diff > 1000;
-  }, [timeEditModeEntered])
-
-  const doUnsavedChangesExist = useCallback((newPgn?: string) => {
-    if (!hasBeenInEditModeForMoreThanTwoSeconds()) return false;
-    if (newPgn == undefined) newPgn = makePgnFromHistory(history);
-    const newLines = getLinesFromPGN(newPgn);
-    if (newLines.length === 0 && savedLines.length === 0) return false;
-    return !newLines.every((line) => savedLines.includes(line));
-  }, [savedLines, history, timeEditModeEntered, currentChapterIdx]);
-
   const handleDeleteMoveBtnClick = useCallback(() => {
     deleteCurrentMove();
   }, [deleteCurrentMove])

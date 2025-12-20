@@ -4,6 +4,7 @@ import React, {
   useReducer,
   useEffect,
   useRef,
+  useState,
   useCallback,
 } from 'react';
 import { ScrollLock } from '@/components/ScrollLock';
@@ -29,6 +30,7 @@ import {
   convertLanLineToShortMoves,
   lanToShortMove,
   areLinesEqual,
+  makePgnFromHistory,
 } from '@/utils/chess';
 import Chessboard from '@/components/Chessboard'
 import BlinkOverlay from '@/components/blinkOverlay';
@@ -489,6 +491,48 @@ const LessonSession = ({ lesson }: Props) => {
   const prevMode = usePrevious(s.mode);
   const prevChapterIdx = usePrevious(s.currentChapterIdx);
 
+  // Saved lines from the last time the user saved the chapter.
+  // This is used to detect unsaved changes.
+  const [savedLines, setSavedLines] = useState<string[]>([]);
+
+  // Timestamp of when the user entered edit mode
+  const [timeEditModeEntered, setTimeEditModeEntered] = useState<number | null>(null);
+
+  // Update savedLines when the lesson or chapter index changes
+  useEffect(() => {
+    if (lesson && lesson.chapters[s.currentChapterIdx]) {
+      setSavedLines(getLinesFromPGN(lesson.chapters[s.currentChapterIdx].pgn));
+    }
+  }, [lesson, s.currentChapterIdx])
+
+  // Update timeEditModeEntered when mode changes to Edit
+  useEffect(() => {
+    if (s.mode === Mode.Edit) {
+      setTimeEditModeEntered(Date.now());
+    } else {
+      setTimeEditModeEntered(null);
+    }
+  }, [s.mode])
+
+  // This function is needed because the move history does not update instantly when switching to
+  // edit mode. Using this function in 'doUnsavedChangesExist' prevents that function from
+  // returning true for a brief moment while the history is being updated.
+  const hasBeenInEditModeForMoreThanTwoSeconds = useCallback(() => {
+    if (timeEditModeEntered == null) return false;
+    const currentTime = Date.now();
+    const diff = currentTime - timeEditModeEntered;
+    return diff > 1000;
+  }, [timeEditModeEntered])
+
+  const doUnsavedChangesExist = useCallback((newPgn?: string) => {
+    if (!hasBeenInEditModeForMoreThanTwoSeconds()) return false;
+    if (newPgn == undefined) newPgn = makePgnFromHistory(history);
+    const newLines = getLinesFromPGN(newPgn);
+    if (newLines.length === 0 && savedLines.length === 0) return false;
+    return !newLines.every((line) => savedLines.includes(line));
+  }, [savedLines, history, timeEditModeEntered, s.currentChapterIdx]);
+
+
   const isMoveAllowed = (move: ShortMove): boolean => {
     // CmChess does not allow variations on the first move, so do not allow the move if
     // the user is trying to play a first move that differs from the first move in the
@@ -603,11 +647,15 @@ const LessonSession = ({ lesson }: Props) => {
   }, [lesson]);
 
   const changeChapter = useCallback((idx: number) => {
+    if (doUnsavedChangesExist()) {
+      alert('Please save or discard your changes before changing chapters.');
+      return;
+    }
     if (s.currentChapterIdx === idx) return;
     dispatch({ type: 'changeChapterIdx', idx });
     if (s.mode === Mode.Edit) return;
     setupNextLine(s.fallbackMode);
-  }, [s.currentChapterIdx, s.fallbackMode, s.mode, setupNextLine]);
+  }, [s.currentChapterIdx, s.fallbackMode, s.mode, setupNextLine, doUnsavedChangesExist]);
 
   const getNextMoves = useCallback((
     options?: { incompleteLinesOnly: boolean }
@@ -1169,6 +1217,8 @@ const LessonSession = ({ lesson }: Props) => {
                   onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
                   setupNextLine={setupNextLine}
                   openAddNewChapterModal={openAddNewChapterModal}
+                  doUnsavedChangesExist={doUnsavedChangesExist}
+                  savedLines={savedLines}
                 />
               </div>
               {arrowButtons}
