@@ -1,5 +1,5 @@
 import React from 'react';
-// import PropTypes from 'prop-types';
+import Link from "next/link";
 import { assertUnreachable } from '../utils';
 
 export enum ButtonStyle {
@@ -16,11 +16,13 @@ export enum ButtonSize {
 export interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   buttonStyle?: ButtonStyle;
   buttonSize?: ButtonSize;
+  href?: string;
 }
 
 const Button = ({
   buttonStyle = ButtonStyle.Primary,
   buttonSize = ButtonSize.Normal,
+  href,
   ...props
 }: Props) => {
   const classes = [
@@ -69,6 +71,15 @@ const Button = ({
       'hover:!bg-foreground/10',
     );
   }
+
+  if (href) return (
+    <Link
+      href={href}
+      className={classes.join(' ')}
+    >
+      {props.children}
+    </Link>
+  );
 
   return (
     <button {...props} className={classes.join(' ')} />

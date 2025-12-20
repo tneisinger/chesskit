@@ -158,21 +158,22 @@ export default function LessonDisplay({
           {/* Action Buttons - only render if isModifiable is true */}
           {isModifiable && (
             <div
-              className="flex items-center justify-right cursor-default"
+              className="flex items-center justify-right cursor-default gap-4"
             >
-              <Link
+              <Button
                 href={lessonEditUrl}
-                className="text-[#ccc] hover:text-color-btn-primary-hover px-2 py-0 rounded hover:bg-foreground/20 no-underline"
+                buttonSize={ButtonSize.Small}
               >
                 Edit
-              </Link>
-              <button
+              </Button>
+              <Button
                 onClick={() => handleDelete(lesson.title)}
                 disabled={isDeletingLesson}
-                className="text-[#ccc] cursor-pointer hover:text-color-btn-primary-hover px-2 py-0 my-2 ml-3 rounded hover:bg-foreground/20 no-underline"
+                buttonSize={ButtonSize.Small}
+                buttonStyle={ButtonStyle.Danger}
               >
                 {isDeletingLesson ? "Deleting..." : "Delete"}
-              </button>
+              </Button>
             </div>
           )}
         </div>
