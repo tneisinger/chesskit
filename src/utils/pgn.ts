@@ -90,7 +90,7 @@ export function getLinesFromPGN(pgnString: string): string[] {
   const parserOutput = parsePGN(pgnString);
   if (parserOutput.length !== 1) throw new Error('pgn must contain exactly one game');
   const pgn = parserOutput[0];
-  if (pgn.moves == undefined) return [];
+  if (pgn.moves == undefined || pgn.moves.length < 1) return [];
   const result = [];
   result.push(pgn.moves.map((m) => m.move).join(' '));
 
