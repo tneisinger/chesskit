@@ -365,6 +365,10 @@ function setupNextLine(s: State, nextMode: Mode): State {
     // If there are no lines at all, go to Edit mode
     nextMode = Mode.Edit;
   }
+  let fallbackMode = s.fallbackMode;
+  if (nextMode === Mode.Learn || nextMode === Mode.Practice) {
+    fallbackMode = nextMode;
+  }
   return {
     ...s,
     recentlyCompletedLine: null,
@@ -372,7 +376,7 @@ function setupNextLine(s: State, nextMode: Mode): State {
     lineProgressIdx: 0,
     isEvaluatorOn: false,
     mode: nextMode,
-    fallbackMode: nextMode,
+    fallbackMode,
   };
 }
 
