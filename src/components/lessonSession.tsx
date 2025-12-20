@@ -722,7 +722,9 @@ const LessonSession = ({ lesson }: Props) => {
       // Determine the next mode
       let nextMode = s.fallbackMode;
       if (options && options.mode) nextMode = options.mode;
-      if (Object.keys(lines[s.currentChapterIdx]).length < 1) nextMode = Mode.Edit;
+      if (lines[s.currentChapterIdx] != undefined) {
+        if (Object.keys(lines[s.currentChapterIdx]).length < 1) nextMode = Mode.Edit;
+      }
       if (s.mode === Mode.Edit) nextMode = Mode.Edit;
 
       resetEvaler();
@@ -1134,7 +1136,11 @@ const LessonSession = ({ lesson }: Props) => {
           {lessonChapters}
           <div className="flex flex-col items-center">
             <div className='relative' style={{ height: boardSize, width: boardSize }}>
-              <NewChapterModal show={s.showNewChapterModal} onClose={() => dispatch({ type: 'showNewChapterModal', show: false })} />
+              <NewChapterModal
+                show={s.showNewChapterModal}
+                lesson={lesson}
+                onClose={() => dispatch({ type: 'showNewChapterModal', show: false })}
+              />
               {chessboard}
             </div>
             <div className="mt-3 w-full">{lessonSessionInfo}</div>
