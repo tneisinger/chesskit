@@ -18,6 +18,14 @@ interface LessonDisplayProps {
 	 * The size of the board in pixels
 	 */
 	boardSize?: number;
+  /**
+  * A boolean indicating if the Add to My Repertoire button should be shown
+   */
+  showAddToRepertoireBtn?: boolean;
+	/**
+		* A function to handle add the lesson to My Repertoire
+	 */
+  handleAddToRepertoireBtnClick?: (lesson: Lesson) => void;
 	/**
 		* A function to handle deletion of the lesson
 	 */
@@ -74,12 +82,18 @@ function getDisplayLine(lesson: Lesson): string[] {
 export default function LessonDisplay({
   lesson,
   boardSize = 200,
+  showAddToRepertoireBtn = false,
+  handleAddToRepertoireBtnClick,
   handleDelete,
   isDeletingLesson,
   isModifiable = false,
   viewUrl,
   editUrl,
 }: LessonDisplayProps) {
+  if (showAddToRepertoireBtn && !handleAddToRepertoireBtnClick) {
+    throw new Error("handleAddToRepertoireBtnClick must be provided if showAddToRepertoireBtn is true");
+  }
+
   const pathname = usePathname();
   const displayLine = getDisplayLine(lesson);
   const [isHovered, setIsHovered] = useState(false);
@@ -135,14 +149,20 @@ export default function LessonDisplay({
     >
 
       {/* Lesson Info */}
-      <div className="flex flex-col">
+      <div className="flex flex-col w-full">
         <Link href={lessonViewUrl}>
           <div
-            className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline text-center mb-2"
+            className="text-xl font-semibold text-foreground hover:text-color-btn-primary-hover no-underline text-center mb-1"
           >
             {lesson.title}
           </div>
         </Link>
+        <Link href={lessonViewUrl}>
+          <div className="text-sm text-foreground/60 text-center mb-2">
+            {lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
+          </div>
+        </Link>
+
 
         {/* Board Preview */}
         <Link href={lessonViewUrl}>
@@ -153,35 +173,37 @@ export default function LessonDisplay({
             cycleLineMoves={shouldCycleLineMoves}
           />
         </Link>
-        <div className={`flex flex-row ${isModifiable ? 'justify-between' : 'justify-around'} mt-1`}>
-          <Link href={lessonViewUrl}>
-            <div className="text-sm text-foreground/60 text-center mt-3">
-              {lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
-            </div>
-          </Link>
-
-          {/* Action Buttons - only render if isModifiable is true */}
-          {isModifiable && (
-            <div
-              className="flex items-center justify-right cursor-default gap-4"
-            >
-              <Button
-                href={lessonEditUrl}
-                buttonSize={ButtonSize.Small}
-              >
-                Edit
-              </Button>
-              <Button
-                onClick={() => handleDelete(lesson.title)}
-                disabled={isDeletingLesson}
-                buttonSize={ButtonSize.Small}
-                buttonStyle={ButtonStyle.Danger}
-              >
-                {isDeletingLesson ? "Deleting..." : "Delete"}
-              </Button>
+        {/* Action Buttons - only render if isModifiable is true */}
+        {isModifiable && (
+          <div className={`flex flex-row ${isModifiable ? 'justify-between' : 'justify-around'} mt-1`}>
+              {showAddToRepertoireBtn && (
+                <Button
+                  onClick={() => {
+                    if (handleAddToRepertoireBtnClick) handleAddToRepertoireBtnClick(lesson)
+                  }}
+                  buttonSize={ButtonSize.Small}
+                >
+                  Add to My Repertoire
+                </Button>
+              )}
+              <div className="flex flex-grow justify-end gap-3">
+                <Button
+                  href={lessonEditUrl}
+                  buttonSize={ButtonSize.Small}
+                >
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => handleDelete(lesson.title)}
+                  disabled={isDeletingLesson}
+                  buttonSize={ButtonSize.Small}
+                  buttonStyle={ButtonStyle.Danger}
+                >
+                  {isDeletingLesson ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
             </div>
           )}
-        </div>
       </div>
     </li>
   )

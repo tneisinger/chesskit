@@ -23,7 +23,7 @@ export default function EditUserLessonPage({ params }: PageProps) {
 
 	useEffect(() => {
 		if (status === "unauthenticated") {
-			router.push("/login?callbackUrl=/my-openings");
+			router.push("/login?callbackUrl=/my-repertoire");
 			return;
 		}
 
@@ -56,16 +56,16 @@ export default function EditUserLessonPage({ params }: PageProps) {
 
 		const result = await updateUserLesson(lessonId, updatedLesson);
 		if (result.success) {
-			router.push(`/my-openings/${lessonId}`);
+			router.push(`/my-repertoire/${lessonId}`);
 		}
 		return result;
 	};
 
 	const handleCancel = () => {
 		if (lessonId !== null) {
-			router.push(`/my-openings/${lessonId}`);
+			router.push(`/my-repertoire/${lessonId}`);
 		} else {
-			router.push("/my-openings");
+			router.push("/my-repertoire");
 		}
 	};
 

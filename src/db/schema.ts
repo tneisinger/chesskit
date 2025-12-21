@@ -70,8 +70,8 @@ export const verificationTokens = sqliteTable("verification_tokens", {
 	compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
 }));
 
-// User-created lessons table
-export const userLessons = sqliteTable("user_lessons", {
+// User repertoire table (user-created lessons)
+export const userRepertoire = sqliteTable("user_repertoire", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
 	userId: integer("user_id")
 		.notNull()
@@ -97,5 +97,5 @@ export type InsertUser = typeof users.$inferInsert;
 export type Lesson = typeof lessons.$inferSelect;
 export type InsertLesson = typeof lessons.$inferInsert;
 
-export type UserLesson = typeof userLessons.$inferSelect;
-export type InsertUserLesson = typeof userLessons.$inferInsert;
+export type UserRepertoire = typeof userRepertoire.$inferSelect;
+export type InsertUserRepertoire = typeof userRepertoire.$inferInsert;

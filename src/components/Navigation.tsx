@@ -23,7 +23,7 @@ const publicNavLinks: NavLink[] = [
 const authenticatedNavLinks: NavLink[] = [
 	{ href: '/', label: 'Home' },
 	{ href: '/openings', label: 'Openings' },
-	{ href: '/my-openings', label: 'My Openings', requiresAuth: true },
+	{ href: '/my-repertoire', label: 'My Repertoire', requiresAuth: true },
 ];
 
 export default function Navigation() {

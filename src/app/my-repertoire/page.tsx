@@ -4,14 +4,14 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { getUserLessons, deleteUserLesson } from "./actions";
+import { getUserRepertoire, deleteUserLesson } from "./actions";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import LessonDisplay from "@/components/lessonDisplay";
 
 type ColorFilter = "all" | PieceColor;
 
-export default function MyOpeningsPage() {
+export default function MyRepertoirePage() {
 	const router = useRouter();
 	const { data: session, status } = useSession();
 	const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -31,7 +31,7 @@ export default function MyOpeningsPage() {
 	useEffect(() => {
 		// Redirect to login if not authenticated
 		if (status === "unauthenticated") {
-			router.push("/login?callbackUrl=/my-openings");
+			router.push("/login?callbackUrl=/my-repertoire");
 			return;
 		}
 
@@ -39,7 +39,7 @@ export default function MyOpeningsPage() {
 			window.scrollTo(0, 0);
 
 			const loadLessons = async () => {
-				const fetchedLessons = await getUserLessons();
+				const fetchedLessons = await getUserRepertoire();
 				setLessons(fetchedLessons);
 				setIsLoading(false);
 			};
@@ -92,7 +92,7 @@ export default function MyOpeningsPage() {
 	return (
 		<div className="flex flex-col gap-4 p-4 pt-0">
 			<div className="sticky top-10 z-30 pt-4 pb-4 flex flex-col items-center justify-center bg-background mask-b-from-85% mask-b-to-100%">
-				<h1 className="text-3xl font-bold">My Openings</h1>
+				<h1 className="text-3xl font-bold">My Repertoire</h1>
 
 				{/* Filter Controls */}
 				<div className="flex items-center gap-3 mt-5 mb-2">
@@ -132,7 +132,7 @@ export default function MyOpeningsPage() {
 				</div>
 
 				<Link
-					href="/my-openings/create?returnUrl=/my-openings"
+					href="/my-repertoire/create?returnUrl=/my-repertoire"
 					className="p-3 rounded bg-color-btn-primary hover:bg-color-btn-primary-hover text-white font-bold no-underline"
 				>
 					Create New Opening
@@ -155,8 +155,8 @@ export default function MyOpeningsPage() {
 							handleDelete={(title) => handleDelete(lesson.id!, title)}
 							isDeletingLesson={deletingLessonId === lesson.id}
 							isModifiable={true}
-							viewUrl={`/my-openings/${lesson.id}`}
-							editUrl={`/my-openings/${lesson.id}/edit`}
+							viewUrl={`/my-repertoire/${lesson.id}`}
+							editUrl={`/my-repertoire/${lesson.id}/edit`}
 							key={lesson.id}
 						/>
 					))}
