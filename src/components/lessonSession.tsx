@@ -570,8 +570,12 @@ const LessonSession = ({ lesson }: Props) => {
     return relevantLines;
   }, [currentMove, s.lines, s.currentChapterIdx]);
 
-  const performWrongAnswerActions = useCallback(() => {
-    dispatch({ type: 'triggerWrongAnswerBlink' });
+  const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
+    // By default, indicate that the move was wrong.
+    if (options === undefined || options.indicateThatTheMoveWasWrong) {
+      dispatch({ type: 'triggerWrongAnswerBlink' });
+    }
+
     if (currentMove) undoLastMove();
   }, [currentMove, undoLastMove]);
 
@@ -891,7 +895,19 @@ const LessonSession = ({ lesson }: Props) => {
       return;
     }
 
-    // If there are relevant lines, then a correct move as been played.
+    // If there are relevant lines, then a correct move has been played.
+    // If a lesson has alternative moves for the user, the user could play a
+    // move that is only in lines that have already been completed.
+    // In that case, tell the user to play an alternative move instead.
+    if (
+      isOpponentsTurn() &&
+      relevantLines.every((rLine => s.lines[s.currentChapterIdx][rLine].isComplete))
+    ) {
+      alert("That move is correct but an alternative move exists. Play an alternative move instead.");
+      performWrongAnswerActions({ indicateThatTheMoveWasWrong: false });
+      return;
+    }
+
     // If currentMove.ply > s.lineProgressIdx, then we need to update the
     // lineProgressIdx and play the next move if the next move is an opponent move.
     if (relevantLines.length > 0 && currentMove.ply > s.lineProgressIdx) {
