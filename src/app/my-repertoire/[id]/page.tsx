@@ -13,7 +13,7 @@ export default async function Page({ params }: PageProps) {
 	const session = await auth();
 
 	if (!session?.user) {
-		redirect("/login?callbackUrl=/my-openings");
+		redirect("/login?callbackUrl=/my-repertoire");
 	}
 
 	const { id } = await params;

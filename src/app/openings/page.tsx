@@ -90,10 +90,10 @@ export default function Page() {
 					<div className="mt-4 p-3 bg-color-btn-primary/20 border border-color-btn-primary rounded text-sm max-w-md text-center">
 						These are system openings. To create your own openings, visit{" "}
 						<Link
-							href="/my-openings"
+							href="/my-repertoire"
 							className="text-color-btn-primary hover:text-color-btn-primary-hover font-medium underline"
 						>
-							My Openings
+							My Repertoire
 						</Link>
 					</div>
 				)}
@@ -159,6 +159,8 @@ export default function Page() {
             <LessonDisplay
               lesson={lesson}
               boardSize={325}
+              showAddToRepertoireBtn={true}
+              handleAddToRepertoireBtnClick={() => console.log('Adding!')}
               handleDelete={handleDelete}
               isDeletingLesson={deletingLesson === lesson.title}
               isModifiable={isAdmin}

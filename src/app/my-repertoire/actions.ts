@@ -1,13 +1,13 @@
 "use server";
 
 import { db } from "@/db";
-import { userLessons } from "@/db/schema";
+import { userRepertoire } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import { auth } from "@/lib/auth";
 
-export async function getUserLessons(): Promise<Lesson[]> {
+export async function getUserRepertoire(): Promise<Lesson[]> {
 	try {
 		const session = await auth();
 
@@ -15,9 +15,9 @@ export async function getUserLessons(): Promise<Lesson[]> {
 			return [];
 		}
 
-		const lessons = await db.query.userLessons.findMany({
-			where: eq(userLessons.userId, Number(session.user.id)),
-			orderBy: (userLessons, { desc }) => [desc(userLessons.updatedAt)],
+		const lessons = await db.query.userRepertoire.findMany({
+			where: eq(userRepertoire.userId, Number(session.user.id)),
+			orderBy: (userRepertoire, { desc }) => [desc(userRepertoire.updatedAt)],
 		});
 
 		return lessons.map((lesson) => ({
@@ -43,10 +43,10 @@ export async function getUserLessonById(
 			return { success: false, error: "You must be logged in" };
 		}
 
-		const lesson = await db.query.userLessons.findFirst({
+		const lesson = await db.query.userRepertoire.findFirst({
 			where: and(
-				eq(userLessons.id, id),
-				eq(userLessons.userId, Number(session.user.id)),
+				eq(userRepertoire.id, id),
+				eq(userRepertoire.userId, Number(session.user.id)),
 			),
 		});
 
@@ -80,7 +80,7 @@ export async function createUserLesson(
 			return { success: false, error: "You must be logged in" };
 		}
 
-		const result = await db.insert(userLessons).values({
+		const result = await db.insert(userRepertoire).values({
 			userId: Number(session.user.id),
 			title: lesson.title,
 			userColor: lesson.userColor,
@@ -107,10 +107,10 @@ export async function updateUserLesson(
 		}
 
 		// Verify ownership
-		const existingLesson = await db.query.userLessons.findFirst({
+		const existingLesson = await db.query.userRepertoire.findFirst({
 			where: and(
-				eq(userLessons.id, id),
-				eq(userLessons.userId, Number(session.user.id)),
+				eq(userRepertoire.id, id),
+				eq(userRepertoire.userId, Number(session.user.id)),
 			),
 		});
 
@@ -119,7 +119,7 @@ export async function updateUserLesson(
 		}
 
 		await db
-			.update(userLessons)
+			.update(userRepertoire)
 			.set({
 				title: lesson.title,
 				userColor: lesson.userColor,
@@ -127,7 +127,7 @@ export async function updateUserLesson(
 				displayLine: lesson.displayLine,
 				updatedAt: new Date(),
 			})
-			.where(eq(userLessons.id, id));
+			.where(eq(userRepertoire.id, id));
 
 		return { success: true };
 	} catch (error) {
@@ -147,10 +147,10 @@ export async function deleteUserLesson(
 		}
 
 		// Verify ownership
-		const existingLesson = await db.query.userLessons.findFirst({
+		const existingLesson = await db.query.userRepertoire.findFirst({
 			where: and(
-				eq(userLessons.id, id),
-				eq(userLessons.userId, Number(session.user.id)),
+				eq(userRepertoire.id, id),
+				eq(userRepertoire.userId, Number(session.user.id)),
 			),
 		});
 
@@ -158,7 +158,7 @@ export async function deleteUserLesson(
 			return { success: false, error: "Lesson not found or access denied" };
 		}
 
-		await db.delete(userLessons).where(eq(userLessons.id, id));
+		await db.delete(userRepertoire).where(eq(userRepertoire.id, id));
 
 		return { success: true };
 	} catch (error) {

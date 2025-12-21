@@ -5,7 +5,7 @@ import { makePgnFromHistory } from '../utils/chess';
 import { Move } from 'cm-chess/src/Chess';
 import { Lesson, Mode } from '../types/lesson'
 import { updateLesson } from '@/app/openings/actions';
-import { updateUserLesson } from '@/app/my-openings/actions';
+import { updateUserLesson } from '@/app/my-repertoire/actions';
 import { getLinesFromPGN } from '@/utils/pgn';
 
 interface Props {

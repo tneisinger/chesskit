@@ -4,7 +4,7 @@ import Modal from '@/components/modal';
 import Button from "@/components/button";
 import { Lesson } from '@/types/lesson';
 import { updateLesson } from '@/app/openings/actions';
-import { updateUserLesson } from '@/app/my-openings/actions';
+import { updateUserLesson } from '@/app/my-repertoire/actions';
 
 interface Props {
   show: boolean;

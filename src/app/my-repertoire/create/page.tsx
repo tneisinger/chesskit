@@ -13,14 +13,14 @@ export default function CreateUserLessonPage() {
 
 	useEffect(() => {
 		if (status === "unauthenticated") {
-			router.push("/login?callbackUrl=/my-openings/create");
+			router.push("/login?callbackUrl=/my-repertoire/create");
 		}
 	}, [status, router]);
 
 	const handleSubmit = async (lesson: Lesson) => {
 		const result = await createUserLesson(lesson);
 		if (result.success) {
-			router.push("/my-openings");
+			router.push("/my-repertoire");
 		}
 		return result;
 	};
