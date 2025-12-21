@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getAllLessons, deleteLesson } from "./actions";
+import { getUserRepertoire, createUserLesson } from "@/app/my-repertoire/actions";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import LessonDisplay from "@/components/lessonDisplay";
@@ -16,6 +17,7 @@ export default function Page() {
 	const [lessons, setLessons] = useState<Lesson[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [deletingLesson, setDeletingLesson] = useState<string | null>(null);
+	const [addingToRepertoireLesson, setAddingToRepertoireLesson] = useState<string | null>(null);
 	const [colorFilter, setColorFilter] = useState<ColorFilter>("all");
 
   const handleFilterChange = useCallback((newFilter: ColorFilter) => {
@@ -69,6 +71,50 @@ export default function Page() {
 			alert("An unexpected error occurred while deleting the lesson");
 		} finally {
 			setDeletingLesson(null);
+		}
+	};
+
+	const handleAddToRepertoireBtnClick = async (lesson: Lesson) => {
+		// Check if user is signed in
+		if (!session?.user) {
+			alert("You must sign in before you can add a lesson to your repertoire.");
+			return;
+		}
+
+		setAddingToRepertoireLesson(lesson.title);
+
+		try {
+			// Check if a lesson with this title already exists in user's repertoire
+			const userRepertoire = await getUserRepertoire();
+			const existingLesson = userRepertoire.find(
+				(userLesson) => userLesson.title === lesson.title
+			);
+
+			if (existingLesson) {
+				alert(`There is already a lesson in your repertoire with the title "${lesson.title}".`);
+				return;
+			}
+
+			// Create a copy of the lesson (without the id)
+			const lessonCopy: Omit<Lesson, "id"> = {
+				title: lesson.title,
+				userColor: lesson.userColor,
+				chapters: lesson.chapters,
+				displayLine: lesson.displayLine,
+			};
+
+			const result = await createUserLesson(lessonCopy);
+
+			if (result.success) {
+				alert(`"${lesson.title}" has been added to your repertoire!`);
+			} else {
+				alert(`Failed to add lesson to repertoire: ${result.error}`);
+			}
+		} catch (error) {
+			console.error("Error adding lesson to repertoire:", error);
+			alert("An unexpected error occurred while adding the lesson to your repertoire");
+		} finally {
+			setAddingToRepertoireLesson(null);
 		}
 	};
 
@@ -160,7 +206,7 @@ export default function Page() {
               lesson={lesson}
               boardSize={325}
               showAddToRepertoireBtn={true}
-              handleAddToRepertoireBtnClick={() => console.log('Adding!')}
+              handleAddToRepertoireBtnClick={handleAddToRepertoireBtnClick}
               handleDelete={handleDelete}
               isDeletingLesson={deletingLesson === lesson.title}
               isModifiable={isAdmin}
