@@ -436,8 +436,6 @@ const LessonSession = ({ lesson }: Props) => {
     deleteMove,
   } = useChessboardEngine();
 
-  // const zState = useStore((state) => state);
-
   const [s, dispatch] = useReducer(reducer, initialState);
 
   const searchParams = useSearchParams();
