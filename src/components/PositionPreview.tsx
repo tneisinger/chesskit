@@ -44,6 +44,7 @@ export default function PositionPreview({
 	const boardRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<number>(0);
   const moveIndexRef = useRef<number | null>(null);
+  const isMountedRef = useRef<boolean>(true);
 
 	const [board, setBoard] = useState<Chessboard | null>(null);
 	const [fen, setFen] = useState<string>('');
@@ -66,6 +67,14 @@ export default function PositionPreview({
 		}
 	}, [line]);
 
+	// Track mounted state
+	useEffect(() => {
+		isMountedRef.current = true;
+		return () => {
+			isMountedRef.current = false;
+		};
+	}, []);
+
 	// Initialize the board
 	useEffect(() => {
 		if (!boardRef.current || board) return;
@@ -82,25 +91,50 @@ export default function PositionPreview({
 			},
 		});
 
-		setBoard(newBoard);
+    setBoard(newBoard);
 
-		return () => {
-			newBoard.destroy();
-		};
+    return () => {
+      // Clear the board state first to prevent other effects from accessing it
+      setBoard(null);
+      isMountedRef.current = false;
+
+      // Small delay to ensure all pending operations complete
+      setTimeout(() => {
+        try {
+          newBoard.destroy();
+        } catch (error) {
+          // Silently catch any errors during cleanup in development
+          // This is expected in StrictMode which unmounts/remounts components
+        }
+      }, 0);
+    }
 	}, []);
 
   // Cycle through line moves if enabled
   useEffect(() => {
-    if (!board) return;
+    if (!board || !isMountedRef.current) return;
+
     if (!cycleLineMoves) {
       window.clearInterval(intervalRef.current);
       moveIndexRef.current = null;
-      const chess = new ChessJS();
-      line.forEach((move) => chess.move(move));
-      board.setPosition(chess.fen(), false);
+      if (isMountedRef.current) {
+        try {
+          const chess = new ChessJS();
+          line.forEach((move) => chess.move(move));
+          board.setPosition(chess.fen(), false);
+        } catch (error) {
+          // Silently ignore errors during cleanup
+        }
+      }
       return;
     }
+
     intervalRef.current = window.setInterval(() => {
+      if (!isMountedRef.current) {
+        window.clearInterval(intervalRef.current);
+        return;
+      }
+
       if (moveIndexRef.current === null) {
         moveIndexRef.current = 0;
       } else if (moveIndexRef.current > line.length) {
@@ -109,35 +143,55 @@ export default function PositionPreview({
         moveIndexRef.current = moveIndexRef.current + 1;
       }
 
-    if (moveIndexRef.current === null) {
-      const chess = new ChessJS();
-      line.forEach((move) => chess.move(move));
-      board.setPosition(chess.fen(), false);
-      return;
-    }
+      if (moveIndexRef.current === null) {
+        if (isMountedRef.current) {
+          try {
+            const chess = new ChessJS();
+            line.forEach((move) => chess.move(move));
+            board.setPosition(chess.fen(), false);
+          } catch (error) {
+            // Silently ignore errors
+          }
+        }
+        return;
+      }
 
-    if (moveIndexRef.current > line.length) return;
+      if (moveIndexRef.current > line.length) return;
 
-    const chess = new ChessJS();
-    for (let i = 0; i < moveIndexRef.current; i++) {
-      chess.move(line[i]);
-    }
-    board.setPosition(chess.fen(), true);
+      if (isMountedRef.current) {
+        try {
+          const chess = new ChessJS();
+          for (let i = 0; i < moveIndexRef.current; i++) {
+            chess.move(line[i]);
+          }
+          board.setPosition(chess.fen(), true);
+        } catch (error) {
+          // Silently ignore errors
+        }
+      }
     }, 1000);
-  }, [cycleLineMoves]);
 
-
-  // Clear interval on unmount
-  useEffect(() => {
-    return () => window.clearInterval(intervalRef.current);
-  }, [])
+    return () => {
+      window.clearInterval(intervalRef.current);
+    };
+  }, [board, cycleLineMoves, line]);
 
 	// Update board position when FEN changes
 	useEffect(() => {
-		if (!board || !fen) return;
+		if (!board || !fen || !isMountedRef.current) return;
 
-		board.setPosition(fen, false);
+		try {
+			board.setPosition(fen, false);
+		} catch (error) {
+			// Silently ignore errors if component is unmounting
+		}
 	}, [board, fen]);
+
+  if (size <= 0) throw new Error('Size must be a positive number');
+
+  if (size == undefined) return (
+    <>Loading...</>
+  );
 
 	return (
 		<div
