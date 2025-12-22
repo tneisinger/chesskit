@@ -464,8 +464,8 @@ const LessonSession = ({
     } else {
       // These values are based on the current layout and will need to updated if the
       // layout changes.
-      const maxBoardWidth = windowSize.width - 600;
-      const maxBoardHeight = windowSize.height - 150;
+      const maxBoardWidth = windowSize.width - 625;
+      const maxBoardHeight = windowSize.height - 175;
       boardSize = Math.min(maxBoardWidth, maxBoardHeight);
     }
   }
@@ -1130,7 +1130,7 @@ const LessonSession = ({
     />
   );
 
-  const containerClasses = ['flex flex-col items-center w-full'];
+  const containerClasses = ['flex flex-col items-center justify-center w-full h-full'];
 
   if (shouldUseMobileLayout(windowSize)) {
     // Account for navigation bar height (40px / 2.5rem / h-10)
