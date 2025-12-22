@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { notFound } from "next/navigation";
@@ -85,11 +85,13 @@ export default function EditUserLessonPage({ params }: PageProps) {
 		<div className="flex flex-col items-center min-h-screen p-4 sm:p-8">
 			<div className="w-full max-w-3xl">
 				<h1 className="text-2xl font-bold mb-6">Edit Opening</h1>
-				<LessonForm
-					initialLesson={lesson}
-					onSubmit={handleSubmit}
-					submitButtonText="Save Changes"
-				/>
+				<Suspense fallback={<div>Loading...</div>}>
+					<LessonForm
+						initialLesson={lesson}
+						onSubmit={handleSubmit}
+						submitButtonText="Save Changes"
+					/>
+				</Suspense>
 			</div>
 		</div>
 	);

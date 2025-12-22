@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import LessonForm from "@/components/lessonForm";
 import { createUserLesson } from "../actions";
 import type { Lesson } from "@/types/lesson";
@@ -37,10 +37,12 @@ export default function CreateUserLessonPage() {
 		<div className="flex flex-col items-center min-h-screen p-4 sm:p-8">
 			<div className="w-full max-w-3xl">
 				<h1 className="text-2xl font-bold mb-6">Create New Opening</h1>
-				<LessonForm
-					onSubmit={handleSubmit}
-					submitButtonText="Create Opening"
-				/>
+				<Suspense fallback={<div>Loading...</div>}>
+					<LessonForm
+						onSubmit={handleSubmit}
+						submitButtonText="Create Opening"
+					/>
+				</Suspense>
 			</div>
 		</div>
 	);
