@@ -29,5 +29,5 @@ export default async function Page({ params }: PageProps) {
 		notFound();
 	}
 
-	return <LessonSession lesson={result.lesson} />;
+	return <LessonSession lesson={result.lesson} allowEdits />;
 }
