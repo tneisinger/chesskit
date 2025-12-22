@@ -134,7 +134,7 @@ export default function Page() {
 				{/* Info banner for regular users */}
 				{session && !isAdmin && (
 					<div className="mt-4 p-3 bg-color-btn-primary/20 border border-color-btn-primary rounded text-sm max-w-md text-center">
-						These are system openings. To create your own openings, visit{" "}
+						To create your own openings, visit{" "}
 						<Link
 							href="/my-repertoire"
 							className="text-color-btn-primary hover:text-color-btn-primary-hover font-medium underline"
