@@ -12,6 +12,10 @@ export default function Home() {
   const windowSize = useWindowSize();
   const isMobile = shouldUseMobileLayout(windowSize);
 
+  if (windowSize.width === undefined) {
+    return (<></>);
+  }
+
   return (
     <div className="flex flex-col items-center min-h-[calc(100vh-2.5rem)] p-4 sm:p-8">
       <main className="flex flex-col items-center max-w-4xl w-full gap-6">
