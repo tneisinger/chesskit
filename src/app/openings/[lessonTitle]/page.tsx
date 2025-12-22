@@ -2,6 +2,7 @@ import React from "react";
 import { notFound } from "next/navigation";
 import LessonSession from "@/components/lessonSession";
 import { getLessonByTitle } from "../actions";
+import { auth } from "@/lib/auth";
 
 interface PageProps {
 	params: Promise<{
@@ -23,5 +24,9 @@ export default async function Page({ params }: PageProps) {
 		notFound();
 	}
 
-	return <LessonSession lesson={lesson} />;
+	// Check if user is an admin
+	const session = await auth();
+	const isAdmin = session?.user?.role === "admin";
+
+	return <LessonSession lesson={lesson} allowEdits={isAdmin} />;
 }
