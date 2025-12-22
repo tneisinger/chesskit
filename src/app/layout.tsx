@@ -31,9 +31,12 @@ export default function RootLayout({
       >
         <SessionProvider>
           <Navigation />
-          <div className="flex justify-center max-w-[1440px] mx-auto">
+
+          {/* min-h-[calc(100%-40px)] accounts for nav height */}
+          <div className="flex flex-grow flex-col items-center max-w-[1440px] mx-auto min-h-[calc(100%-40px)]">
             {children}
           </div>
+
         </SessionProvider>
       </body>
     </html>
