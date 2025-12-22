@@ -17,7 +17,7 @@ import useStockfish from '@/hooks/useStockfish';
 import usePrevious from '@/hooks/usePrevious';
 // import useStore from '../zustand/store';
 
-const MAX_THREADS_USAGE = 0.75;
+const MAX_THREADS_USAGE = 0.5;
 
 interface Toolkit {
   evaluate: (fen: string, prevFen?: string) => void;
