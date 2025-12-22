@@ -420,9 +420,13 @@ function declareLineComplete(s: State, completedLine: string): State {
 
 interface Props {
   lesson: Lesson;
+  allowEdits?: boolean;
 }
 
-const LessonSession = ({ lesson }: Props) => {
+const LessonSession = ({
+  lesson,
+  allowEdits = false,
+}: Props) => {
 
   const {
     cmchess,
@@ -579,6 +583,7 @@ const LessonSession = ({ lesson }: Props) => {
 
   const restartCurrentLine = useCallback((nextMode: Mode) => {
     // Change the mode right away, so that any useEffects will see the new mode.
+    if (!allowEdits && nextMode === Mode.Edit) throw new Error('Edits are not allowed');
     dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: nextMode })
 
     // To avoid code repitition, define this function here. This function will setup a
@@ -611,10 +616,11 @@ const LessonSession = ({ lesson }: Props) => {
       });
       setCurrentMove(undefined);
     }
-  }, [currentMove, reset, history, s.lineProgressIdx]);
+  }, [currentMove, reset, history, s.lineProgressIdx, allowEdits]);
 
   const setupNextLine = useCallback((nextMode: Mode) => {
     // Change the mode right away, so that any useEffects will see the new mode.
+    if (!allowEdits && nextMode === Mode.Edit) throw new Error('Edits are not allowed');
     dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: nextMode })
 
     // To avoid code repitition, define this function here. This function will setup a
@@ -642,7 +648,7 @@ const LessonSession = ({ lesson }: Props) => {
       });
       setCurrentMove(undefined);
     }
-  }, [reset]);
+  }, [reset, allowEdits]);
 
   const openAddNewChapterModal = useCallback(() => {
     dispatch({ type: 'showNewChapterModal', show: true });
@@ -688,14 +694,16 @@ const LessonSession = ({ lesson }: Props) => {
   }, [currentMove, lesson.userColor]);
 
   const handleEditModeBtnClick = useCallback(() => {
+    if (!allowEdits) return;
     if (s.mode === Mode.Edit) return;
     dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: Mode.Edit })
-  }, [s.mode]);
+  }, [s.mode, allowEdits]);
 
   const deleteCurrentMove = useCallback(() => {
+    if (!allowEdits) return;
     if (currentMove == undefined) return;
     deleteMove(currentMove, true);
-  }, [currentMove, deleteMove]);
+  }, [currentMove, deleteMove, allowEdits]);
 
   const handleDiscardChangesBtnClick = useCallback(() => {
     const currentMoveLine = getLanLineFromCmMove(currentMove);
@@ -1094,7 +1102,10 @@ const LessonSession = ({ lesson }: Props) => {
       fallbackMode={s.fallbackMode}
       setupNextLine={setupNextLine}
       restartCurrentLine={restartCurrentLine}
-      changeMode={(mode: Mode) => dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode })}
+      changeMode={(mode: Mode) => { 
+        if (!allowEdits && mode === Mode.Edit) return;
+        dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode })
+      }}
       currentChapterIdx={s.currentChapterIdx}
       changeChapter={changeChapter}
     />
@@ -1219,23 +1230,25 @@ const LessonSession = ({ lesson }: Props) => {
               <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
                 {movesDisplay}
               </div>
-              <div className="border border-black border-t-0 w-full bg-background-page">
-                <EditLessonControls
-                  currentMove={currentMove}
-                  lesson={lesson}
-                  currentChapterIdx={s.currentChapterIdx}
-                  history={history}
-                  mode={s.mode}
-                  fallbackMode={s.fallbackMode}
-                  onEditModeBtnClick={handleEditModeBtnClick}
-                  deleteCurrentMove={deleteCurrentMove}
-                  onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
-                  setupNextLine={setupNextLine}
-                  openAddNewChapterModal={openAddNewChapterModal}
-                  doUnsavedChangesExist={doUnsavedChangesExist}
-                  savedLines={savedLines}
-                />
-              </div>
+              {allowEdits && (
+                <div className="border border-black border-t-0 w-full bg-background-page">
+                  <EditLessonControls
+                    currentMove={currentMove}
+                    lesson={lesson}
+                    currentChapterIdx={s.currentChapterIdx}
+                    history={history}
+                    mode={s.mode}
+                    fallbackMode={s.fallbackMode}
+                    onEditModeBtnClick={handleEditModeBtnClick}
+                    deleteCurrentMove={deleteCurrentMove}
+                    onDiscardChangesBtnClick={handleDiscardChangesBtnClick}
+                    setupNextLine={setupNextLine}
+                    openAddNewChapterModal={openAddNewChapterModal}
+                    doUnsavedChangesExist={doUnsavedChangesExist}
+                    savedLines={savedLines}
+                  />
+                </div>
+              )}
               {arrowButtons}
             </div>
           </div>
