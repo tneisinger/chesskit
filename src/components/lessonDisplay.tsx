@@ -136,8 +136,7 @@ export default function LessonDisplay({
   // On desktop: use hover state, on mobile: use visibility state
   const shouldCycleLineMoves = isMobile ? isVisible : isHovered;
 
-  const classes = ['flex flex-col items-center gap-4 p-4 pt-3 rounded bg-background-page border border-foreground/10 max-w-96'];
-  if (isModifiable) (classes.push('pb-1'));
+  const classes = ['flex flex-col items-center gap-4 p-4 pt-3 pb-1 rounded bg-background-page border border-foreground/10 max-w-96'];
 
   return (
     <li
@@ -174,36 +173,36 @@ export default function LessonDisplay({
           />
         </Link>
         {/* Action Buttons - only render if isModifiable is true */}
-        {isModifiable && (
-          <div className={`flex flex-row ${isModifiable ? 'justify-between' : 'justify-around'} mt-1`}>
-              {showAddToRepertoireBtn && (
-                <Button
-                  onClick={() => {
-                    if (handleAddToRepertoireBtnClick) handleAddToRepertoireBtnClick(lesson)
-                  }}
-                  buttonSize={ButtonSize.Small}
-                >
-                  Add to My Repertoire
-                </Button>
-              )}
-              <div className="flex flex-grow justify-end gap-3">
-                <Button
-                  href={lessonEditUrl}
-                  buttonSize={ButtonSize.Small}
-                >
-                  Edit
-                </Button>
-                <Button
-                  onClick={() => handleDelete(lesson.title)}
-                  disabled={isDeletingLesson}
-                  buttonSize={ButtonSize.Small}
-                  buttonStyle={ButtonStyle.Danger}
-                >
-                  {isDeletingLesson ? "Deleting..." : "Delete"}
-                </Button>
-              </div>
+        <div className={`flex flex-row ${isModifiable ? 'justify-between' : 'justify-around'} mt-1`}>
+          {showAddToRepertoireBtn && (
+            <Button
+              onClick={() => {
+                if (handleAddToRepertoireBtnClick) handleAddToRepertoireBtnClick(lesson)
+              }}
+              buttonSize={ButtonSize.Small}
+            >
+              Add to My Repertoire
+            </Button>
+          )}
+          {isModifiable && (
+            <div className="flex flex-grow justify-end gap-3">
+              <Button
+                href={lessonEditUrl}
+                buttonSize={ButtonSize.Small}
+              >
+                Edit
+              </Button>
+              <Button
+                onClick={() => handleDelete(lesson.title)}
+                disabled={isDeletingLesson}
+                buttonSize={ButtonSize.Small}
+                buttonStyle={ButtonStyle.Danger}
+              >
+                {isDeletingLesson ? "Deleting..." : "Delete"}
+              </Button>
             </div>
           )}
+        </div>
       </div>
     </li>
   )
