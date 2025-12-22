@@ -113,13 +113,8 @@ export default function Navigation() {
 						<div className="flex items-center gap-2">
 							{isLoggedIn ? (
 								<>
-									<span className="text-sm text-foreground/70 mr-2">
+									<span className="text-foreground/70 mr-2">
 										{session.user?.username}
-										{session.user?.role === 'admin' && (
-											<span className="ml-2 px-2 py-0.5 bg-color-btn-primary rounded text-xs">
-												Admin
-											</span>
-										)}
 									</span>
 									<button
 										onClick={handleSignOut}
