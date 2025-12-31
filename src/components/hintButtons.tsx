@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Move } from 'cm-chess/src/Chess';
 import { getFen } from '../utils/chess';
+import Button, { ButtonSize } from '@/components/button';
 
 export interface Props {
   currentMove: Move | undefined;
@@ -15,8 +16,33 @@ const HintButtons = ({
   showMove,
   disabled = false,
 }: Props) => {
+  const timeoutRef = useRef<number>(0);
+
   const [hintedPosition, setHintedPosition] = useState<string | null>(null);
   const [isShowingMove, setIsShowingMove] = useState(false);
+  const [disableButtons, setDisableButtons] = useState(disabled);
+
+  const showDebugButtons = false;
+
+  const debug = () => {
+    console.log('debug');
+  };
+
+  // Add a small delay before disabling buttons to prevent flickering
+  useEffect(() => {
+    window.clearTimeout(timeoutRef.current);
+    timeoutRef.current = window.setTimeout(() => {
+      setDisableButtons(disabled);
+      timeoutRef.current = 0;
+    }, 200);
+    return () => window.clearTimeout(timeoutRef.current);
+  }, [disabled]);
+
+  const shouldDisableShowBtn = useCallback((): boolean => {
+    if (disabled === true) return true;
+    if (isShowingMove) return true;
+    return disabled != undefined ? disabled : isShowingMove;
+  }, [disabled, isShowingMove]);
 
   useEffect(() => {
     setHintedPosition(null);
@@ -33,28 +59,32 @@ const HintButtons = ({
     showMove();
   }
 
-  const renderButton = () => {
-    if (hintedPosition === getFen(currentMove)) {
-      return (
-        <button
+  return (
+    <>
+      {(hintedPosition === getFen(currentMove)) ? (
+        <Button
+          buttonSize={ButtonSize.Small}
           onClick={handleShowMoveBtnClick}
-          disabled={disabled != undefined ? disabled : isShowingMove}
-        >Show Move</button>
-      );
-    } else {
-      return (
-        <button
-          className='cursor-pointer'
+          disabled={shouldDisableShowBtn()}
+        >
+          Show Me
+        </Button>
+      ) : (
+        <Button
+          buttonSize={ButtonSize.Small}
           onClick={handleHintBtnClick}
-          disabled={disabled}
+          disabled={disableButtons}
         >
           Hint
-        </button>
-      );
-    }
-  }
-
-  return renderButton();
+        </Button>
+      )}
+      {showDebugButtons && (
+        <>
+          <button onClick={debug}>debug!</button>
+        </>
+      )}
+    </>
+  );
 }
 
 export default HintButtons;

@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 import { Move } from 'cm-chess/src/Chess';
-import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import HintButtons, { Props as HintButtonsProps } from '@/components/hintButtons';
 import { LineStats, Mode, Lesson } from '@/types/lesson';
 import { useChapterCompletionRatios } from '@/hooks/useChapterCompletionRatios';
+import Button, { ButtonSize } from '@/components/button';
 
 interface Props extends HintButtonsProps {
   lesson: Lesson;
@@ -55,7 +55,6 @@ const LessonSessionInfo = ({
   }, [lines, currentChapterIdx]);
 
   const getIdxOfNextIncompleteChapter = useCallback((): number | null => {
-    const otherChapters = [];
     for (let i = 1; i < lesson.chapters.length; i++) {
       const idx = (currentChapterIdx + i) % lesson.chapters.length;
       if (lines[idx] === undefined) continue;
@@ -80,9 +79,6 @@ const LessonSessionInfo = ({
   }, [mode, fallbackMode]);
 
   const classes = ['flex flex-row items-center justify-between min-h-[34px]'];
-  // if (shouldUseMobileLayout(windowSize)) {
-    // Add mobile layout styles if needed
-  // }
 
   const isOnUnsolvedPosition = (): boolean => {
     if (currentMove == undefined) {
@@ -111,27 +107,27 @@ const LessonSessionInfo = ({
 
   return (
     <div className={classes.join(' ')}>
-      <div className="[&>*+*]:ml-6">
+      <div className="[&>*+*]:ml-4">
         {mode !== Mode.Edit && (
           <>
             {lesson.chapters.length === 1 && (
-              <span>{ratio.completedCount}/{ratio.totalCount}</span>
+              <span className='text-sm'>{ratio.completedCount}/{ratio.totalCount}</span>
             )}
-            <button
-              className='cursor-pointer'
+            <Button
+              buttonSize={ButtonSize.Small}
               onClick={() => restartCurrentLine(fallbackMode)}
             >
               Restart
-            </button>
+            </Button>
 
             {/* This button restarts the current line in the alternate mode (either Learn or Practice) */}
             {!isLineComplete && (
-              <button
-                className='cursor-pointer'
+              <Button
+                buttonSize={ButtonSize.Small}
                 onClick={() => changeMode(getNextToggleMode())}
               >
                 {getNextToggleMode()}
-              </button>
+              </Button>
             )}
 
             {shouldShowHintBtns() && (
@@ -143,22 +139,22 @@ const LessonSessionInfo = ({
               />
             )}
             {isLineComplete && !areAllLinesComplete() && (
-              <button
-                className='cursor-pointer'
+              <Button
+                buttonSize={ButtonSize.Small}
                 onClick={() => setupNextLine(fallbackMode)}
               >
                 Next Line
-              </button>
+              </Button>
             )}
           </>
         )}
         {isNextLineInAnotherChapter() && mode !== Mode.Edit && (
-          <button
-            className='cursor-pointer'
+          <Button
+            buttonSize={ButtonSize.Small}
             onClick={() => handleChangeChapter(getIdxOfNextIncompleteChapter())}
           >
             Next Chapter
-          </button>
+          </Button>
         )}
         {areAllLinesComplete() && (
           <span>Done!</span>
