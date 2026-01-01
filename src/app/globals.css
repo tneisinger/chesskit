@@ -11,8 +11,8 @@
   --color-background-page: var(--background-page);
   --color-foreground: var(--foreground);
 
-  --color-btn-primary: rgba(49, 129, 83, 0.5);
-  --color-btn-primary-hover: rgba(49, 129, 83, 0.8);
+  --color-btn-primary: rgba(125, 121, 117, 0.4);
+  --color-btn-primary-hover: rgba(125, 121, 117, 0.7);
   --color-btn-danger: rgba(173, 31, 31, 0.5);
   --color-btn-danger-hover: rgba(173, 31, 31, 0.8);
   --color-btn-secondary: #5b5953;
