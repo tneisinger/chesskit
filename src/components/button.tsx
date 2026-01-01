@@ -36,6 +36,7 @@ const Button = ({
     'bg-btn-primary',
     'hover:bg-btn-primary-hover',
     'no-underline',
+    'whitespace-nowrap',
   ];
 
   switch (buttonStyle) {
