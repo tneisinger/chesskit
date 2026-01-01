@@ -33,8 +33,8 @@ const Button = ({
     'py-1',
     'my-2',
     'rounded',
-    'bg-foreground/10',
-    'hover:bg-foreground/20',
+    'bg-btn-primary',
+    'hover:bg-btn-primary-hover',
     'no-underline',
   ];
 
