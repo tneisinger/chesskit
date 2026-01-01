@@ -50,6 +50,7 @@ import useEvaler from '@/hooks/useChessEvaler';
 import LessonChapters from '@/components/lessonChapters';
 import EditLessonControls from '@/components/editLessonControls';
 import NewChapterModal from '@/components/newChapterModal';
+import LineCompleteModal from './lineCompleteModal';
 import type { Viewport } from 'next'
 import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
 import { useSearchParams } from 'next/navigation';
@@ -111,6 +112,7 @@ interface State {
   linesChapterIdx: number | undefined,
 
   showNewChapterModal: boolean,
+  showLineCompleteModal: boolean,
 }
 
 const initialState: State = {
@@ -145,6 +147,7 @@ const initialState: State = {
   currentChapterIdx: 0,
   linesChapterIdx: undefined,
   showNewChapterModal: false,
+  showLineCompleteModal: false,
 }
 
 interface ClearMoveSound {
@@ -236,6 +239,11 @@ interface ShowNewChapterModal {
   show: boolean,
 }
 
+interface showLineCompleteModal {
+  type: 'showLineCompleteModal',
+  show: boolean,
+}
+
 type Action =
   | ClearMoveSound
   | SetIsChessboardMoving
@@ -255,6 +263,7 @@ type Action =
   | ChangeMode
   | ChangeChapterIdx
   | ShowNewChapterModal
+  | showLineCompleteModal
 
 function reducer(s: State, a: Action): State {
   let newState: State;
@@ -324,6 +333,9 @@ function reducer(s: State, a: Action): State {
       break;
     case 'showNewChapterModal':
       newState = { ...s, showNewChapterModal: a.show };
+      break;
+    case 'showLineCompleteModal':
+      newState = { ...s, showLineCompleteModal: a.show };
       break;
     default:
       assertUnreachable(a);
@@ -516,6 +528,29 @@ const LessonSession = ({
     }
   }, [s.mode])
 
+  const areAllLinesComplete = useCallback((): boolean => {
+    return s.lines.every((chapterLines) => Object.values(chapterLines).every((lineStats) => lineStats.isComplete));
+  }, [s.lines]);
+
+  const isNextLineInAnotherChapter = useCallback((): boolean => {
+    if (s.lines[s.currentChapterIdx] === undefined) return false;
+    if (!Object.values(s.lines[s.currentChapterIdx]).every((stats) => stats.isComplete)) return false;
+    if (areAllLinesComplete()) return false;
+    getIdxOfNextIncompleteChapter();
+    return true;
+  }, [s.lines, s.currentChapterIdx]);
+
+  const getIdxOfNextIncompleteChapter = useCallback((): number | null => {
+    for (let i = 1; i < lesson.chapters.length; i++) {
+      const idx = (s.currentChapterIdx + i) % lesson.chapters.length;
+      if (s.lines[idx] === undefined) continue;
+      if (!Object.values(s.lines[idx]).every((stats) => stats.isComplete)) {
+        return idx;
+      }
+    }
+    return null;
+  }, [s.lines, s.currentChapterIdx]);
+
   // This function is needed because the move history does not update instantly when switching to
   // edit mode. Using this function in 'doUnsavedChangesExist' prevents that function from
   // returning true for a brief moment while the history is being updated.
@@ -581,7 +616,8 @@ const LessonSession = ({
     if (currentMove) undoLastMove();
   }, [currentMove, undoLastMove]);
 
-  const restartCurrentLine = useCallback((nextMode: Mode) => {
+  const restartCurrentLine = useCallback((nextMode?: Mode) => {
+    if (nextMode == undefined) nextMode = s.fallbackMode;
     // Change the mode right away, so that any useEffects will see the new mode.
     if (!allowEdits && nextMode === Mode.Edit) throw new Error('Edits are not allowed');
     dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: nextMode })
@@ -616,9 +652,10 @@ const LessonSession = ({
       });
       setCurrentMove(undefined);
     }
-  }, [currentMove, reset, history, s.lineProgressIdx, allowEdits]);
+  }, [currentMove, reset, history, s.lineProgressIdx, allowEdits, s.fallbackMode]);
 
-  const setupNextLine = useCallback((nextMode: Mode) => {
+  const setupNextLine = useCallback((nextMode?: Mode) => {
+    if (nextMode == undefined) nextMode = s.fallbackMode;
     // Change the mode right away, so that any useEffects will see the new mode.
     if (!allowEdits && nextMode === Mode.Edit) throw new Error('Edits are not allowed');
     dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: nextMode })
@@ -648,7 +685,7 @@ const LessonSession = ({
       });
       setCurrentMove(undefined);
     }
-  }, [reset, allowEdits]);
+  }, [reset, allowEdits, s.fallbackMode]);
 
   const openAddNewChapterModal = useCallback(() => {
     dispatch({ type: 'showNewChapterModal', show: true });
@@ -943,6 +980,12 @@ const LessonSession = ({
   );
 
   useEffect(() => {
+    if (s.recentlyCompletedLine != null) {
+      dispatch({ type: 'showLineCompleteModal', show: true });
+    }
+  }, [s.recentlyCompletedLine])
+
+  useEffect(() => {
     if (s.isChessboardMoving) return;
 
     if (afterChessboardMoveDo.current.length > 0) {
@@ -1095,6 +1138,9 @@ const LessonSession = ({
       giveHint={giveHint}
       showMove={showMoves}
       isSessionLoading={s.isLoading}
+      areAllLinesComplete={areAllLinesComplete}
+      isNextLineInAnotherChapter={isNextLineInAnotherChapter}
+      getIdxOfNextIncompleteChapter={getIdxOfNextIncompleteChapter}
       isLineComplete={s.recentlyCompletedLine != null}
       lines={s.lines}
       lineProgressIdx={s.lineProgressIdx}
@@ -1214,6 +1260,16 @@ const LessonSession = ({
                 show={s.showNewChapterModal}
                 lesson={lesson}
                 onClose={() => dispatch({ type: 'showNewChapterModal', show: false })}
+              />
+              <LineCompleteModal
+                show={s.showLineCompleteModal}
+                onClose={() => dispatch({ type: 'showLineCompleteModal', show: false })}
+                setupNextLine={setupNextLine}
+                restartCurrentLine={restartCurrentLine}
+                changeChapter={changeChapter}
+                isNextLineInAnotherChapter={isNextLineInAnotherChapter}
+                getIdxOfNextIncompleteChapter={getIdxOfNextIncompleteChapter}
+                areAllLinesComplete={areAllLinesComplete}
               />
               {chessboard}
             </div>

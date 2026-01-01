@@ -11,6 +11,9 @@ interface Props extends HintButtonsProps {
   history: Move[];
   isSessionLoading: boolean;
   isLineComplete: boolean;
+  areAllLinesComplete: () => boolean;
+  isNextLineInAnotherChapter: () => boolean;
+  getIdxOfNextIncompleteChapter: () => number | null;
   lines: Record<string, LineStats>[];
   lineProgressIdx: number;
   mode: Mode;
@@ -33,37 +36,16 @@ const LessonSessionInfo = ({
   mode,
   fallbackMode,
   isLineComplete,
+  areAllLinesComplete,
+  isNextLineInAnotherChapter,
+  getIdxOfNextIncompleteChapter,
   setupNextLine,
   restartCurrentLine,
   changeMode,
-  currentChapterIdx,
   changeChapter,
 }: Props) => {
 
 	const ratio = useChapterCompletionRatios(lesson, lines)[0];
-
-  const areAllLinesComplete = useCallback((): boolean => {
-    return lines.every((chapterLines) => Object.values(chapterLines).every((lineStats) => lineStats.isComplete));
-  }, [lines]);
-
-  const isNextLineInAnotherChapter = useCallback((): boolean => {
-    if (lines[currentChapterIdx] === undefined) return false;
-    if (!Object.values(lines[currentChapterIdx]).every((stats) => stats.isComplete)) return false;
-    if (areAllLinesComplete()) return false;
-    getIdxOfNextIncompleteChapter();
-    return true;
-  }, [lines, currentChapterIdx]);
-
-  const getIdxOfNextIncompleteChapter = useCallback((): number | null => {
-    for (let i = 1; i < lesson.chapters.length; i++) {
-      const idx = (currentChapterIdx + i) % lesson.chapters.length;
-      if (lines[idx] === undefined) continue;
-      if (!Object.values(lines[idx]).every((stats) => stats.isComplete)) {
-        return idx;
-      }
-    }
-    return null;
-  }, [lines, currentChapterIdx]);
 
   const handleChangeChapter = useCallback((idx: number | null) => {
     if (idx == null) return;
