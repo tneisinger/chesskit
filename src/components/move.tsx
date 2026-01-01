@@ -48,7 +48,7 @@ const Move = ({
 
   if (isKeyMove) contentClasses.push('border border-red-600');
 
-  const containerClasses = ['flex-[0_0_38%] dark:text-gray-400'];
+  const containerClasses = ['flex-[0_0_38%] dark:text-gray-200'];
   if (inVariation) {
     contentClasses.push('p-0');
     containerClasses.push('inline-block pr-2 last:p-0');

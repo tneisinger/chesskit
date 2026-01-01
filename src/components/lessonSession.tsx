@@ -1218,7 +1218,7 @@ const LessonSession = ({
             {lessonSessionInfo}
             <div>{arrowButtons}</div>
           </div>
-          <div className="flex-1 p-0 w-screen bg-background-page overflow-y-scroll overflow-x-hidden">
+          <div className="flex-1 p-2 w-[calc(100vw-20px)] rounded-md bg-background-page overflow-y-scroll overflow-x-hidden">
             {s.selectedMobileTab === MobileTab.Chapters && lessonChapters}
             {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
             {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
@@ -1287,7 +1287,9 @@ const LessonSession = ({
               <div className="bg-background-page w-full p-2 rounded-sm">
                 {engineDisplay}
               </div>
-              <div className="border border-black w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
+              <div
+                className="my-1 rounded-md p-1 w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page"
+              >
                 {movesDisplay}
               </div>
               {allowEdits && (
