@@ -99,7 +99,7 @@ const LessonSessionInfo = ({
               buttonSize={ButtonSize.Small}
               onClick={() => restartCurrentLine(fallbackMode)}
             >
-              Restart
+              Replay Line
             </Button>
 
             {/* This button restarts the current line in the alternate mode (either Learn or Practice) */}
