@@ -1218,7 +1218,7 @@ const LessonSession = ({
             {lessonSessionInfo}
             <div>{arrowButtons}</div>
           </div>
-          <div className="flex-1 p-2 w-[calc(100vw-20px)] rounded-md bg-background-page overflow-y-scroll overflow-x-hidden">
+          <div className="flex-1 px-1 w-[calc(100vw-20px)] rounded-md bg-background-page overflow-y-scroll overflow-x-hidden">
             {s.selectedMobileTab === MobileTab.Chapters && lessonChapters}
             {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
             {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
@@ -1274,7 +1274,11 @@ const LessonSession = ({
           </div>
         </div>
         <div className="flex flex-row">
-          {lessonChapters}
+          <div
+            className="bg-background-page mr-2 rounded-md px-1"
+            style={{ height: boardSize }} >
+            {lessonChapters}
+          </div>
           <div className="flex flex-col items-center">
             {chessboardDiv}
             <div className="mt-3 w-full">{lessonSessionInfo}</div>

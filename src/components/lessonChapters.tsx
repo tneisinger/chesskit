@@ -25,7 +25,7 @@ const LessonChapters = ({
 
 	return (
 		<div
-			className="mr-2 flex flex-col bg-background-page"
+			className="flex flex-col"
 			style={{ height: heightStyle, width: widthStyle }}
 		>
 			<div className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -35,7 +35,7 @@ const LessonChapters = ({
 						chapterCompletionRatios[idx];
 
 					return (
-						<div key={idx} className="m-2">
+						<div key={idx} className='my-2 max-w-[calc(100vw-30px)]'>
 							<button
 								className={`
                   w-full text-left p-2 rounded transition-colors
