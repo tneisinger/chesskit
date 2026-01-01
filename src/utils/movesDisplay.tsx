@@ -1,15 +1,11 @@
-import React from 'react';
 import { Move } from 'cm-chess/src/Chess';
 import MovesGroup from '@/components/movesGroup';
-// import { GamePuzzle, PuzzleStatus } from '../types/puzzle';
-// import { getFirstIncompleteGamePuzzle } from './puzzle';
 
 interface Args {
   moves: Move[];
   currentMove: Move | undefined;
   changeCurrentMove: (newCurrentMove?: Move) => void;
   keyMoves?: Move[];
-  // gamePuzzles?: GamePuzzle[];
   isVariation?: boolean;
   useMobileLayout?: boolean;
   showVariations: boolean;
