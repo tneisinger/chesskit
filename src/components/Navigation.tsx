@@ -29,24 +29,26 @@ const authenticatedNavLinks: NavLink[] = [
 export default function Navigation() {
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 	const pathname = usePathname();
-	const windowSize = useWindowSize();
+	const { width, height } = useWindowSize();
 	const { data: session, status } = useSession();
 
-  const [isMobile, setIsMobile] = useState(windowSize.width ? windowSize.width <= screenWidthBreakpoint : true);
+  const [isMobile, setIsMobile] = useState(true);
 
 	const isLoading = status === "loading";
 	const isLoggedIn = !!session;
 	const navLinks = isLoggedIn ? authenticatedNavLinks : publicNavLinks;
 
   useEffect(() => {
-    if (windowSize.width == undefined) return;
-    if (windowSize.width <= screenWidthBreakpoint) {
+    // Wait for actual window size before setting layout
+    if (width === undefined) return;
+
+    if (width <= screenWidthBreakpoint) {
       setIsMobile(true);
-    } else if (windowSize.width > screenWidthBreakpoint) {
+    } else {
       setIsMobile(false);
       setIsMobileMenuOpen(false); // Close mobile menu if switching to desktop
     }
-  }, [windowSize]);
+  }, [width]);
 
 	const toggleMobileMenu = () => {
 		setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -67,10 +69,21 @@ export default function Navigation() {
 		await signOut({ callbackUrl: '/' });
 	};
 
+  const showDebugButtons = false;
+
+  const debug = () => {
+    console.log('debug');
+  };
+
 	return (
 		<>
 			{/* Top Navigation Bar */}
 			<nav className="flex justify-center bg-background-page border-b border-foreground/10 sticky top-0 z-50">
+        {showDebugButtons && (
+          <>
+            <button onClick={debug}>debug!</button>
+          </>
+        )}
 				<div className={`flex items-center h-10 px-4 w-full max-w-[1764px] ${isMobile ? 'justify-center relative' : 'justify-between'}`}>
 					{/* Left side - Mobile hamburger + brand */}
 					<div className="flex items-center">

@@ -1199,6 +1199,12 @@ const LessonSession = ({
 
   const containerClasses = ['flex flex-col items-center justify-center w-full h-full'];
 
+  const showDebugButtons = false;
+
+  const debug = () => {
+    console.log('debug');
+  };
+
   if (shouldUseMobileLayout(windowSize)) {
     // Account for navigation bar height (40px / 2.5rem / h-10)
     const navBarHeight = 40;
@@ -1212,6 +1218,11 @@ const LessonSession = ({
         >
           <div className="p-1">
             <h2 className="text-2xl">{lesson.title}</h2>
+            {showDebugButtons && (
+              <>
+                <button onClick={debug}>debug!</button>
+              </>
+            )}
           </div>
           {chessboardDiv}
           <div className='p-2 flex flex-row w-screen justify-between'>
@@ -1258,12 +1269,6 @@ const LessonSession = ({
       </ScrollLock>
     );
   }
-
-  const showDebugButtons = false;
-
-  const debug = () => {
-    console.log('debug');
-  };
 
   return (
     <ScrollLock>

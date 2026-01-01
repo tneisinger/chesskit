@@ -22,7 +22,11 @@ export default function useWindowSize(): Size {
     width: undefined,
     height: undefined,
   });
+
   useEffect(() => {
+    // Check if window is defined (client-side only)
+    if (typeof window === 'undefined') return;
+
     // Handler to call on window resize
     function handleResize() {
       // Set window width/height to state
@@ -31,12 +35,28 @@ export default function useWindowSize(): Size {
         height: window.innerHeight,
       });
     }
-    // Add event listener
-    window.addEventListener("resize", handleResize);
-    // Call handler right away so state gets updated with initial window size
+
+    // Use requestAnimationFrame to ensure we get dimensions after layout
+    const timeoutId = window.setTimeout(() => {
+      handleResize();
+    }, 0);
+
+    // Also set immediately in case the timeout doesn't fire fast enough
     handleResize();
-    // Remove event listener on cleanup
-    return () => window.removeEventListener("resize", handleResize);
+
+    // Add event listener for future resizes
+    window.addEventListener("resize", handleResize);
+
+    // Also listen for orientation changes on mobile
+    window.addEventListener("orientationchange", handleResize);
+
+    // Remove event listeners and timeout on cleanup
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
   }, []); // Empty array ensures that effect is only run on mount
+
   return windowSize;
 }
