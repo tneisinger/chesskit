@@ -1293,7 +1293,7 @@ const LessonSession = ({
               style={{ height: boardSize }}
               className="flex flex-col flex-1 items-center w-full"
             >
-              <div className="bg-background-page w-full p-2 rounded-sm">
+              <div className="bg-background-page w-full p-2 rounded-md">
                 {engineDisplay}
               </div>
               <div
@@ -1302,7 +1302,7 @@ const LessonSession = ({
                 {movesDisplay}
               </div>
               {allowEdits && (
-                <div className="border border-black border-t-0 w-full bg-background-page">
+                <div className="rounded-md w-full bg-background-page">
                   <EditLessonControls
                     currentMove={currentMove}
                     lesson={lesson}
