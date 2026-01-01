@@ -1,4 +1,3 @@
-  import React from 'react'
   import Switch from 'react-switch';
   import { Move } from 'cm-chess/src/Chess';
   import { GameEvals, Evaluation, MoveJudgement } from '@/types/chess';
@@ -6,7 +5,6 @@
   import { getScoreFromEvaluation, makeScoreString, MultiPV } from '@/utils/stockfish';
   import { isBookPosition } from '@/utils/bookPositions';
   import EvalerLine from '@/components/evalerLine';
-  // import useStore from '../zustand/store'
 
   const showDevButtons = false;
 
@@ -43,8 +41,6 @@
     switchDisabledMsg,
     showMoveJudgements = true,
   }: Props) => {
-    // const { settings } = useStore((state) => state);
-
     const handleSwitchChange = (checked: boolean) => {
       setIsEngineOn(checked);
     }
