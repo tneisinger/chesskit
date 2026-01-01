@@ -50,7 +50,7 @@ const MovePair = (props: Props) => {
   if (props.inVariation) return innerHtml;
 
   const classes = ['flex my-1'];
-  if (props.useMobileLayout) classes.push('inline-block mr-2 text-sm [&>span+span]:ml-1');
+  if (props.useMobileLayout) classes.push('inline-block mr-2 [&>span+span]:ml-1');
 
   return (
     <div className={classes.join(' ')}>

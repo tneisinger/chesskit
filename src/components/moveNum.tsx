@@ -15,7 +15,7 @@ const MoveNum = ({ whiteMove, blackMove, inVariation }: Props) => {
 
   const n = move.ply - Math.floor(move.ply / 2);
 
-  const classes = ['flex-[0_0_24%] dark:text-gray-400'];
+  const classes = ['flex-[0_0_24%] text-gray-200'];
 
   if (inVariation) classes.push('pr-2 inline-block first:pl-0');
 
