@@ -120,7 +120,7 @@ const LessonSessionInfo = ({
                 disabled={!isOnUnsolvedPosition()}
               />
             )}
-            {isLineComplete && !areAllLinesComplete() && (
+            {isLineComplete && !areAllLinesComplete() && !isNextLineInAnotherChapter() && (
               <Button
                 buttonSize={ButtonSize.Small}
                 onClick={() => setupNextLine(fallbackMode)}
