@@ -67,7 +67,7 @@ const HintButtons = ({
           onClick={handleShowMoveBtnClick}
           disabled={shouldDisableShowBtn()}
         >
-          Show Me
+          Show
         </Button>
       ) : (
         <Button
