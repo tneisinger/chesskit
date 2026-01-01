@@ -1085,6 +1085,27 @@ const LessonSession = ({
     </div>
   );
 
+  const chessboardDiv = (
+    <div className='relative' style={{ height: boardSize, width: boardSize }}>
+      <NewChapterModal
+        show={s.showNewChapterModal}
+        lesson={lesson}
+        onClose={() => dispatch({ type: 'showNewChapterModal', show: false })}
+      />
+      <LineCompleteModal
+        show={s.showLineCompleteModal}
+        onClose={() => dispatch({ type: 'showLineCompleteModal', show: false })}
+        setupNextLine={setupNextLine}
+        restartCurrentLine={restartCurrentLine}
+        changeChapter={changeChapter}
+        isNextLineInAnotherChapter={isNextLineInAnotherChapter}
+        getIdxOfNextIncompleteChapter={getIdxOfNextIncompleteChapter}
+        areAllLinesComplete={areAllLinesComplete}
+      />
+      {chessboard}
+    </div>
+  );
+
   let chaptersDivHeight = `${boardSize}px`;
   let chaptersDivWidth = '275px';
   if (shouldUseMobileLayout(windowSize)) {
@@ -1192,7 +1213,7 @@ const LessonSession = ({
           <div className="p-1">
             <h2 className="text-2xl">{lesson.title}</h2>
           </div>
-          {chessboard}
+          {chessboardDiv}
           <div className='p-2 flex flex-row w-screen justify-between'>
             {lessonSessionInfo}
             <div>{arrowButtons}</div>
@@ -1255,24 +1276,7 @@ const LessonSession = ({
         <div className="flex flex-row">
           {lessonChapters}
           <div className="flex flex-col items-center">
-            <div className='relative' style={{ height: boardSize, width: boardSize }}>
-              <NewChapterModal
-                show={s.showNewChapterModal}
-                lesson={lesson}
-                onClose={() => dispatch({ type: 'showNewChapterModal', show: false })}
-              />
-              <LineCompleteModal
-                show={s.showLineCompleteModal}
-                onClose={() => dispatch({ type: 'showLineCompleteModal', show: false })}
-                setupNextLine={setupNextLine}
-                restartCurrentLine={restartCurrentLine}
-                changeChapter={changeChapter}
-                isNextLineInAnotherChapter={isNextLineInAnotherChapter}
-                getIdxOfNextIncompleteChapter={getIdxOfNextIncompleteChapter}
-                areAllLinesComplete={areAllLinesComplete}
-              />
-              {chessboard}
-            </div>
+            {chessboardDiv}
             <div className="mt-3 w-full">{lessonSessionInfo}</div>
           </div>
           <div className="ml-2 w-[275px]">
