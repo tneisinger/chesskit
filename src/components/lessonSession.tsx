@@ -1030,6 +1030,14 @@ const LessonSession = ({
         timeoutRef.current = 0;
       }, 600);
     }
+
+    // Cleanup: clear timeout if effect re-runs or component unmounts
+    return () => {
+      if (timeoutRef.current !== 0) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = 0;
+      }
+    };
   }, [currentMove, getNextMoves, isOpponentsTurn, playMove, s.lineProgressIdx])
 
   // If we have a best move from the engine and the engine is on, show the move
