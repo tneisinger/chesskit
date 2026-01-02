@@ -1287,11 +1287,13 @@ const LessonSession = ({
           </div>
         </div>
         <div className="flex flex-row">
-          <div
-            className="bg-background-page mr-2 rounded-md px-1"
-            style={{ height: boardSize }} >
-            {lessonChapters}
-          </div>
+          {isMoreThanOneChapter && (
+            <div
+              className="bg-background-page mr-2 rounded-md px-1"
+              style={{ height: boardSize }} >
+              {lessonChapters}
+            </div>
+          )}
           <div className="flex flex-col items-center">
             {chessboardDiv}
             <div className="mt-3 w-full">{lessonSessionInfo}</div>
