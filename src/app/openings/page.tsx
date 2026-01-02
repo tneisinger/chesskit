@@ -8,6 +8,7 @@ import { getUserRepertoire, createUserLesson } from "@/app/my-repertoire/actions
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import LessonDisplay from "@/components/lessonDisplay";
+import { sortLessonsByTitle } from "@/utils/lesson";
 
 type ColorFilter = "all" | PieceColor;
 
@@ -44,6 +45,8 @@ export default function Page() {
 		if (colorFilter === "all") return true;
 		return lesson.userColor === colorFilter;
 	});
+
+  sortLessonsByTitle(filteredLessons);
 
 	const handleDelete = async (title: string) => {
 		// Show confirmation dialog
