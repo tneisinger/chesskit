@@ -33,7 +33,7 @@ const LineCompleteModal = ({
   return (
     <Modal show={show}>
       <div className='bg-background-page/97 px-4 py-4 rounded-md'>
-        <div className='text-center mb-2 text-2xl font-bold'>
+        <div className='text-center mb-2 text-2xl font-bold text-nowrap'>
           {areAllLinesComplete() ? (
             <>All Lines Complete!</>
           ) : (
