@@ -986,8 +986,19 @@ const LessonSession = ({
 
   useEffect(() => {
     if (s.recentlyCompletedLine != null) {
-      dispatch({ type: 'showLineCompleteModal', show: true });
+      timeoutRef.current = window.setTimeout(() => {
+        dispatch({ type: 'showLineCompleteModal', show: true });
+        timeoutRef.current = 0;
+      }, 600);
     }
+
+    // Cleanup: clear timeout if effect re-runs or component unmounts
+    return () => {
+      if (timeoutRef.current !== 0) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = 0;
+      }
+    };
   }, [s.recentlyCompletedLine])
 
   useEffect(() => {
