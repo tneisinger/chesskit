@@ -44,3 +44,6 @@ sqlite.db
 
 # gimp save files
 /gimpFiles
+
+# helpful bash scripts
+/scripts
