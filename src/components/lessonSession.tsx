@@ -292,7 +292,12 @@ function reducer(s: State, a: Action): State {
       newState = { ...s, allowBoardInteraction: true, boardCursor: null };
       break;
     case 'setIsEvaluatorOn':
-      newState = { ...s, isEvaluatorOn: a.value };
+      if (a.value === false) {
+        // When turning off the evaluator, also clear markers and arrows
+        newState = { ...s, isEvaluatorOn: a.value, markers: [], arrows: [] };
+      } else {
+        newState = { ...s, isEvaluatorOn: a.value };
+      }
       break;
     case 'setMarkers':
       newState = { ...s, markers: a.markers };
