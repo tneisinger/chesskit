@@ -19,7 +19,7 @@
     evalerMaxDepth?: number;
     engineName?: string;
     isSwitchDisabled?: boolean;
-    maxLineLength?: number;
+    maxLineLengthPx: number;
     includeOnOffSwitch?: boolean;
     switchDisabledMsg?: string;
     showMoveJudgements?: boolean;
@@ -35,7 +35,7 @@
     engineName = 'Engine loading...',
     engineLines,
     isSwitchDisabled = false,
-    maxLineLength,
+    maxLineLengthPx,
     isEvaluating,
     includeOnOffSwitch = true,
     switchDisabledMsg,
@@ -98,54 +98,57 @@
     const mj = showMoveJudgements ? getMoveJudgement(currentMove, gameEvals) : undefined;
 
     return (
-      <div className="block w-full">
-        <div className="flex flex-row items-center justify-between">
-          <span className="text-xl w-12 text-right">
-            {isEngineOn && makeEvaluationString(evaluation)}
-          </span>
-          <div className="text-center text-xs h-8 flex flex-col justify-center items-center">
-            <div>{engineName}</div>
-            {depthString && (
-              <div>{depthString}</div>
-            )}
-          </div>
-          <div className="w-14 h-7">
-            {includeOnOffSwitch && (
-              <Switch
-                onChange={handleSwitchChange}
-                checked={isEngineOn}
-                disabled={isSwitchDisabled}
-              />
-            )}
-          </div>
-        </div>
-        <div className="text-center my-3 [&>span]:font-bold relative">
-          {(!isEngineOn && isSwitchDisabled && switchDisabledMsg) ? (
-            <div className="text-sm absolute text-center w-full top-2">{switchDisabledMsg}</div>
-          ) : (
-            <>
-              {showMoveJudgements && (
-                <span style={{ color: moveJudgementColor(mj) }}>
-                  {makeMoveJudgementString(mj)}
-                </span>
+      <div className="flex flex-1 flex-col py-0 px-0">
+        <div className="flex flex-col flex-1 justify-center bg-stone-700 rounded-sm">
+          <div className="flex flex-row items-center justify-between min-h-10 px-2">
+            <span className="text-xl w-12 text-right">
+              {isEngineOn && makeEvaluationString(evaluation)}
+            </span>
+            <div className="text-center text-[12px]/4 h-8 flex flex-col justify-center items-center">
+              <div>{engineName}</div>
+              {depthString && (
+                <div>{depthString}</div>
               )}
-            </>
+            </div>
+            <div className="w-14 h-7">
+              {includeOnOffSwitch && (
+                <Switch
+                  onChange={handleSwitchChange}
+                  checked={isEngineOn}
+                  disabled={isSwitchDisabled}
+                />
+              )}
+            </div>
+          </div>
+          {(!isEngineOn && isSwitchDisabled && switchDisabledMsg) && (
+            <div className="flex flex-col flex-1 min-h-9 items-center justify-center text-center text-sm">
+              <span>{switchDisabledMsg}</span>
+            </div>
+          )}
+          {isEngineOn && showMoveJudgements && (
+            <div>
+              <span style={{ color: moveJudgementColor(mj) }}>
+                {makeMoveJudgementString(mj)}
+              </span>
+            </div>
           )}
         </div>
-        <div>
-          {currentMoveLines.map((line, i) => {
-            let key = i.toString();
-            if (line) key = `${line.multipv} ${line.lanLine.join('')}`;
-            return (
-              <EvalerLine
-                key={key}
-                fen={getFen(currentMove)}
-                line={line}
-                maxLineLength={maxLineLength}
-              />
-            );
-          })}
-        </div>
+        {isEngineOn && (
+          <div className="flex flex-col flex-1 justify-evenly">
+            {currentMoveLines.map((line, i) => {
+              let key = i.toString();
+              if (line) key = `${line.multipv} ${line.lanLine.join('')}`;
+              return (
+                <EvalerLine
+                  key={key}
+                  fen={getFen(currentMove)}
+                  line={line}
+                  maxLineLengthPx={maxLineLengthPx}
+                />
+              );
+            })}
+          </div>
+        )}
         {showDevButtons && (<button onClick={debug}>debug</button>)}
       </div>
     )

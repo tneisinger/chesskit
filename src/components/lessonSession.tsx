@@ -1141,21 +1141,21 @@ const LessonSession = ({
   }
 
   const engineDisplay = (
-    <EvalerDisplay
-      isEngineOn={s.isEvaluatorOn}
-      setIsEngineOn={(b) => dispatch({ type: 'setIsEvaluatorOn', value: b })}
-      gameEvals={gameEvals}
-      currentMove={currentMove}
-      evalerMaxDepth={evalDepth}
-      engineName={engineName}
-      engineLines={engineLines}
-      isEvaluating={fenBeingEvaluated !== null}
-      maxLineLength={4}
-      numLines={numLines}
-      isSwitchDisabled={s.mode === Mode.Learn || s.mode === Mode.Practice}
-      switchDisabledMsg={'Complete the line to unlock the engine'}
-      showMoveJudgements={false}
-    />
+      <EvalerDisplay
+        isEngineOn={s.isEvaluatorOn}
+        setIsEngineOn={(b) => dispatch({ type: 'setIsEvaluatorOn', value: b })}
+        gameEvals={gameEvals}
+        currentMove={currentMove}
+        evalerMaxDepth={evalDepth}
+        engineName={engineName}
+        engineLines={engineLines}
+        isEvaluating={fenBeingEvaluated !== null}
+        maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 16 : 275}
+        numLines={numLines}
+        isSwitchDisabled={s.mode === Mode.Learn || s.mode === Mode.Practice}
+        switchDisabledMsg={'Complete the line to unlock the engine'}
+        showMoveJudgements={false}
+      />
   )
 
   const lessonSessionInfo = (
@@ -1237,7 +1237,7 @@ const LessonSession = ({
             {lessonSessionInfo}
             <div>{arrowButtons}</div>
           </div>
-          <div className="flex-1 px-1 w-[calc(100vw-20px)] rounded-md bg-background-page overflow-y-scroll overflow-x-hidden">
+          <div className="flex flex-1 w-[calc(100vw-20px)] rounded-md bg-background-page overflow-y-scroll overflow-x-hidden">
             {s.selectedMobileTab === MobileTab.Chapters && lessonChapters}
             {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
             {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
@@ -1303,7 +1303,7 @@ const LessonSession = ({
               style={{ height: boardSize }}
               className="flex flex-col flex-1 items-center w-full"
             >
-              <div className="bg-background-page w-full p-2 rounded-md">
+              <div className="flex bg-background-page w-full rounded-md min-h-4">
                 {engineDisplay}
               </div>
               <div
