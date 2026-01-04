@@ -14,8 +14,8 @@ const Modal = (props: Props) => {
   if (props.show) {
     return (
       <>
-        <div className="absolute left-0 top-0 w-full h-full bg-black opacity-15 z-10" />
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">{props.children}</div>
+        <div className="fixed left-0 top-0 size-dvw bg-black opacity-25 z-1000" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-2000">{props.children}</div>
       </>
     );
   }
