@@ -1,4 +1,3 @@
-import React from "react";
 import type { Lesson, LineStats } from "@/types/lesson";
 import { useChapterCompletionRatios } from "@/hooks/useChapterCompletionRatios";
 
@@ -19,7 +18,6 @@ const LessonChapters = ({
 	changeChapter,
 	heightStyle,
   widthStyle,
-  useMobileLayout,
 }: Props) => {
 	const chapterCompletionRatios = useChapterCompletionRatios(lesson, lines);
 
