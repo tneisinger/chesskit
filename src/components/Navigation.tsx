@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import SvgIcon, { Svg } from '@/components/svgIcon';
 import useWindowSize from '@/hooks/useWindowSize';
+import Button, { ButtonSize } from '@/components/button';
 
 const screenWidthBreakpoint = 992; // px
 
@@ -129,12 +130,12 @@ export default function Navigation() {
 									<span className="text-foreground/70 mr-2">
 										{session.user?.username}
 									</span>
-									<button
+									<Button
 										onClick={handleSignOut}
-										className="px-4 py-1.5 rounded bg-background-page text-foreground/80 hover:bg-foreground/10 hover:text-foreground transition-colors"
+                    buttonSize={ButtonSize.Small}
 									>
 										Logout
-									</button>
+									</Button>
 								</>
 							) : (
 								<>
@@ -199,21 +200,6 @@ export default function Navigation() {
 								</button>
 							</div>
 
-							{/* User info (if logged in) */}
-							{isLoggedIn && (
-								<div className="px-4 py-3 border-b border-foreground/20">
-									<div className="text-sm text-foreground/70">Logged in as</div>
-									<div className="font-semibold">
-										{session.user?.username}
-										{session.user?.role === 'admin' && (
-											<span className="ml-2 px-2 py-0.5 bg-color-btn-primary rounded text-xs">
-												Admin
-											</span>
-										)}
-									</div>
-								</div>
-							)}
-
 							{/* Drawer Links */}
 							<div className="flex flex-col p-2">
 								{navLinks.map((link) => (
@@ -234,17 +220,33 @@ export default function Navigation() {
 
 							{/* Auth buttons (mobile) */}
 							{!isLoading && (
-								<div className="mt-auto p-4 border-t border-foreground/20">
+								<div className="mt-auto border-t border-foreground/20">
 									{isLoggedIn ? (
-										<button
-											onClick={() => {
-												closeMobileMenu();
-												handleSignOut();
-											}}
-											className="w-full px-4 py-2 rounded bg-color-btn-danger text-foreground hover:bg-color-btn-danger-hover transition-colors"
-										>
-											Logout
-										</button>
+                    <>
+
+                      <div className="px-4 pt-2 text-center">
+                        <span className="text-sm text-foreground/70 mr-1">Logged in as</span>
+                        <span className="font-semibold">
+                          {session.user?.username}
+                          {session.user?.role === 'admin' && (
+                            <span className="ml-2 px-2 py-0.5 bg-color-btn-primary rounded text-xs">
+                              Admin
+                            </span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="w-full text-center my-2">
+                        <Button
+                          onClick={() => {
+                            closeMobileMenu();
+                            handleSignOut();
+                          }}
+                        >
+                          Logout
+                        </Button>
+                      </div>
+                    </>
 									) : (
 										<div className="flex flex-col gap-2">
 											<Link
