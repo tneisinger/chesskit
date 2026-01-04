@@ -468,7 +468,6 @@ const LessonSession = ({
     if (idx >= 0 && idx < lesson.chapters.length) dispatch({ type: 'changeChapterIdx', idx });
   }, [lesson]);
 
-
   // Determine the board size
   const windowSize = useWindowSize();
   let boardSize: number;
@@ -516,6 +515,34 @@ const LessonSession = ({
 
   // Timestamp of when the user entered edit mode
   const [timeEditModeEntered, setTimeEditModeEntered] = useState<number | null>(null);
+
+  const [wrongAnswerBlinkTrigger, setWrongAnswerBlinkTrigger] = useState(0);
+
+  const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
+  const undoMoveTimeoutRef = useRef<number>(0);
+
+  useEffect(() => {
+    // This prevents undoLastMove() from running on the initial render
+    if (s.wrongAnswerBlinkCount < 1) return;
+
+    wrongAnswerBlinkTimeoutRef.current = window.setTimeout(() => {
+      const audio = new Audio('/assets/sound/incorrectWren.mp3');
+      audio.play().catch(err => console.error('Error playing sound:', err));
+      setWrongAnswerBlinkTrigger(s.wrongAnswerBlinkCount);
+    }, 300);
+
+    undoMoveTimeoutRef.current = window.setTimeout(() => {
+      undoLastMove();
+    }, 1300);
+
+    // Cleanup: clear timeouts if effect re-runs or component unmounts
+    return () => {
+      if (wrongAnswerBlinkTimeoutRef.current !== 0) {
+        window.clearTimeout(wrongAnswerBlinkTimeoutRef.current);
+        wrongAnswerBlinkTimeoutRef.current = 0;
+      }
+    };
+  }, [s.wrongAnswerBlinkCount]);
 
   // Update savedLines when the lesson or chapter index changes
   useEffect(() => {
@@ -616,9 +643,9 @@ const LessonSession = ({
     // By default, indicate that the move was wrong.
     if (options === undefined || options.indicateThatTheMoveWasWrong) {
       dispatch({ type: 'triggerWrongAnswerBlink' });
+    } else {
+      if (currentMove) undoLastMove();
     }
-
-    if (currentMove) undoLastMove();
   }, [currentMove, undoLastMove]);
 
   const restartCurrentLine = useCallback((nextMode?: Mode) => {
@@ -1084,7 +1111,7 @@ const LessonSession = ({
 
   const chessboard = (
     <div className="relative">
-      <BlinkOverlay blinkCount={s.wrongAnswerBlinkCount} />
+      <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
       <Chessboard
         boardSize={boardSize}
         currentMove={currentMove}
