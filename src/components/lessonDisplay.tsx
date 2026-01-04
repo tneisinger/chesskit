@@ -136,6 +136,12 @@ export default function LessonDisplay({
   // On desktop: use hover state, on mobile: use visibility state
   const shouldCycleLineMoves = isMobile ? isVisible : isHovered;
 
+
+  const numChaptersString = `${lesson.chapters.length} ${lesson.chapters.length === 1 ? 'chapter' : 'chapters'}`;
+  let totalLines = 0;
+  lesson.chapters.forEach((c) => totalLines += getLinesFromPGN(c.pgn).length);
+  const numLinesString = `${totalLines} ${totalLines === 1 ? 'line' : 'lines'}`;
+
   const classes = ['flex flex-col items-center gap-4 p-4 pt-3 pb-1 rounded bg-background-page border border-foreground/10 max-w-96'];
 
   return (
@@ -158,7 +164,7 @@ export default function LessonDisplay({
         </Link>
         <Link href={lessonViewUrl}>
           <div className="text-sm text-foreground/60 text-center mb-2">
-            {lesson.chapters.length} {lesson.chapters.length === 1 ? 'chapter' : 'chapters'}
+            {numChaptersString} ({numLinesString})
           </div>
         </Link>
 
