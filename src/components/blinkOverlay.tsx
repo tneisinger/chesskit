@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Props {
   blinkCount: number
 }
 
 const BlinkOverlay = ({ blinkCount }: Props) => {
+  const timeoutRef = useRef<number>(0);
 
   const [shouldBlink, setShouldBlink] = useState<boolean>(false);
 
   // Whenever the blink count changes, trigger a blink
   useEffect(() => {
-    let timeout = 0;
     if (blinkCount > 0) {
       setShouldBlink(true);
-      timeout = window.setTimeout(() => setShouldBlink(false), 600);
+      timeoutRef.current = window.setTimeout(() => setShouldBlink(false), 600);
     }
-    return () => window.clearTimeout(timeout);
+    return () => window.clearTimeout(timeoutRef.current);
   }, [blinkCount]);
 
   const classes = [

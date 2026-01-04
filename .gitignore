@@ -42,8 +42,8 @@ next-env.d.ts
 
 sqlite.db
 
-# gimp save files
-/gimpFiles
+# A directory containing various resource files that should not be committed.
+/resources
 
 # helpful bash scripts
 /scripts
