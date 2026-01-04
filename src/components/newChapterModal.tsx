@@ -10,9 +10,10 @@ interface Props {
   show: boolean;
   lesson: Lesson;
   onClose: () => void;
+  resetBoard: () => void;
 }
 
-const NewChapterModal = ({ show, lesson, onClose }: Props) => {
+const NewChapterModal = ({ show, lesson, onClose, resetBoard }: Props) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -65,8 +66,6 @@ const NewChapterModal = ({ show, lesson, onClose }: Props) => {
         result = await updateLesson(lesson.title, updatedLesson);
       }
 
-      console.log('Update result:', result);
-
       if (result.success) {
         // Create new URL with chapterIdx query parameter
         const params = new URLSearchParams(searchParams);
@@ -76,6 +75,7 @@ const NewChapterModal = ({ show, lesson, onClose }: Props) => {
         router.push(`${pathname}?${params.toString()}`);
         setIsSubmitting(false);
         onClose();
+        resetBoard();
       } else {
         alert(`Failed to create chapter: ${result.error}`);
         setIsSubmitting(false);

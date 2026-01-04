@@ -1142,6 +1142,7 @@ const LessonSession = ({
         show={s.showNewChapterModal}
         lesson={lesson}
         onClose={() => dispatch({ type: 'showNewChapterModal', show: false })}
+        resetBoard={reset}
       />
       <LineCompleteModal
         show={s.showLineCompleteModal}
