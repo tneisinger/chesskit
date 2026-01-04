@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import ChessJS from '../chessjs';
 import { Square } from 'chess.js';
 import { ShortMove, PieceColor } from '../types/chess';

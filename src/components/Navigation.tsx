@@ -30,7 +30,7 @@ const authenticatedNavLinks: NavLink[] = [
 export default function Navigation() {
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 	const pathname = usePathname();
-	const { width, height } = useWindowSize();
+	const { width } = useWindowSize();
 	const { data: session, status } = useSession();
 
   const [isMobile, setIsMobile] = useState(true);
