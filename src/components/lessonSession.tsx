@@ -1166,7 +1166,7 @@ const LessonSession = ({
         engineName={engineName}
         engineLines={engineLines}
         isEvaluating={fenBeingEvaluated !== null}
-        maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 16 : 275}
+        maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
         numLines={numLines}
         isSwitchDisabled={s.mode === Mode.Learn || s.mode === Mode.Practice}
         switchDisabledMsg={'Complete the line to unlock the engine'}
