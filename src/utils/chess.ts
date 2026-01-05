@@ -510,7 +510,7 @@ export function isColorToMove(fen: string, color: PieceColor): boolean {
 // For example, if you give this function the fen that results from
 // `1. e4 e5 2. Nc3 Nf6 3. f4`, this function will return '3.'
 //
-// If you give this function fen that results from `1. e4 e5 2. Nc3 Nf6 3. f4 d5`,
+// If you give this function a fen that results from `1. e4 e5 2. Nc3 Nf6 3. f4 d5`,
 // this function will return '3...'
 export function makeMoveNumberString(fen: string): string {
   const { activeColor, fullMoveNumber } = getFenParts(fen);
@@ -656,7 +656,8 @@ export function makePgnFromHistory(
         output += makePgnFromHistory(variation, includeVariations, true);
         output += ')';
       }
-      if (move.ply % 2 === 1) output += ` ${moveNumber}...`
+      // Only add move number if there are more moves following
+      if (move.ply % 2 === 1 && i < history.length - 1) output += ` ${moveNumber}...`
     }
     output += ' ';
   }
