@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { getUserRepertoire, deleteUserLesson } from "./actions";
+import { MAX_USER_LESSONS } from "./constants";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import LessonDisplay from "@/components/lessonDisplay";
+import Button from "@/components/button";
 import { sortLessonsByTitle } from "@/utils/lesson";
 
 type ColorFilter = "all" | PieceColor;
@@ -92,13 +94,29 @@ export default function MyRepertoirePage() {
 		);
 	}
 
+	const isAtLimit = lessons.length >= MAX_USER_LESSONS;
+
+  // Create New Lesson Link
+  const commonClasses = 'px-3 py-2 rounded bg-foreground/15 text-white font-bold';
+  const atLimitClasses = 'opacity-50 pointer-events-none';
+  const notAtLimitClasses = 'hover:bg-foreground/25 cursor-pointer';
+  const classes = isAtLimit ? `${commonClasses} ${atLimitClasses}` : `${commonClasses} ${notAtLimitClasses}`;
+  const createNewLessonLink = (
+    <Link
+      href="/my-repertoire/create?returnUrl=/my-repertoire"
+      className={classes}
+    >
+      Create New Lesson
+    </Link>
+  );
+
 	return (
 		<div className="flex flex-col gap-4 p-4 pt-0">
-			<div className="sticky top-10 z-30 pt-4 pb-4 flex flex-col items-center justify-center bg-background mask-b-from-85% mask-b-to-100%">
+			<div className="sticky top-10 z-30 py-4 flex flex-col gap-2 items-center justify-center bg-background mask-b-from-92% mask-b-to-100% pb-6">
 				<h1 className="text-3xl font-bold">My Repertoire</h1>
 
 				{/* Filter Controls */}
-				<div className="flex items-center gap-3 mt-5 mb-2">
+				<div className="flex items-center gap-3 my-1">
 					<span className="text-sm text-foreground/70">Filter by color:</span>
 					<div className="flex gap-2">
 						<button
@@ -106,7 +124,7 @@ export default function MyRepertoirePage() {
 							className={`px-3 py-1.5 rounded transition-colors cursor-pointer text-sm font-medium ${
 								colorFilter === "all"
 									? "bg-btn-primary text-foreground"
-									: "bg-background-page text-foreground/70 hover:bg-foreground/10"
+									: "bg-background-page text-foreground/70 hover:bg-foreground/20"
 							}`}
 						>
 							All
@@ -116,7 +134,7 @@ export default function MyRepertoirePage() {
 							className={`px-3 py-1.5 rounded transition-colors cursor-pointer text-sm font-medium ${
 								colorFilter === PieceColor.WHITE
 									? "bg-btn-primary text-foreground"
-									: "bg-background-page text-foreground/70 hover:bg-foreground/10"
+									: "bg-background-page text-foreground/70 hover:bg-foreground/20"
 							}`}
 						>
 							White
@@ -126,7 +144,7 @@ export default function MyRepertoirePage() {
 							className={`px-3 py-1.5 rounded transition-colors cursor-pointer text-sm font-medium ${
 								colorFilter === PieceColor.BLACK
 									? "bg-btn-primary text-foreground"
-									: "bg-background-page text-foreground/70 hover:bg-foreground/10"
+									: "bg-background-page text-foreground/70 hover:bg-foreground/20"
 							}`}
 						>
 							Black
@@ -134,12 +152,14 @@ export default function MyRepertoirePage() {
 					</div>
 				</div>
 
-				<Link
-					href="/my-repertoire/create?returnUrl=/my-repertoire"
-					className="p-3 rounded bg-color-btn-primary hover:bg-color-btn-primary-hover text-white font-bold no-underline"
-				>
-					Create New Opening
-				</Link>
+        <div className="text-center mt-2">
+          {createNewLessonLink}
+          {isAtLimit && (
+            <p className="text-xs text-foreground/50 mt-3 max-w-sm">
+              Lesson limit reached. You can't have more than {MAX_USER_LESSONS} lessons.
+            </p>
+          )}
+        </div>
 			</div>
 			{lessons.length === 0 ? (
 				<p className="text-[#aaa] text-center">
