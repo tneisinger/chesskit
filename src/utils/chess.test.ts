@@ -17,6 +17,7 @@ import {
   timeControlToReadableString,
   stringToTimeControl,
   makePgnFromHistory,
+  makeMovesOnlyPGN,
 } from './chess';
 import { PieceColor, ShortMove } from '@/types/chess';
 import { Chess as ChessJS } from 'chess.js';
@@ -279,6 +280,110 @@ describe('chess utilities', () => {
       const history = cmchess.history();
       expect(makePgnFromHistory(history)).toBe(testOnePGN);
     })
+  });
+
+  describe('makeMovesOnlyPGN', () => {
+    it('should remove headers', () => {
+      const input = '\
+[Event "?"]\n\
+[Site "?"]\n\
+[Date "????.??.??"]\n\
+[Round "?"]\n\
+[White "?"]\n\
+[Black "?"]\n\
+[Result "*"]\n\
+[Link "https://www.chess.com/analysis/game/pgn/3ukp349RWn/analysis"]\n\n\
+1. e4 c5 2. Nf3 Nc6 3. d4 *';
+      const output = '1. e4 c5 2. Nf3 Nc6 3. d4 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should handle alternative lines', () => {
+      const input = '\
+[Link "https://www.chess.com/analysis/game/pgn/3ukp349RWn/analysis"]\n\n\
+1. e4 c5 2. Nf3 (2. d4) 2... Nc6 3. d4 *';
+      const output = '1. e4 c5 2. Nf3 (2. d4) 2... Nc6 3. d4 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should handle alternative lines within alternative lines', () => {
+      const input = '\
+[Event "?"]\n\
+1. e4 c5 2. Nf3 (2. d4 cxd4 (2... d5)) 2... Nc6 3. d4 *';
+      const output = '1. e4 c5 2. Nf3 (2. d4 cxd4 (2... d5)) 2... Nc6 3. d4 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should handle multiple alternative sublines', () => {
+      const input = '\
+[Event "?"]\n\
+1. e4 c5 2. Nf3 (2. d4 cxd4 (2... d5) 3. c3 (3. Nf3)) 2... Nc6 3. d4 *';
+      const output = '1. e4 c5 2. Nf3 (2. d4 cxd4 (2... d5) 3. c3 (3. Nf3)) 2... Nc6 3. d4 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should handle multiple alternative lines', () => {
+      const input = '\
+[Event "?"]\n\
+1. e4 c5 2. Nf3 (2. d4 cxd4 (2... d5) 3. c3 (3. Nf3)) (2. c3) 2... Nc6 3. d4 *';
+      const output = '1. e4 c5 2. Nf3 (2. d4 cxd4 (2... d5) 3. c3 (3. Nf3)) (2. c3) 2... Nc6 3. d4 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should remove comments', () => {
+      const input = '\
+[Event "?"]\n\
+1. e4 c5 {The Sicilian Defense.} 2. Nf3 (2. d4 cxd4 (2... d5) 3. c3 (3. Nf3)) (2. c3) 2... Nc6 3. d4 *';
+      const output = '1. e4 c5 2. Nf3 (2. d4 cxd4 (2... d5) 3. c3 (3. Nf3)) (2. c3) 2... Nc6 3. d4 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should remove annotations', () => {
+      const input = '\
+[Event "?"]\n\
+1. e4! c5? 2. Nf3!! d6?? 3. d4!? cxd4?! 4. Nxd4 *';
+      const output = '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should handle different game results', () => {
+      const input1 = '[Event "?"]\n1. e4 e5 2. Nf3 Nc6 3. Bb5 1-0';
+      const output1 = '1. e4 e5 2. Nf3 Nc6 3. Bb5 1-0';
+      expect(makeMovesOnlyPGN(input1)).toBe(output1);
+
+      const input2 = '[Event "?"]\n1. e4 e5 2. Nf3 Nc6 0-1';
+      const output2 = '1. e4 e5 2. Nf3 Nc6 0-1';
+      expect(makeMovesOnlyPGN(input2)).toBe(output2);
+
+      const input3 = '[Event "?"]\n1. e4 e5 2. Nf3 Nc6 1/2-1/2';
+      const output3 = '1. e4 e5 2. Nf3 Nc6 1/2-1/2';
+      expect(makeMovesOnlyPGN(input3)).toBe(output3);
+    })
+
+    it('should handle empty moves with result only', () => {
+      const input = '[Event "?"]\n[Result "*"]\n*';
+      const output = '*';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should handle variation starting with black move at move 1', () => {
+      const input = '1. e4 (1. d4 d5) 1... e5 *';
+      const output = '1. e4 (1. d4 d5) 1... e5 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should preserve multiple variations at the same move', () => {
+      const input = '1. e4 (1. d4) (1. c4) (1. Nf3) 1... e5 *';
+      const output = '1. e4 (1. d4) (1. c4) (1. Nf3) 1... e5 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
+    it('should handle complex nested variations', () => {
+      const input = '1. e4 e5 2. Nf3 (2. Bc4 Nf6 (2... Bc5 3. Nf3 (3. Nc3))) 2... Nc6 *';
+      const output = '1. e4 e5 2. Nf3 (2. Bc4 Nf6 (2... Bc5 3. Nf3 (3. Nc3))) 2... Nc6 *';
+      expect(makeMovesOnlyPGN(input)).toBe(output);
+    })
+
   });
 
 });
