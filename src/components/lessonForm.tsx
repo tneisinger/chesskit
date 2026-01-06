@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Button, { ButtonStyle } from "@/components/button";
 import { PieceColor } from "@/types/chess";
 import type { Chapter, Lesson } from "@/types/lesson";
-import { parsePGN, cleanPGN } from "@/utils/chess";
+import { parsePGN, cleanPGN, makeMovesOnlyPGN } from "@/utils/chess";
 import { makePgnParserErrorMsg } from "@/utils/pgn";
 
 interface LessonFormProps {
@@ -192,7 +192,7 @@ export default function LessonForm({
         if (ch.pgn.trim()) {
           const cleanedPgn = cleanPGN(ch.pgn);
           if (cleanedPgn == undefined) throw new Error(`Failed to clean PGN ${ch.pgn}`);
-          pgn = cleanedPgn;
+          pgn = makeMovesOnlyPGN(cleanedPgn);
         }
         lessonChapters.push({
           title: ch.title.trim(),
