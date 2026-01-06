@@ -678,6 +678,80 @@ export function makePgnFromHistory(
   return output.trim();
 }
 
+export function makeMovesOnlyPGN(pgn: string): string {
+  try {
+    const parsed = parsePGN(pgn, { allowIncomplete: true });
+    if (!parsed || parsed.length === 0) {
+      return '';
+    }
+
+    const game = parsed[0];
+    if (!game.moves || game.moves.length === 0) {
+      return game.result || '*';
+    }
+
+    // Helper function to strip annotations from a move string
+    const stripAnnotations = (moveStr: string): string => {
+      // Remove annotations like !, ?, !!, ??, !?, ?!
+      return moveStr.replace(/[!?]+/g, '');
+    };
+
+    // Helper function to process moves recursively (including variations)
+    const processMoves = (moves: any[], startIndex: number = 0, isFirstMoveInVariation: boolean = false): string => {
+      let output = '';
+      for (let i = 0; i < moves.length; i++) {
+        const move = moves[i];
+        const moveIndex = startIndex + i;
+
+        // Add move number for white's moves (even indices)
+        // Or for the first move in a variation if it's a black move
+        if (moveIndex % 2 === 0) {
+          const moveNum = Math.floor(moveIndex / 2) + 1;
+          output += `${moveNum}. `;
+        } else if (i === 0 && isFirstMoveInVariation) {
+          // First move in variation is a black move, add move number with ...
+          const moveNum = Math.floor(moveIndex / 2) + 1;
+          output += `${moveNum}... `;
+        }
+
+        // Strip annotations from the move
+        output += `${stripAnnotations(move.move)} `;
+
+        // Handle variations
+        if (move.ravs && move.ravs.length > 0) {
+          for (const rav of move.ravs) {
+            output += '(';
+            if (rav.moves && rav.moves.length > 0) {
+              // For variations, we need to figure out what move number to start with
+              // The variation starts at the same position as the current move
+              output += processMoves(rav.moves, moveIndex, true);
+            }
+            output += ') ';
+          }
+
+          // Add move number continuation if needed after variation
+          if (moveIndex % 2 === 0 && i < moves.length - 1) {
+            const moveNum = Math.floor(moveIndex / 2) + 1;
+            output += `${moveNum}... `;
+          }
+        }
+      }
+      return output.trim();
+    };
+
+    let output = processMoves(game.moves);
+
+    // Add the game result
+    const result = game.result || '*';
+    output += ` ${result}`;
+
+    return output.trim();
+  } catch (error) {
+    console.error('Error parsing PGN in makeMovesOnlyPGN:', error);
+    return '';
+  }
+}
+
 export function isThreefoldRepetition(
   moves: (string | ShortMove)[],
   initialFen?: string
