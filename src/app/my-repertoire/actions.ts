@@ -2,10 +2,27 @@
 
 import { db } from "@/db";
 import { userRepertoire } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import { auth } from "@/lib/auth";
+import { MAX_USER_LESSONS } from "./constants";
+
+export async function isUserAtLessonLimit(
+	userId: number,
+): Promise<boolean> {
+	try {
+		const result = await db
+			.select({ count: count() })
+			.from(userRepertoire)
+			.where(eq(userRepertoire.userId, userId));
+
+		return result[0].count >= MAX_USER_LESSONS;
+	} catch (error) {
+		console.error("Error checking lesson limit:", error);
+		return false;
+	}
+}
 
 export async function getUserRepertoire(): Promise<Lesson[]> {
 	try {
@@ -80,8 +97,19 @@ export async function createUserLesson(
 			return { success: false, error: "You must be logged in" };
 		}
 
+		const userId = Number(session.user.id);
+
+		// Check if user has reached the lesson limit
+		const atLimit = await isUserAtLessonLimit(userId);
+		if (atLimit) {
+			return {
+				success: false,
+				error: `You have reached the maximum limit of ${MAX_USER_LESSONS} lessons. Please delete a lesson before creating a new one.`,
+			};
+		}
+
 		const result = await db.insert(userRepertoire).values({
-			userId: Number(session.user.id),
+			userId,
 			title: lesson.title,
 			userColor: lesson.userColor,
 			chapters: lesson.chapters,
