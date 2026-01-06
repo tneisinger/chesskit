@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  output: 'standalone',
+
   webpack: (config, { isServer }) => {
     // Handle WASM files
     config.experiments = {
