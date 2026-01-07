@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Button, { ButtonSize, ButtonStyle } from './button';
 import { makePgnFromHistory } from '../utils/chess';
@@ -6,7 +6,7 @@ import { Move } from 'cm-chess/src/Chess';
 import { Lesson, Mode } from '../types/lesson'
 import { updateLesson } from '@/app/openings/actions';
 import { updateUserLesson } from '@/app/my-repertoire/actions';
-import { getLinesFromPGN } from '@/utils/pgn';
+import { MAX_CHAPTERS } from "@/types/lesson";
 
 interface Props {
   currentMove: Move | undefined;
@@ -113,6 +113,10 @@ const EditLessonControls = ({
   }, [fallbackMode, doUnsavedChangesExist])
 
   const onAddChapterBtnClick = useCallback(() => {
+    if (lesson.chapters.length >= MAX_CHAPTERS) {
+      window.alert(`Cannot add more than ${MAX_CHAPTERS} chapters to a lesson.`);
+      return;
+    }
     if (doUnsavedChangesExist()) {
       window.alert("Save or undo your changes before adding a chapter.");
       return;
@@ -215,7 +219,7 @@ const EditLessonControls = ({
             <Button
               onClick={onAddChapterBtnClick}
               buttonSize={ButtonSize.Small}
-              disabled={doUnsavedChangesExist()}
+              disabled={lesson.chapters.length >= MAX_CHAPTERS || doUnsavedChangesExist()}
             >
               Add Chapter
             </Button>

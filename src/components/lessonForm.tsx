@@ -7,6 +7,7 @@ import { PieceColor } from "@/types/chess";
 import type { Chapter, Lesson } from "@/types/lesson";
 import { parsePGN, cleanPGN, makeMovesOnlyPGN } from "@/utils/chess";
 import { makePgnParserErrorMsg } from "@/utils/pgn";
+import { MAX_CHAPTERS } from "@/types/lesson";
 
 interface LessonFormProps {
 	initialLesson?: Lesson;
@@ -77,6 +78,7 @@ export default function LessonForm({
 	};
 
 	const addChapter = () => {
+    if (chapters.length >= MAX_CHAPTERS) return;
 		setChapters([...chapters, { title: "", pgn: "" }]);
 		setChapterPgnErrors([...chapterPgnErrors, null]);
 	};
@@ -379,6 +381,7 @@ export default function LessonForm({
           <Button
             type="button"
             onClick={addChapter}
+            disabled={chapters.length >= MAX_CHAPTERS}
           >
             Add Chapter
           </Button>
