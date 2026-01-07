@@ -1,5 +1,7 @@
 import { PieceColor } from '@/types/chess'
 
+export const MAX_CHAPTERS = 10;
+
 export interface Chapter {
   title: string,
   notes?: string,

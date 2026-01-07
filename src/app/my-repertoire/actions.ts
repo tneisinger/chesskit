@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { userRepertoire } from "@/db/schema";
 import { eq, and, count } from "drizzle-orm";
 import type { Lesson } from "@/types/lesson";
+import { MAX_CHAPTERS } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import { auth } from "@/lib/auth";
 import { MAX_USER_LESSONS } from "./constants";
@@ -99,6 +100,14 @@ export async function createUserLesson(
 
 		const userId = Number(session.user.id);
 
+		// Check if lesson has too many chapters
+		if (lesson.chapters.length > MAX_CHAPTERS) {
+			return {
+				success: false,
+				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
+			};
+		}
+
 		// Check if user has reached the lesson limit
 		const atLimit = await isUserAtLessonLimit(userId);
 		if (atLimit) {
@@ -144,6 +153,14 @@ export async function updateUserLesson(
 
 		if (!existingLesson) {
 			return { success: false, error: "Lesson not found or access denied" };
+		}
+
+		// Check if lesson has too many chapters
+		if (lesson.chapters.length > MAX_CHAPTERS) {
+			return {
+				success: false,
+				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
+			};
 		}
 
 		await db
