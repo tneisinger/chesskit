@@ -508,6 +508,16 @@ const LessonSession = ({
   const prevLesson = usePrevious(lesson);
   const prevMode = usePrevious(s.mode);
   const prevChapterIdx = usePrevious(s.currentChapterIdx);
+  const prevHasFirstLoadCompleted = usePrevious(s.hasFirstLoadCompleted);
+
+  // Show the moves automatically after the first load if in Learn mode and userColor is White
+  useEffect(() => {
+    if (prevHasFirstLoadCompleted === false && s.hasFirstLoadCompleted === true) {
+      if (s.mode === Mode.Learn && lesson.userColor === PieceColor.WHITE) {
+        showMoves();
+      }
+    }
+  }, [s.hasFirstLoadCompleted, prevHasFirstLoadCompleted, lesson, s.mode]);
 
   // Saved lines from the last time the user saved the chapter.
   // This is used to detect unsaved changes.
