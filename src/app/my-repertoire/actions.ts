@@ -4,10 +4,10 @@ import { db } from "@/db";
 import { userRepertoire } from "@/db/schema";
 import { eq, and, count } from "drizzle-orm";
 import type { Lesson } from "@/types/lesson";
-import { MAX_CHAPTERS, MAX_PGN_LENGTH } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import { auth } from "@/lib/auth";
 import { MAX_USER_LESSONS } from "./constants";
+import { performLessonLimitChecks } from "@/utils/lesson";
 
 export async function isUserAtLessonLimit(
 	userId: number,
@@ -100,23 +100,10 @@ export async function createUserLesson(
 
 		const userId = Number(session.user.id);
 
-		// Check if lesson has too many chapters
-		if (lesson.chapters.length > MAX_CHAPTERS) {
-			return {
-				success: false,
-				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
-			};
-		}
-
-		// Check if any chapter PGN is too long
-    for (const [i, c] of lesson.chapters.entries()) {
-      if (c.pgn.length > MAX_PGN_LENGTH) {
-        return {
-          success: false,
-          error: `The PGN of chapter ${i + 1} is too long. Reduce the moves section by ${c.pgn.length - MAX_PGN_LENGTH} characters.`
-        };
-      }
-    };
+    const limitCheckResult = performLessonLimitChecks(lesson);
+    if (!limitCheckResult.success) {
+      return limitCheckResult;
+    }
 
 		// Check if user has reached the lesson limit
 		const atLimit = await isUserAtLessonLimit(userId);
@@ -165,23 +152,10 @@ export async function updateUserLesson(
 			return { success: false, error: "Lesson not found or access denied" };
 		}
 
-		// Check if lesson has too many chapters
-		if (lesson.chapters.length > MAX_CHAPTERS) {
-			return {
-				success: false,
-				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
-			};
-		}
-
-		// Check if any chapter PGN is too long
-    for (const [i, c] of lesson.chapters.entries()) {
-      if (c.pgn.length > MAX_PGN_LENGTH) {
-        return {
-          success: false,
-          error: `The PGN of chapter ${i + 1} is too long. Reduce the moves section by ${c.pgn.length - MAX_PGN_LENGTH} characters.`
-        };
-      }
-    };
+    const limitCheckResult = performLessonLimitChecks(lesson);
+    if (!limitCheckResult.success) {
+      return limitCheckResult;
+    }
 
 		await db
 			.update(userRepertoire)

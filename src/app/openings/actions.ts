@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import { auth } from "@/lib/auth";
-import { MAX_CHAPTERS, MAX_PGN_LENGTH } from "@/types/lesson";
+import { performLessonLimitChecks } from "@/utils/lesson";
 
 export async function getLessonByTitle(
 	title: string,
@@ -67,23 +67,10 @@ export async function createLesson(
 			return { success: false, error: "A lesson with this title already exists" };
 		}
 
-    // Check if lesson has too many chapters
-		if (lesson.chapters.length > MAX_CHAPTERS) {
-			return {
-				success: false,
-				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
-			};
-		}
-
-		// Check if any chapter PGN is too long
-    for (const [i, c] of lesson.chapters.entries()) {
-      if (c.pgn.length > MAX_PGN_LENGTH) {
-        return {
-          success: false,
-          error: `The PGN of chapter ${i + 1} is too long. Reduce the moves section by ${c.pgn.length - MAX_PGN_LENGTH} characters.`
-        };
-      }
-    };
+    const limitCheckResult = performLessonLimitChecks(lesson);
+    if (!limitCheckResult.success) {
+      return limitCheckResult;
+    }
 
 		// Insert the new lesson
 		await db.insert(lessons).values({
@@ -125,23 +112,10 @@ export async function updateLesson(
 			return { success: false, error: "Lesson not found" };
 		}
 
-		// Check if lesson has too many chapters
-		if (lesson.chapters.length > MAX_CHAPTERS) {
-			return {
-				success: false,
-				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
-			};
-		}
-
-		// Check if any chapter PGN is too long
-    for (const [i, c] of lesson.chapters.entries()) {
-      if (c.pgn.length > MAX_PGN_LENGTH) {
-        return {
-          success: false,
-          error: `The PGN of chapter ${i + 1} is too long. Reduce the moves section by ${c.pgn.length - MAX_PGN_LENGTH} characters.`
-        };
-      }
-    };
+    const limitCheckResult = performLessonLimitChecks(lesson);
+    if (!limitCheckResult.success) {
+      return limitCheckResult;
+    }
 
 		// Check if the title has changed
 		const titleChanged = originalTitle !== lesson.title;
