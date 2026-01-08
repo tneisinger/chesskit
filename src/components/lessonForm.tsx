@@ -7,7 +7,11 @@ import { PieceColor } from "@/types/chess";
 import type { Chapter, Lesson } from "@/types/lesson";
 import { parsePGN, cleanPGN, makeMovesOnlyPGN } from "@/utils/chess";
 import { makePgnParserErrorMsg } from "@/utils/pgn";
-import { MAX_CHAPTERS } from "@/types/lesson";
+import {
+  MAX_CHAPTERS,
+  MAX_LESSON_TITLE_LENGTH,
+  MAX_CHAPTER_TITLE_LENGTH,
+} from "@/types/lesson";
 
 interface LessonFormProps {
 	initialLesson?: Lesson;
@@ -95,6 +99,11 @@ export default function LessonForm({
 		field: keyof Chapter,
 		value: string
 	) => {
+    // Don't allow title to exceed max length
+    if (field === "title" && value.length > MAX_CHAPTER_TITLE_LENGTH) {
+      return;
+    }
+
 		const newChapters = [...chapters];
 		newChapters[index] = { ...newChapters[index], [field]: value };
 		setChapters(newChapters);
@@ -107,6 +116,15 @@ export default function LessonForm({
 			setChapterPgnErrors(newErrors);
 		}
 	};
+
+	/**
+	 * Handles lesson title change with validation
+	 */
+  const handleTitleChange = (value: string) => {
+    if (value.length <= MAX_LESSON_TITLE_LENGTH) {
+      setTitle(value);
+    }
+  }
 
 	/**
 	 * Handles displayLine input change with validation
@@ -231,7 +249,7 @@ export default function LessonForm({
 					id="title"
 					type="text"
 					value={title}
-					onChange={(e) => setTitle(e.target.value)}
+					onChange={(e) => handleTitleChange(e.target.value)}
 					className="p-3 rounded bg-background-page text-foreground border border-[#444]"
 					placeholder="e.g. Italian Game"
 				/>
