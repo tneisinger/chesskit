@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import { auth } from "@/lib/auth";
+import { MAX_CHAPTERS } from "@/types/lesson";
 
 export async function getLessonByTitle(
 	title: string,
@@ -42,7 +43,9 @@ export async function getAllLessons() {
 	}));
 }
 
-export async function createLesson(lesson: Lesson): Promise<{ success: boolean; error?: string }> {
+export async function createLesson(
+  lesson: Lesson
+): Promise<{ success: boolean; error?: string }> {
 	try {
 		// Check authentication and authorization
 		const session = await auth();
@@ -62,6 +65,14 @@ export async function createLesson(lesson: Lesson): Promise<{ success: boolean; 
 		const existing = await getLessonByTitle(lesson.title);
 		if (existing) {
 			return { success: false, error: "A lesson with this title already exists" };
+		}
+
+    // Check if lesson has too many chapters
+		if (lesson.chapters.length > MAX_CHAPTERS) {
+			return {
+				success: false,
+				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
+			};
 		}
 
 		// Insert the new lesson
@@ -102,6 +113,14 @@ export async function updateLesson(
 		const existing = await getLessonByTitle(originalTitle);
 		if (!existing) {
 			return { success: false, error: "Lesson not found" };
+		}
+
+		// Check if lesson has too many chapters
+		if (lesson.chapters.length > MAX_CHAPTERS) {
+			return {
+				success: false,
+				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
+			};
 		}
 
 		// Check if the title has changed
