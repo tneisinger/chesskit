@@ -1,4 +1,11 @@
-import { Lesson, MAX_CHAPTERS, MAX_PGN_LENGTH, MAX_LESSON_TITLE_LENGTH } from "@/types/lesson";
+import {
+  Lesson,
+  MAX_CHAPTERS,
+  MAX_CHAPTER_TITLE_LENGTH,
+  MAX_PGN_LENGTH,
+  MAX_LESSON_TITLE_LENGTH,
+  MAX_DISPLAY_LINE_MOVES,
+} from "@/types/lesson";
 
 export function sortLessonsByTitle(lessons: Lesson[]): void {
   lessons.sort((a, b) => {
@@ -39,6 +46,24 @@ export function performLessonLimitChecks(
       success: false,
       error: `The lesson title is too long. Please limit it to ${MAX_LESSON_TITLE_LENGTH} characters.`
     };
+  }
+
+  // Check if display line is too long
+  if (lesson.displayLine && lesson.displayLine.length > MAX_DISPLAY_LINE_MOVES) {
+    return {
+      success: false,
+      error: `The display line cannot have more than ${MAX_DISPLAY_LINE_MOVES} moves.`,
+    }
+  }
+
+  // Check if a chapter title is too long
+  for (const [i, c] of lesson.chapters.entries()) {
+    if (c.title.length > MAX_CHAPTER_TITLE_LENGTH) {
+      return {
+        success: false,
+        error: `The title of chapter ${i + 1} is too long. Reduce it by ${c.title.length - MAX_CHAPTER_TITLE_LENGTH} characters.`,
+      }
+    }
   }
 
   return { success: true };
