@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { userRepertoire } from "@/db/schema";
 import { eq, and, count } from "drizzle-orm";
 import type { Lesson } from "@/types/lesson";
-import { MAX_CHAPTERS } from "@/types/lesson";
+import { MAX_CHAPTERS, MAX_PGN_LENGTH } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import { auth } from "@/lib/auth";
 import { MAX_USER_LESSONS } from "./constants";
@@ -108,6 +108,16 @@ export async function createUserLesson(
 			};
 		}
 
+		// Check if any chapter PGN is too long
+    for (const [i, c] of lesson.chapters.entries()) {
+      if (c.pgn.length > MAX_PGN_LENGTH) {
+        return {
+          success: false,
+          error: `The PGN of chapter ${i + 1} is too long. Reduce the moves section by ${c.pgn.length - MAX_PGN_LENGTH} characters.`
+        };
+      }
+    };
+
 		// Check if user has reached the lesson limit
 		const atLimit = await isUserAtLessonLimit(userId);
 		if (atLimit) {
@@ -162,6 +172,16 @@ export async function updateUserLesson(
 				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
 			};
 		}
+
+		// Check if any chapter PGN is too long
+    for (const [i, c] of lesson.chapters.entries()) {
+      if (c.pgn.length > MAX_PGN_LENGTH) {
+        return {
+          success: false,
+          error: `The PGN of chapter ${i + 1} is too long. Reduce the moves section by ${c.pgn.length - MAX_PGN_LENGTH} characters.`
+        };
+      }
+    };
 
 		await db
 			.update(userRepertoire)
