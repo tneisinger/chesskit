@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import { auth } from "@/lib/auth";
-import { MAX_CHAPTERS } from "@/types/lesson";
+import { MAX_CHAPTERS, MAX_PGN_LENGTH } from "@/types/lesson";
 
 export async function getLessonByTitle(
 	title: string,
@@ -75,6 +75,16 @@ export async function createLesson(
 			};
 		}
 
+		// Check if any chapter PGN is too long
+    for (const [i, c] of lesson.chapters.entries()) {
+      if (c.pgn.length > MAX_PGN_LENGTH) {
+        return {
+          success: false,
+          error: `The PGN of chapter ${i + 1} is too long. Reduce the moves section by ${c.pgn.length - MAX_PGN_LENGTH} characters.`
+        };
+      }
+    };
+
 		// Insert the new lesson
 		await db.insert(lessons).values({
 			title: lesson.title,
@@ -122,6 +132,16 @@ export async function updateLesson(
 				error: `Lesson cannot have more than ${MAX_CHAPTERS} chapters.`,
 			};
 		}
+
+		// Check if any chapter PGN is too long
+    for (const [i, c] of lesson.chapters.entries()) {
+      if (c.pgn.length > MAX_PGN_LENGTH) {
+        return {
+          success: false,
+          error: `The PGN of chapter ${i + 1} is too long. Reduce the moves section by ${c.pgn.length - MAX_PGN_LENGTH} characters.`
+        };
+      }
+    };
 
 		// Check if the title has changed
 		const titleChanged = originalTitle !== lesson.title;
