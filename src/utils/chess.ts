@@ -782,6 +782,7 @@ export function parsePGN(pgn: string, options?: { allowIncomplete?: boolean }) {
       throw error;
     }
   }
+  return parse(pgn);
 }
 
 export function cleanPGN(pgn: string): string | undefined {

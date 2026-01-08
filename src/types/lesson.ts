@@ -1,8 +1,10 @@
 import { PieceColor } from '@/types/chess'
 
 export const MAX_CHAPTERS = 10;
+export const MAX_CHAPTER_TITLE_LENGTH = 28;
 export const MAX_PGN_LENGTH = 2500;
 export const MAX_LESSON_TITLE_LENGTH = 28;
+export const MAX_DISPLAY_LINE_MOVES = 8;
 
 export interface Chapter {
   title: string,
