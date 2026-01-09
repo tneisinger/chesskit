@@ -31,7 +31,6 @@ const Button = ({
     'cursor-pointer',
     'px-2',
     href ? 'py-1.5' : 'py-1',
-    'my-2',
     'rounded',
     'bg-btn-primary',
     'hover:bg-btn-primary-hover',

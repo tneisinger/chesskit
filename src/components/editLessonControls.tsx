@@ -187,7 +187,7 @@ const EditLessonControls = ({
   }, [lesson, currentChapterIdx, router, pathname, searchParams]);
 
   return (
-    <div className="flex flex-col items-center mb-1">
+    <div className="flex flex-col items-center mb-2.5">
       <h4 className='mt-2 mb-1'>You are in {mode} Mode</h4>
       {mode !== Mode.Edit && (
         <Button
@@ -198,8 +198,8 @@ const EditLessonControls = ({
         </Button>
       )}
       {mode === Mode.Edit && (
-        <>
-          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
+        <div className="flex flex-row w-full items-center justify-evenly">
+          <div className="flex flex-col gap-2 items-center justify-evenly">
             <Button
               onClick={handleDeleteMoveBtnClick}
               disabled={currentMove == undefined}
@@ -208,15 +208,6 @@ const EditLessonControls = ({
               Delete Move
             </Button>
             <Button
-              onClick={onStopEditingBtnClick}
-              buttonSize={ButtonSize.Small}
-              disabled={savedLines.length < 1}
-            >
-              Stop Editing
-            </Button>
-          </div>
-          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
-            <Button
               onClick={onAddChapterBtnClick}
               buttonSize={ButtonSize.Small}
               disabled={lesson.chapters.length >= MAX_CHAPTERS || doUnsavedChangesExist()}
@@ -224,20 +215,27 @@ const EditLessonControls = ({
               Add Chapter
             </Button>
             <Button
-              onClick={onDeleteChapterBtnClick}
-              buttonSize={ButtonSize.Small}
-            >
-              Delete Chapter
-            </Button>
-          </div>
-          <div className="flex flex-row w-full items-center justify-evenly [&_button+button]:mt-2">
-            <Button
               onClick={onSaveBtnClick}
               disabled={!doUnsavedChangesExist()}
               buttonSize={ButtonSize.Small}
               buttonStyle={ButtonStyle.Danger}
             >
               Save Changes
+            </Button>
+          </div>
+          <div className="flex flex-col gap-2 items-center justify-evenly">
+            <Button
+              onClick={onStopEditingBtnClick}
+              buttonSize={ButtonSize.Small}
+              disabled={savedLines.length < 1}
+            >
+              Stop Editing
+            </Button>
+            <Button
+              onClick={onDeleteChapterBtnClick}
+              buttonSize={ButtonSize.Small}
+            >
+              Delete Chapter
             </Button>
             <Button
               onClick={onDiscardChangesBtnClick}
@@ -247,7 +245,7 @@ const EditLessonControls = ({
               Undo Changes
             </Button>
           </div>
-      </>
+      </div>
     )}
     </div >
   );

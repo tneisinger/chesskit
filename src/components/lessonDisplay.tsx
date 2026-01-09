@@ -164,7 +164,7 @@ export default function LessonDisplay({
   lesson.chapters.forEach((c) => totalLines += getLinesFromPGN(c.pgn).length);
   const numLinesString = `${totalLines} ${totalLines === 1 ? 'line' : 'lines'}`;
 
-  const classes = ['flex flex-col items-center gap-4 p-4 pt-3 pb-1 rounded bg-background-page border border-foreground/10 max-w-96'];
+  const classes = ['flex flex-col items-center gap-4 p-4 pt-3 pb-0 rounded bg-background-page border border-foreground/10 max-w-96'];
 
   return (
     <li
@@ -201,7 +201,7 @@ export default function LessonDisplay({
           />
         </Link>
         {/* Action Buttons - only render if isModifiable is true */}
-        <div className={`flex flex-row ${isModifiable ? 'justify-between' : 'justify-around'} mt-1`}>
+        <div className={`flex flex-row ${isModifiable ? 'justify-between' : 'justify-around'} my-1.5`}>
           {showAddToRepertoireBtn && (
             <Button
               onClick={() => {
