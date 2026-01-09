@@ -32,7 +32,7 @@ export default function LessonForm({
 		initialLesson?.userColor || PieceColor.WHITE
 	);
 	const [chapters, setChapters] = useState<Chapter[]>(
-		initialLesson?.chapters || [{ title: "", pgn: "" }]
+		initialLesson?.chapters || [{ title: "Chapter 1", pgn: "" }]
 	);
 	const [displayLine, setDisplayLine] = useState<string>(() => {
 		// Convert displayLine array to PGN format with move numbers
@@ -83,7 +83,7 @@ export default function LessonForm({
 
 	const addChapter = () => {
     if (chapters.length >= MAX_CHAPTERS) return;
-		setChapters([...chapters, { title: "", pgn: "" }]);
+		setChapters([...chapters, { title: `Chapter ${chapters.length + 1}`, pgn: "" }]);
 		setChapterPgnErrors([...chapterPgnErrors, null]);
 	};
 
@@ -121,7 +121,10 @@ export default function LessonForm({
 	 * Handles lesson title change with validation
 	 */
   const handleTitleChange = (value: string) => {
-    if (value.length <= MAX_LESSON_TITLE_LENGTH) {
+    if (value.length > MAX_LESSON_TITLE_LENGTH) {
+      if (value.length < title.length) setTitle(value);
+      return;
+    } else {
       setTitle(value);
     }
   }
