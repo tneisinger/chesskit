@@ -1,7 +1,4 @@
-import React from 'react';
 import { Move } from 'cm-chess/src/Chess';
-// import type { GamePuzzle } from '../types/puzzle';
-// import { getFirstIncompleteGamePuzzle } from '../utils/puzzle';
 import { isMoveInMainLine } from '../utils/chess';
 import ArrowButton from './arrowButton';
 import { Svg } from './svgIcon';
@@ -10,7 +7,6 @@ interface Props {
   history: Move[];
   currentMove: Move | undefined;
   changeCurrentMove: (newCurrentMove?: Move) => void;
-  // gamePuzzles?: GamePuzzle[];
   excludeStartAndEndBtns?: boolean;
 }
 
@@ -18,15 +14,8 @@ const ArrowButtons = ({
   history,
   currentMove,
   changeCurrentMove,
-  // gamePuzzles = [],
   excludeStartAndEndBtns = false,
 }: Props) => {
-  // const firstIncompletePuzzle = getFirstIncompleteGamePuzzle(gamePuzzles);
-
-  // if (firstIncompletePuzzle) {
-  //   history = history.slice(0, firstIncompletePuzzle.puzzle.moveIdx);
-  // }
-
   const doesNextMoveExist = (): boolean => {
     if (history.length > 0 && currentMove == undefined) return true;
     if (currentMove) {
