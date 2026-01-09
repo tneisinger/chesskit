@@ -702,6 +702,10 @@ const LessonSession = ({
       afterChessboardMoveDo.current.push(() => {
         setupTimeout();
       });
+
+      // Clear the history immediately to avoid an annoying render effect
+      setHistory([]);
+
       setCurrentMove(undefined);
     }
   }, [currentMove, reset, history, s.lineProgressIdx, allowEdits, s.fallbackMode]);
@@ -736,7 +740,10 @@ const LessonSession = ({
       afterChessboardMoveDo.current.push(() => {
         setupTimeout();
       });
+
+      // Clear the history immediately to avoid an annoying render effect
       setHistory([]);
+
       setCurrentMove(undefined);
     }
   }, [reset, allowEdits, s.fallbackMode]);
