@@ -3,7 +3,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Button, { ButtonSize, ButtonStyle } from './button';
 import { makePgnFromHistory } from '../utils/chess';
 import { Move } from 'cm-chess/src/Chess';
-import { Lesson, Mode } from '../types/lesson'
+import { Lesson, Mode, LineStats } from '../types/lesson'
 import { updateLesson } from '@/app/openings/actions';
 import { updateUserLesson } from '@/app/my-repertoire/actions';
 import { MAX_CHAPTERS } from "@/types/lesson";
@@ -14,6 +14,7 @@ interface Props {
   currentChapterIdx: number;
   history: Move[];
   mode: Mode;
+  changeMode: (newMode: Mode) => void;
   fallbackMode: Mode;
   onEditModeBtnClick: () => void;
   deleteCurrentMove: () => void;
@@ -21,6 +22,7 @@ interface Props {
   setupNextLine: (nextMode: Mode) => void;
   openAddNewChapterModal: () => void;
   doUnsavedChangesExist: (newPgn?: string) => boolean;
+  lines: Record<string, LineStats>[];
   savedLines: string[];
 }
 
@@ -30,6 +32,7 @@ const EditLessonControls = ({
   currentChapterIdx,
   history,
   mode,
+  changeMode,
   fallbackMode,
   onEditModeBtnClick,
   deleteCurrentMove,
@@ -37,6 +40,7 @@ const EditLessonControls = ({
   setupNextLine,
   openAddNewChapterModal,
   doUnsavedChangesExist,
+  lines,
   savedLines,
 }: Props) => {
   const router = useRouter();
@@ -109,7 +113,20 @@ const EditLessonControls = ({
         return;
       }
     }
-    setupNextLine(fallbackMode)
+
+    // Check if all lines have been completed
+    const numLines = Object.keys(lines[currentChapterIdx]).length;
+    const incompleteLines: string[] = [];
+    Object.entries(lines[currentChapterIdx]).forEach(([k, v]) => {
+      if (v.isComplete === false) incompleteLines.push(k);
+    });
+
+    // If all lines are complete, go to Explore mode. Otherwise, set up the next line.
+    if (incompleteLines.length < 1 && numLines > 0) {
+      changeMode(Mode.Explore);
+    } else {
+      setupNextLine(fallbackMode)
+    }
   }, [fallbackMode, doUnsavedChangesExist])
 
   const onAddChapterBtnClick = useCallback(() => {

@@ -375,11 +375,6 @@ function setupNewLesson(
 
 function setupNextLine(s: State, nextMode: Mode): State {
   const numLines = Object.keys(s.lines[s.currentChapterIdx]).length;
-  const incompleteLines: string[] = [];
-  Object.entries(s.lines[s.currentChapterIdx]).forEach(([k, v]) => {
-    if (v.isComplete === false) incompleteLines.push(k);
-  });
-  if (incompleteLines.length < 1 && numLines > 0) throw new Error('No incomplete lines');
   if (numLines < 1) {
     // If there are no lines at all, go to Edit mode
     nextMode = Mode.Edit;
@@ -388,6 +383,14 @@ function setupNextLine(s: State, nextMode: Mode): State {
   if (nextMode === Mode.Learn || nextMode === Mode.Practice) {
     fallbackMode = nextMode;
   }
+
+  // If all the lines are complete, set the mode to Explore
+  const incompleteLines: string[] = [];
+  Object.entries(s.lines[s.currentChapterIdx]).forEach(([k, v]) => {
+    if (v.isComplete === false) incompleteLines.push(k);
+  });
+  if (incompleteLines.length < 1 && numLines > 0) nextMode = Mode.Explore;
+
   return {
     ...s,
     recentlyCompletedLine: null,
@@ -733,6 +736,7 @@ const LessonSession = ({
       afterChessboardMoveDo.current.push(() => {
         setupTimeout();
       });
+      setHistory([]);
       setCurrentMove(undefined);
     }
   }, [reset, allowEdits, s.fallbackMode]);
@@ -1381,6 +1385,7 @@ const LessonSession = ({
                     currentChapterIdx={s.currentChapterIdx}
                     history={history}
                     mode={s.mode}
+                    changeMode={(mode) => dispatch({type: 'changeMode', lessonTitle: lesson.title, mode })}
                     fallbackMode={s.fallbackMode}
                     onEditModeBtnClick={handleEditModeBtnClick}
                     deleteCurrentMove={deleteCurrentMove}
@@ -1388,6 +1393,7 @@ const LessonSession = ({
                     setupNextLine={setupNextLine}
                     openAddNewChapterModal={openAddNewChapterModal}
                     doUnsavedChangesExist={doUnsavedChangesExist}
+                    lines={s.lines}
                     savedLines={savedLines}
                   />
                 </div>
