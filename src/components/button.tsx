@@ -30,7 +30,7 @@ const Button = ({
     'hover:text-[#eee]',
     'cursor-pointer',
     'px-2',
-    'py-1',
+    href ? 'py-1.5' : 'py-1',
     'my-2',
     'rounded',
     'bg-btn-primary',
