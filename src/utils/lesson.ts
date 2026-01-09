@@ -4,7 +4,7 @@ import {
   MAX_CHAPTER_TITLE_LENGTH,
   MAX_PGN_LENGTH,
   MAX_LESSON_TITLE_LENGTH,
-  MAX_DISPLAY_LINE_MOVES,
+  MAX_DISPLAY_LINE_PLIES,
 } from "@/types/lesson";
 
 export function sortLessonsByTitle(lessons: Lesson[]): void {
@@ -49,10 +49,10 @@ export function performLessonLimitChecks(
   }
 
   // Check if display line is too long
-  if (lesson.displayLine && lesson.displayLine.length > MAX_DISPLAY_LINE_MOVES) {
+  if (lesson.displayLine && lesson.displayLine.length > MAX_DISPLAY_LINE_PLIES) {
     return {
       success: false,
-      error: `The display line cannot have more than ${MAX_DISPLAY_LINE_MOVES} moves.`,
+      error: `The display line cannot have more than ${MAX_DISPLAY_LINE_PLIES} moves.`,
     }
   }
 
