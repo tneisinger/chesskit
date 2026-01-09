@@ -461,6 +461,13 @@ const LessonSession = ({
 
   const searchParams = useSearchParams();
 
+  const currentMoveRef = useRef(currentMove);
+
+  // Keep the ref in sync with state
+  useEffect(() => {
+    currentMoveRef.current = currentMove;
+  }, [currentMove]);
+
   useEffect(() => {
     if (lesson == undefined) return;
     const chapterIdxParam = searchParams.get('chapterIdx');
@@ -715,8 +722,9 @@ const LessonSession = ({
 
     // If the currentMove is undefined, the board will not animate, so don't
     // wait for afterChessboardMoveDo.
-    if (currentMove === undefined) {
-      setupTimeout();
+    if (currentMoveRef.current === undefined) {
+      reset();
+      dispatch({ type: 'setupNextLine', nextMode })
 
     // If the currentMove is defined, that means the board is not in the
     // starting position and the board is going to animate to the starting
