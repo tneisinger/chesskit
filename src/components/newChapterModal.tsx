@@ -5,6 +5,7 @@ import Button from "@/components/button";
 import { Lesson } from '@/types/lesson';
 import { updateLesson } from '@/app/openings/actions';
 import { updateUserLesson } from '@/app/my-repertoire/actions';
+import { MAX_CHAPTER_TITLE_LENGTH, } from "@/types/lesson";
 
 interface Props {
   show: boolean;
@@ -24,10 +25,16 @@ const NewChapterModal = ({ show, lesson, onClose, resetBoard }: Props) => {
 
   useEffect(() => {
   if (show && inputRef.current) {
+    const nextChapterNumber = lesson.chapters.length + 1;
+    setTitle(`Chapter ${nextChapterNumber}`);
     inputRef.current.focus();
-    setTitle('');
   }
     }, [show]);
+
+  const handleTitleChange = (title: string) => {
+    if (title.length > MAX_CHAPTER_TITLE_LENGTH) return;
+    setTitle(title);
+  }
 
 	const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +106,7 @@ const NewChapterModal = ({ show, lesson, onClose, resetBoard }: Props) => {
             ref={inputRef}
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => handleTitleChange(e.target.value)}
             className="p-2 px-4 rounded bg-background text-foreground border border-[#555]"
             placeholder="New Chapter Title"
           />
