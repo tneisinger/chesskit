@@ -11,16 +11,19 @@ import { PieceColor } from "@/types/chess";
 import LessonDisplay from "@/components/lessonDisplay";
 import Button from "@/components/button";
 import { sortLessonsByTitle } from "@/utils/lesson";
+import { getAllLessons, createLesson, updateLesson } from "../openings/actions";
 
 type ColorFilter = "all" | PieceColor;
 
 export default function MyRepertoirePage() {
 	const router = useRouter();
 	const { data: session, status } = useSession();
+	const isAdmin = session?.user?.role === "admin";
 	const [lessons, setLessons] = useState<Lesson[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [deletingLessonId, setDeletingLessonId] = useState<number | null>(null);
 	const [colorFilter, setColorFilter] = useState<ColorFilter>("all");
+  const [publishingLessonId, setPublishingLessonId] = useState<number | null>(null);
 
 	const handleFilterChange = useCallback(
 		(newFilter: ColorFilter) => {
@@ -85,6 +88,54 @@ export default function MyRepertoirePage() {
 			setDeletingLessonId(null);
 		}
 	};
+
+  const handlePublishOpeningBtnClick = async (lesson: Lesson) => {
+    // If the user is not an admin, show an alert and return
+    if (!isAdmin) {
+      alert("You must be signed in as an admin to publish an opening.")
+      return;
+    }
+
+    setPublishingLessonId(lesson.id!);
+
+    try {
+      // Check if a lesson with this title already exists in Openings
+      const openings = await getAllLessons()
+      const existingOpening = openings.find(o => o.title === lesson.title)
+
+      let confirmed = true;
+      if (existingOpening) {
+        confirmed = confirm(`An opening with the title "${lesson.title}" already exists in Openings. Do you want to replace it with this one?`)
+      }
+      if (!confirmed) return;
+
+      // Create a copy of the lesson (without the id)
+      const lessonCopy: Lesson = {
+        title: lesson.title,
+        userColor: lesson.userColor,
+        chapters: lesson.chapters,
+        displayLine: lesson.displayLine,
+      }
+
+      let result;
+      if (existingOpening) {
+        result = await updateLesson(lesson.title, lessonCopy);
+      } else {
+        result = await createLesson(lessonCopy);
+      }
+
+			if (result.success) {
+				alert(`"${lesson.title}" has been added to Openings!`);
+			} else {
+				alert(`Failed to add lesson to Openings: ${result.error}`);
+			}
+		} catch (error) {
+			console.error("Error adding lesson to Openings:", error);
+			alert("An unexpected error occurred while adding the lesson to Openings");
+		} finally {
+			setPublishingLessonId(null);
+		}
+  }
 
 	if (status === "loading" || isLoading) {
 		return (
@@ -175,6 +226,8 @@ export default function MyRepertoirePage() {
 						<LessonDisplay
 							lesson={lesson}
 							boardSize={325}
+              showPublishOpeningBtn={isAdmin}
+              handlePublishOpeningBtnClick={(lesson) => handlePublishOpeningBtnClick(lesson)}
 							handleDelete={(title) => handleDelete(lesson.id!, title)}
 							isDeletingLesson={deletingLessonId === lesson.id}
 							isModifiable={true}

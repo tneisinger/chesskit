@@ -26,6 +26,18 @@ interface LessonDisplayProps {
 		* A function to handle add the lesson to My Repertoire
 	 */
   handleAddToRepertoireBtnClick?: (lesson: Lesson) => void;
+
+  /**
+  * A boolean indicating if the 'Publish Opening' button should be shown
+   */
+  showPublishOpeningBtn?: boolean;
+
+	/**
+		* A function to handle publishing the opening to the Openings page
+	 */
+  handlePublishOpeningBtnClick?: (lesson: Lesson) => void;
+
+
 	/**
 		* A function to handle deletion of the lesson
 	 */
@@ -84,6 +96,8 @@ export default function LessonDisplay({
   boardSize = 200,
   showAddToRepertoireBtn = false,
   handleAddToRepertoireBtnClick,
+  showPublishOpeningBtn = false,
+  handlePublishOpeningBtnClick,
   handleDelete,
   isDeletingLesson,
   isModifiable = false,
@@ -92,6 +106,14 @@ export default function LessonDisplay({
 }: LessonDisplayProps) {
   if (showAddToRepertoireBtn && !handleAddToRepertoireBtnClick) {
     throw new Error("handleAddToRepertoireBtnClick must be provided if showAddToRepertoireBtn is true");
+  }
+
+  if (showPublishOpeningBtn && !handlePublishOpeningBtnClick) {
+    throw new Error("handlePublishOpeningBtnClick must be provided if showPublishOpeningBtn is true");
+  }
+
+  if (showAddToRepertoireBtn && showPublishOpeningBtn) {
+    throw new Error("Cannot show both Add to Repertoire and Publish Opening buttons at the same time");
   }
 
   const pathname = usePathname();
@@ -188,6 +210,16 @@ export default function LessonDisplay({
               buttonSize={ButtonSize.Small}
             >
               Add to My Repertoire
+            </Button>
+          )}
+          {showPublishOpeningBtn && (
+            <Button
+              onClick={() => {
+                if (handlePublishOpeningBtnClick) handlePublishOpeningBtnClick(lesson)
+              }}
+              buttonSize={ButtonSize.Small}
+            >
+              Publish Opening
             </Button>
           )}
           {isModifiable && (
