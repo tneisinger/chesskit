@@ -122,6 +122,7 @@ export default function LessonForm({
 	 */
   const handleTitleChange = (value: string) => {
     if (value.length > MAX_LESSON_TITLE_LENGTH) {
+      // If exceeding max length, only update if shortening the title
       if (value.length < title.length) setTitle(value);
       return;
     } else {
