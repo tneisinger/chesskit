@@ -31,7 +31,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-switch": "^7.1.0",
-    "stockfish": "^17.1.0"
+    "stockfish": "^17.1.0",
+    "string-hash": "^1.1.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
@@ -42,6 +43,7 @@
     "@types/pgn-parser": "^2.1.3",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
+    "@types/string-hash": "^1.1.3",
     "@vitest/ui": "^4.0.16",
     "drizzle-kit": "^0.31.6",
     "tailwindcss": "^4",
