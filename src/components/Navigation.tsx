@@ -19,12 +19,14 @@ interface NavLink {
 const publicNavLinks: NavLink[] = [
 	{ href: '/', label: 'Home' },
 	{ href: '/openings', label: 'Openings' },
+	{ href: '/game-review', label: 'Game Review' },
 ];
 
 const authenticatedNavLinks: NavLink[] = [
 	{ href: '/', label: 'Home' },
 	{ href: '/openings', label: 'Openings' },
 	{ href: '/my-repertoire', label: 'My Repertoire', requiresAuth: true },
+	{ href: '/game-review', label: 'Game Review' },
 ];
 
 export default function Navigation() {
