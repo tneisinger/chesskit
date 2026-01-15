@@ -46,3 +46,12 @@ body.scroll-lock {
 @utility no-scrollbar {
   @apply [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
 }
+
+@keyframes dotFlashing {
+  0% {
+    background-color: #37342f;
+  }
+  50%, 100% {
+    background-color: #ebe6ff;
+  }
+}
