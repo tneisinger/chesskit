@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ChessWebsite, GameData } from '@/types/chess';
 import { fetchGames } from '@/fetch';
+import { saveGames } from '@/app/game-review/actions';
 import Spinner from '@/components/spinner';
 import UsernameForm from '@/components/usernameForm';
 import usePrevious from '@/hooks/usePrevious';
@@ -23,6 +24,14 @@ const AddOnlineGames = ({ chessWebsite }: Props) => {
 
   const [fetchedGames, setFetchedGames] = useState<GameData[] | null>(null);
 
+  const [isSavingGames, setIsSavingGames] = useState(false);
+
+  const [saveResult, setSaveResult] = useState<{
+    success: boolean;
+    savedCount?: number;
+    error?: string;
+  } | null>(null);
+
   useEffect(() => {
     const name = '' // getStoredUsername(chessWebsite);
     if (name) setUsername(name);
@@ -31,12 +40,20 @@ const AddOnlineGames = ({ chessWebsite }: Props) => {
   useEffect(() => {
     if (isFetchingGames && isFetchingGames !== prevIsFetchingGames && username) {
       fetchGames(username, chessWebsite, [], { maxGames: 30 })
-        .then((games) => {
+        .then(async (games) => {
           setIsFetchingGames(false);
           setFetchedGames(games);
-          // updateUsername(username, chessWebsite, zState);
+
+          // Save games to database
+          if (games.length > 0) {
+            setIsSavingGames(true);
+            const result = await saveGames(games);
+            setIsSavingGames(false);
+            setSaveResult(result);
+          }
         })
         .catch((reason) => {
+          setIsFetchingGames(false);
           if (reason instanceof Error && reason.message === 'Failed to fetch') {
             const s1 = `Failed to fetch games from ${chessWebsite}.`
             const s2 = `There may be something wrong with the ${chessWebsite} server.`
@@ -80,20 +97,58 @@ const AddOnlineGames = ({ chessWebsite }: Props) => {
   );
 
   if (fetchedGames && fetchedGames.length > 0) {
-    console.log(fetchedGames);
-    return (
-      <>
-        <h2>
-          {username}{"'"}s games from {chessWebsite}
-        </h2>
-        <h3>
-          Select up to {maxNumGamesToAnalyze} games to analyze
-        </h3>
+    if (isSavingGames) {
+      return (
         <div>
-          {changeUsernameBtn}
+          <p>Saving {fetchedGames.length} games to database...</p>
+          <Spinner scale={2} />
         </div>
-      </>
-    )
+      );
+    }
+
+    if (saveResult) {
+      if (saveResult.success) {
+        const duplicateCount = fetchedGames.length - (saveResult.savedCount || 0);
+        return (
+          <div>
+            <p>
+              Successfully saved {saveResult.savedCount} new game{saveResult.savedCount !== 1 ? 's' : ''} from {chessWebsite}
+            </p>
+            {duplicateCount > 0 && (
+              <p style={{ fontSize: '0.875rem', color: '#666' }}>
+                ({duplicateCount} duplicate{duplicateCount !== 1 ? 's' : ''} skipped)
+              </p>
+            )}
+            <button
+              onClick={() => {
+                setUsername(undefined);
+                setFetchedGames(null);
+                setSaveResult(null);
+              }}
+              style={{ marginTop: '1rem' }}
+            >
+              Import more games
+            </button>
+          </div>
+        );
+      } else {
+        return (
+          <div>
+            <p style={{ color: '#dc2626' }}>Error: {saveResult.error}</p>
+            <button
+              onClick={() => {
+                setUsername(undefined);
+                setFetchedGames(null);
+                setSaveResult(null);
+              }}
+              style={{ marginTop: '1rem' }}
+            >
+              Try again
+            </button>
+          </div>
+        );
+      }
+    }
   }
 
   return (
