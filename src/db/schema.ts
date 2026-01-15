@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, primaryKey } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, primaryKey, unique } from "drizzle-orm/sqlite-core";
 import type { Chapter } from "@/types/lesson";
+import type { ParsedPGN } from "pgn-parser";
 
 export const users = sqliteTable("users", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
@@ -90,6 +91,35 @@ export const userRepertoire = sqliteTable("user_repertoire", {
 		.default(sql`(unixepoch())`),
 });
 
+// Games table (user's chess games)
+export const games = sqliteTable("games", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	userId: integer("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	gameId: text("game_id").notNull(),
+	pgn: text("pgn", { mode: "json" })
+		.notNull()
+		.$type<ParsedPGN>(),
+	userColor: text("user_color", { enum: ["WHITE", "BLACK"] }).notNull(),
+	result: text("result", { enum: ["1-0", "0-1", "1/2-1/2"] }),
+	startTime: integer("start_time").notNull(),
+	url: text("url"),
+	timeControl: text("time_control"),
+	whiteName: text("white_name"),
+	whiteElo: integer("white_elo"),
+	blackName: text("black_name"),
+	blackElo: integer("black_elo"),
+	hasBeenCompletelyAnalyzed: integer("has_been_completely_analyzed", { mode: "boolean" })
+		.notNull()
+		.default(false),
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
+}, (table) => ({
+	uniqueUserGame: unique().on(table.userId, table.gameId),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -99,3 +129,6 @@ export type InsertLesson = typeof lessons.$inferInsert;
 
 export type UserRepertoire = typeof userRepertoire.$inferSelect;
 export type InsertUserRepertoire = typeof userRepertoire.$inferInsert;
+
+export type Game = typeof games.$inferSelect;
+export type InsertGame = typeof games.$inferInsert;
