@@ -9,7 +9,7 @@ import {
   getPlayerElo,
   getPlayerName,
 } from '@/utils/pgn';
-import { Options, DEFAULT_MAX_GAMES, Games } from './common'
+import { Options, DEFAULT_MAX_GAMES } from './common'
 
 const defaultOptions: Options = {
   maxGames: DEFAULT_MAX_GAMES,
@@ -24,7 +24,7 @@ const urlBase = 'https://lichess.org';
  */
 export async function fetchLichessGames(
   username: string,
-  savedGames: Games,
+  savedGames: GameData[],
   options = defaultOptions,
 ): Promise<GameData[]> {
   // Build the url to fetch from:
@@ -81,15 +81,12 @@ export async function fetchLichessGames(
 
     const siteHeader = getHeader(pgn, 'Site');
 
-    const gameId = hash(JSON.stringify(pgn)).toString();
-
     const startTime = getStartTime(pgn);
     if (startTime == undefined) {
       throw new Error('Failed to get startTime from pgn')
     }
 
-    games.push({
-      gameId,
+    const partialGameData: Omit<GameData, "gameId"> = {
       pgn,
       startTime,
       result: getGameResult(pgnString),
@@ -100,11 +97,15 @@ export async function fetchLichessGames(
       whiteElo: getPlayerElo(pgn, PieceColor.WHITE),
       blackName: getPlayerName(pgn, PieceColor.BLACK),
       blackElo: getPlayerElo(pgn, PieceColor.BLACK),
-    });
+    };
+
+    const gameId = hash(JSON.stringify(partialGameData)).toString();
+    const newGame: GameData = { gameId, ...partialGameData };
+    games.push(newGame);
   }
 
   // Get the array of gameIds for all the games that we already have saved
-  const gameIds: string[] = Object.keys(savedGames);
+  const gameIds: string[] = savedGames.map((g) => g.gameId);
 
   // Filter out any games that we already have.
   const newGames = games.filter((g) => !gameIds.includes(g.gameId));

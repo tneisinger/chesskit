@@ -9,7 +9,7 @@ import {
   getPlayerElo,
   getPlayerName,
 } from '@/utils/pgn'
-import { DEFAULT_MAX_GAMES, Options, Games } from './common';
+import { DEFAULT_MAX_GAMES, Options } from './common';
 import { FEN } from 'cm-chess/src/Chess';
 
 export function getUserColor(game: ChesscomGame, username: string): PieceColor | null {
@@ -23,7 +23,7 @@ export function getUserColor(game: ChesscomGame, username: string): PieceColor |
  */
 export async function fetchChesscomGames(
   username: string,
-  savedGames: Games,
+  savedGames: GameData[],
   options?: Options,
 ): Promise<GameData[]> {
   let games: ChesscomGame[] = [];
@@ -38,7 +38,7 @@ export async function fetchChesscomGames(
   if (archiveURLs == undefined) throw new Error('archiveURLs should not be undefined');
 
   // Get the array of gameIds for all the games that we already have saved
-  const gameIds: string[] = Object.keys(savedGames);
+  const gameIds: string[] = savedGames.map((g) => g.gameId);
 
   while (archiveURLs.length > 0 && shouldFetchMoreGames(games.length, options)) {
     const url = archiveURLs.pop();
@@ -51,7 +51,7 @@ export async function fetchChesscomGames(
 
     // Filter out any games that we already have stored in zustand.
     const newGames = (json.games as ChesscomGame[]).filter((g) =>
-      !gameIds.includes(makeGameId(g)));
+      !gameIds.includes(getGameId(g, username)));
 
     games = [...games, ...newGames];
   }
@@ -74,33 +74,7 @@ export async function fetchChesscomGames(
   if (options && options.maxGames) games = games.slice(0, options.maxGames);
 
   // Convert ChesscomGame[] to GameData[] and return it.
-  return games.map((game) => {
-    const pgnString = game.pgn;
-    const pgn = parsePGN(game.pgn)[0];
-    const userColor = getUserColor(game, username);
-    if (userColor == null) {
-      throw new Error(`Failed to get userColor for ${username}`);
-    }
-
-    const startTime = getStartTime(pgn);
-    if (startTime == undefined) {
-      throw new Error('Failed to get startTime from pgn')
-    }
-
-    return {
-      gameId: makeGameId(game),
-      pgn,
-      startTime,
-      result: getGameResult(pgnString),
-      userColor,
-      url: game.url,
-      timeControl: getTimeControl(pgn),
-      whiteName: getPlayerName(pgn, PieceColor.WHITE),
-      whiteElo: getPlayerElo(pgn, PieceColor.WHITE),
-      blackName: getPlayerName(pgn, PieceColor.BLACK),
-      blackElo: getPlayerElo(pgn, PieceColor.BLACK),
-    };
-  });
+  return games.map((game) => chesscomGameToGameData(game, username));
 }
 
 // Predicate to determine if more games should be fetched from chess.com
@@ -119,6 +93,37 @@ export async function fetchChesscomMonthlyArchiveURLs(
   return json.archives;
 }
 
-function makeGameId(game: ChesscomGame): string {
-  return hash(game.url).toString();
+function chesscomGameToGameData(game: ChesscomGame, username: string): GameData {
+  const pgnString = game.pgn;
+  const pgn = parsePGN(game.pgn)[0];
+  const userColor = getUserColor(game, username);
+  if (userColor == null) {
+    throw new Error(`Failed to get userColor for ${username}`);
+  }
+
+  const startTime = getStartTime(pgn);
+  if (startTime == undefined) {
+    throw new Error('Failed to get startTime from pgn')
+  }
+
+  const partialGameData: Omit<GameData, "gameId"> = {
+    pgn,
+    startTime,
+    result: getGameResult(pgnString),
+    userColor,
+    url: game.url,
+    timeControl: getTimeControl(pgn),
+    whiteName: getPlayerName(pgn, PieceColor.WHITE),
+    whiteElo: getPlayerElo(pgn, PieceColor.WHITE),
+    blackName: getPlayerName(pgn, PieceColor.BLACK),
+    blackElo: getPlayerElo(pgn, PieceColor.BLACK),
+  }
+
+  const gameId = hash(JSON.stringify(partialGameData)).toString();
+  return { gameId, ...partialGameData };
+}
+
+function getGameId(game: ChesscomGame, username: string): string {
+  const gameData = chesscomGameToGameData(game, username);
+  return gameData.gameId;
 }

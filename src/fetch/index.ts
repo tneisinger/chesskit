@@ -1,6 +1,6 @@
 import { fetchLichessGames } from './lichess';
 import { fetchChesscomGames } from './chesscom';
-import { Options, Games } from './common';
+import { Options } from './common';
 import { ChessWebsite } from '@/types/chess';
 import { assertUnreachable } from '@/utils/index';
 import type { GameData } from '@/types/chess';
@@ -8,7 +8,7 @@ import type { GameData } from '@/types/chess';
 export async function fetchGames(
   username: string,
   site: ChessWebsite,
-  savedGames: Games,
+  savedGames: GameData[],
   options?: Options,
 ): Promise<GameData[]> {
   let games: GameData[] = [];

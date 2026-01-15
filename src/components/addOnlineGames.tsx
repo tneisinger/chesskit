@@ -30,7 +30,7 @@ const AddOnlineGames = ({ chessWebsite }: Props) => {
 
   useEffect(() => {
     if (isFetchingGames && isFetchingGames !== prevIsFetchingGames && username) {
-      fetchGames(username, chessWebsite, {}, { maxGames: 30 })
+      fetchGames(username, chessWebsite, [], { maxGames: 30 })
         .then((games) => {
           setIsFetchingGames(false);
           setFetchedGames(games);
