@@ -3,8 +3,8 @@ import GamesTableRow from '@/components/gamesTableRow';
 
 interface Props {
   games: GameData[];
-  selectedGameIds: string[];
-  changeSelectedGameIds: (newGameIds: string[]) => void;
+  selectedGameIds: number[];
+  changeSelectedGameIds: (newGameIds: number[]) => void;
 }
 
 const GamesTable = ({

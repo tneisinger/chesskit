@@ -183,3 +183,44 @@ export async function deleteUserGame(
     return { success: false, error: "Failed to delete game" };
   }
 }
+
+/**
+ * Delete multiple games by ID for the current user.
+ */
+export async function deleteUserGames(
+  ids: number[]
+): Promise<{ success: boolean; deletedCount?: number; error?: string }> {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in" };
+    }
+
+    if (!ids || ids.length === 0) {
+      return { success: false, error: "No games provided" };
+    }
+
+    const userId = Number(session.user.id);
+
+    // Delete all games matching the IDs for this user
+    const { inArray } = await import("drizzle-orm");
+
+    const result = await db
+      .delete(games)
+      .where(
+        and(
+          eq(games.userId, userId),
+          inArray(games.id, ids)
+        )
+      );
+
+    return {
+      success: true,
+      deletedCount: result.changes || 0,
+    };
+  } catch (error) {
+    console.error("Error deleting games:", error);
+    return { success: false, error: "Failed to delete games" };
+  }
+}

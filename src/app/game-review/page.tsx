@@ -10,16 +10,18 @@ import { getUserGames } from './actions';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
 
 export default function GameReviewPage() {
-  const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
+  const [selectedGameIds, setSelectedGameIds] = useState<number[]>([]);
   const [userGames, setUserGames] = useState<GameData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadGames = async () => {
+    setIsLoading(true);
+    const games = await getUserGames();
+    setUserGames(games);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    const loadGames = async () => {
-      const games = await getUserGames();
-      setUserGames(games);
-      setIsLoading(false);
-    };
     loadGames();
   }, []);
 
@@ -45,6 +47,7 @@ export default function GameReviewPage() {
             selectedGameIds={selectedGameIds}
             changeSelectedGameIds={setSelectedGameIds}
             games={userGames}
+            onGamesDeleted={loadGames}
           />
           <Button href="/game-review/add-games">Add Games</Button>
         </div>
