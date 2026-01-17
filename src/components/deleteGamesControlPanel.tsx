@@ -52,7 +52,7 @@ const DeleteGamesControlPanel = ({
   }
 
   return (
-    <div className="flex flex-row items-center pt-7">
+    <div className="flex flex-row items-center">
       <input
         className="my-5 w-10"
         type='checkbox'
