@@ -31,7 +31,7 @@ const GamesTable = ({
         changeSelectedGameIds={changeSelectedGameIds}
         selectedGameIds={selectedGameIds}
       />
-      <div className="min-h-0 flex-1 rounded-md overflow-x-hidden overflow-y-scroll">
+      <div className="min-h-0 flex-1 rounded-b-md overflow-x-hidden overflow-y-scroll">
         {games.map((game, i) =>
           <GamesTableRow
             key={game.gameId}

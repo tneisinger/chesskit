@@ -200,7 +200,7 @@ const GamesTableRow = ({
 
   if (game == undefined) {
     // Header row
-    classes.push('font-bold', 'bg-transparent', 'my-1.5', 'text-[#f5f4ef]');
+    classes.push('font-bold', 'bg-[#292724]', 'rounded-t-md');
     return (
       <div className={classes.join(' ')}>
         {columns.map((c) => makeTableDataDiv(c.name, c.name, false))}
@@ -211,8 +211,11 @@ const GamesTableRow = ({
   if (game == undefined) throw new Error('game should be defined at this point');
 
   // Data row styling
-  classes.push('bg-[#292724]'); // darkmode-background-tertiary
-  if (isOdd) classes.push('bg-[#37342f]'); // darkmode-background-secondary
+  if (isOdd) {
+    classes.push('bg-[#37342f] hover:bg-stone-600'); // darkmode-background-secondary
+  } else {
+    classes.push('bg-[#292724] hover:bg-stone-600'); // darkmode-background-tertiary
+  }
 
   return (
     <div className={classes.join(' ')}>
