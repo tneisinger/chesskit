@@ -2,18 +2,20 @@ import React, { useState, useEffect } from 'react';
 import DeleteButton from '@/components/deleteButton';
 import type { GameData } from '@/types/chess';
 import { pluralizeWord } from '@/utils';
-import { deleteUserGame } from '@/app/game-review/actions';
+import { deleteUserGames } from '@/app/game-review/actions';
 
 interface Props {
-  selectedGameIds: string[];
-  changeSelectedGameIds: (newGameIds: string[]) => void;
+  selectedGameIds: number[];
+  changeSelectedGameIds: (newGameIds: number[]) => void;
   games: GameData[];
+  onGamesDeleted?: () => void;
 }
 
 const DeleteGamesControlPanel = ({
   changeSelectedGameIds,
   selectedGameIds,
   games,
+  onGamesDeleted,
 }: Props) => {
   const [isChecked, setIsChecked] = useState(false);
   const [prevIsChecked, setPrevIsChecked] = useState<boolean | null>(null);
@@ -27,7 +29,7 @@ const DeleteGamesControlPanel = ({
     if (isChecked === prevIsChecked) return;
 
     if (isChecked && selectedGameIds.length !== games.length) {
-      changeSelectedGameIds(games.map((g) => g.gameId));
+      changeSelectedGameIds(games.map((g) => g.id).filter((id): id is number => id !== undefined));
     }
 
     if (!isChecked && selectedGameIds.length > 0) {
@@ -39,15 +41,24 @@ const DeleteGamesControlPanel = ({
     setPrevIsChecked(isChecked);
   }, [isChecked]);
 
-  const deleteSelectedGames = () => {
+  const deleteSelectedGames = async () => {
     const numGames = selectedGameIds.length;
     const pluralized = pluralizeWord(numGames, 'game', 'games');
     let msg = `Really delete ${numGames} ${pluralized}?`;
     if (confirm(msg) === true) {
-      // use deleteUserGame function here
-      console.log('Dropping games:', selectedGameIds);
-      changeSelectedGameIds([]);
-      setIsChecked(false);
+      // Delete games from database (selectedGameIds already contains database IDs)
+      const result = await deleteUserGames(selectedGameIds);
+
+      if (result.success) {
+        changeSelectedGameIds([]);
+        setIsChecked(false);
+        // Refresh the games list
+        if (onGamesDeleted) {
+          onGamesDeleted();
+        }
+      } else {
+        alert(`Failed to delete games: ${result.error}`);
+      }
     }
   }
 

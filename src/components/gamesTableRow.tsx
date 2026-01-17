@@ -14,8 +14,8 @@ interface Column {
 }
 
 interface Props {
-  changeSelectedGameIds: (newGameIds: string[]) => void;
-  selectedGameIds: string[];
+  selectedGameIds: number[];
+  changeSelectedGameIds: (newGameIds: number[]) => void;
   isOdd?: boolean;
   game?: GameData;
 }
@@ -115,15 +115,15 @@ const GamesTableRow = ({
   }
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (game == undefined) return;
-    if (e.target.checked) changeSelectedGameIds([...selectedGameIds, game.gameId]);
-    else changeSelectedGameIds(selectedGameIds.filter((id) => id !== game.gameId))
+    if (game == undefined || game.id == undefined) return;
+    if (e.target.checked) changeSelectedGameIds([...selectedGameIds, game.id]);
+    else changeSelectedGameIds(selectedGameIds.filter((id) => id !== game.id))
   }
 
   const checkbox = (
     <input
       type='checkbox'
-      checked={game && selectedGameIds.includes(game.gameId)}
+      checked={game && game.id !== undefined && selectedGameIds.includes(game.id)}
       onChange={handleCheckboxChange}
       className="w-10"
     />
