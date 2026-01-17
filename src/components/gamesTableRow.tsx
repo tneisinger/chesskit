@@ -200,7 +200,7 @@ const GamesTableRow = ({
 
   if (game == undefined) {
     // Header row
-    classes.push('font-bold', 'bg-[#292724]', 'rounded-t-md');
+    classes.push('font-bold', 'bg-[#292724]', 'rounded-t-md', 'border-b-1', 'border-stone-600');
     return (
       <div className={classes.join(' ')}>
         {columns.map((c) => makeTableDataDiv(c.name, c.name, false))}
