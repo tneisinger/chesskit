@@ -48,6 +48,7 @@ import usePrevious from '@/hooks/usePrevious';
 import LessonSessionInfo from '@/components/lessonSessionInfo';
 import useEvaler from '@/hooks/useChessEvaler';
 import LessonChapters from '@/components/lessonChapters';
+import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import EditLessonControls from '@/components/editLessonControls';
 import NewChapterModal from '@/components/newChapterModal';
 import LineCompleteModal from './lineCompleteModal';
@@ -1287,9 +1288,8 @@ const LessonSession = ({
   };
 
   if (shouldUseMobileLayout(windowSize)) {
-    // Account for navigation bar height (40px / 2.5rem / h-10)
-    const navBarHeight = 40;
-    const divHeight = (windowSize.height || 0) - navBarHeight;
+    // Account for navigation bar height
+    const divHeight = (windowSize.height || 0) - NAV_BAR_HEIGHT;
 
     return (
       <ScrollLock>

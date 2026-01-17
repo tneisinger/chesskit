@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/Navigation";
+import { NAV_BAR_HEIGHT } from "@/lib/constants";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,8 +44,8 @@ export default function RootLayout({
         <SessionProvider>
           <Navigation />
 
-          {/* min-h-[calc(100%-40px)] accounts for nav height */}
-          <div className="flex flex-grow flex-col items-center max-w-[1440px] mx-auto min-h-[calc(100%-40px)]">
+          {/* min-h accounts for nav height */}
+          <div className={`flex flex-grow flex-col items-center max-w-[1440px] mx-auto min-h-[calc(100%-${NAV_BAR_HEIGHT}px)]`}>
             {children}
           </div>
 

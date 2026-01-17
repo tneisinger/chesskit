@@ -7,6 +7,7 @@ import GamesTable from '@/components/gamesTable';
 import DeleteGamesControlPanel from '@/components/deleteGamesControlPanel';
 import type { GameData } from "@/types/chess";
 import { getUserGames } from './actions';
+import { NAV_BAR_HEIGHT } from '@/lib/constants';
 
 export default function GameReviewPage() {
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
@@ -28,7 +29,7 @@ export default function GameReviewPage() {
 
   return (
     <ScrollLock>
-      <div className="flex flex-col max-w-[1200px] w-[99vw] h-[calc(100vh-40px)]">
+      <div className={`flex flex-col max-w-[1200px] w-[99vw] h-[calc(100vh-${NAV_BAR_HEIGHT}px)]`}>
         <div className="py-4">
           <h3 className="text-center text-2xl">Imported Games</h3>
         </div>

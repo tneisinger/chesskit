@@ -7,6 +7,7 @@ import { useSession, signOut } from 'next-auth/react';
 import SvgIcon, { Svg } from '@/components/svgIcon';
 import useWindowSize from '@/hooks/useWindowSize';
 import Button, { ButtonSize } from '@/components/button';
+import { NAV_BAR_HEIGHT } from '@/lib/constants';
 
 const screenWidthBreakpoint = 992; // px
 
@@ -81,13 +82,13 @@ export default function Navigation() {
 	return (
 		<>
 			{/* Top Navigation Bar */}
-			<nav className="flex justify-center bg-background-page border-b border-foreground/10 sticky top-0 z-50">
+			<nav className="flex justify-center bg-background-page border-b border-foreground/10 sticky top-0 z-50" style={{ height: `${NAV_BAR_HEIGHT}px` }}>
         {showDebugButtons && (
           <>
             <button onClick={debug}>debug!</button>
           </>
         )}
-				<div className={`flex items-center h-10 px-4 w-full max-w-[1764px] ${isMobile ? 'justify-center relative' : 'justify-between'}`}>
+				<div className={`flex items-center px-4 w-full max-w-[1764px] ${isMobile ? 'justify-center relative' : 'justify-between'}`} style={{ height: `${NAV_BAR_HEIGHT}px` }}>
 					{/* Left side - Mobile hamburger + brand */}
 					<div className="flex items-center">
 						{isMobile && (
