@@ -30,7 +30,7 @@ export default function GameReviewPage() {
         games={userGames}
         selectedGameIds={selectedGameIds}
         changeSelectedGameIds={setSelectedGameIds}
-        maxHeight="88vh"
+        maxHeight="92vh"
         includeDeleteControlPanel={true}
       />
       <Link href="/game-review/add-games">Add Games</Link>
