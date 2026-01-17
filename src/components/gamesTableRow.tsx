@@ -139,11 +139,12 @@ const GamesTableRow = ({
       name: 'Date',
       priority: 2,
       makeDataDiv: (game, key) => {
-        const d = new Date(game.startTime);
-        const fullYear = `${d.getFullYear()}`;
-        const dateStr = `${fullYear.slice(2)}-${d.getMonth() + 1}-${d.getDate()}`
-        const dateLink = <span className="w-[8ch] block text-left">{dateStr}</span>;
-        return makeTableDataDiv(dateLink, key, true, []);
+        const date = new Date(game.startTime);
+        const formattedDate = date.toLocaleDateString('en-CA');
+        // Manually format to YY/MM/DD
+        const yymmdd = formattedDate.substring(2).replace(/-/g, '/');
+        const dateSpan = <span className="w-[8ch] block text-left">{yymmdd}</span>;
+        return makeTableDataDiv(dateSpan, key, true, []);
       }
     },
     {
