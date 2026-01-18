@@ -5,11 +5,12 @@ import Button from '@/components/button';
 interface Props {
   chessWebsite: ChessWebsite;
   setUsername: Dispatch<SetStateAction<string | undefined>>;
+  initialUsername?: string;
 }
 
-const UsernameForm = ({ chessWebsite, setUsername }: Props) => {
+const UsernameForm = ({ chessWebsite, setUsername, initialUsername }: Props) => {
 
-  const [usernameTxt, setUsernameTxt] = useState('');
+  const [usernameTxt, setUsernameTxt] = useState(initialUsername || '');
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

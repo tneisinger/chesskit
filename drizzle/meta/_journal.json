@@ -29,6 +29,13 @@
       "when": 1765725175081,
       "tag": "0003_absurd_black_crow",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1737191000000,
+      "tag": "0005_add_chess_usernames",
+      "breakpoints": true
     }
   ]
 }

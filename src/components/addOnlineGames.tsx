@@ -3,18 +3,19 @@
 import { useState, useEffect } from 'react';
 import { ChessWebsite, GameData } from '@/types/chess';
 import { fetchGames } from '@/fetch';
+import { getUserGames } from '@/app/game-review/actions';
 import { saveGames } from '@/app/game-review/actions';
+import { saveChessUsername } from '@/app/user/actions';
 import Spinner from '@/components/spinner';
 import UsernameForm from '@/components/usernameForm';
 import usePrevious from '@/hooks/usePrevious';
 
-const maxNumGamesToAnalyze = 9;
-
 interface Props {
   chessWebsite: ChessWebsite;
+  initialUsername?: string;
 }
 
-const AddOnlineGames = ({ chessWebsite }: Props) => {
+const AddOnlineGames = ({ chessWebsite, initialUsername }: Props) => {
 
   const [username, setUsername] = useState<string | undefined>(undefined);
 
@@ -32,14 +33,19 @@ const AddOnlineGames = ({ chessWebsite }: Props) => {
     error?: string;
   } | null>(null);
 
-  useEffect(() => {
-    const name = '' // getStoredUsername(chessWebsite);
-    if (name) setUsername(name);
-  }, [chessWebsite])
+  const [userGames, setUserGames] = useState<GameData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadGames = async () => {
+    setIsLoading(true);
+    const games = await getUserGames();
+    setUserGames(games);
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     if (isFetchingGames && isFetchingGames !== prevIsFetchingGames && username) {
-      fetchGames(username, chessWebsite, [], { maxGames: 30 })
+      fetchGames(username, chessWebsite, userGames, { maxGames: 30 })
         .then(async (games) => {
           setIsFetchingGames(false);
           setFetchedGames(games);
@@ -50,6 +56,11 @@ const AddOnlineGames = ({ chessWebsite }: Props) => {
             const result = await saveGames(games);
             setIsSavingGames(false);
             setSaveResult(result);
+
+            // Save the username to the user's profile
+            if (result.success) {
+              await saveChessUsername(chessWebsite, username);
+            }
           }
         })
         .catch((reason) => {
@@ -77,6 +88,7 @@ const AddOnlineGames = ({ chessWebsite }: Props) => {
       <UsernameForm
         chessWebsite={chessWebsite}
         setUsername={setUsername}
+        initialUsername={initialUsername}
       />
     );
   }

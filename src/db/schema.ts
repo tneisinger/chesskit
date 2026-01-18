@@ -18,6 +18,8 @@ export const users = sqliteTable("users", {
 		soundEnabled?: boolean;
 		boardTheme?: string;
 	}>(),
+	chesscomUsername: text("chesscom_username"),
+	lichessUsername: text("lichess_username"),
 });
 
 export const lessons = sqliteTable("lessons", {
