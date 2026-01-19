@@ -34,6 +34,10 @@ const GamesTableRow = ({
 
   useEffect(() => {
     if (game) {
+      if (game.id === undefined) {
+        throw new Error('Cannot create game link if game.id is undefined');
+      }
+
       const g = game;
       timeout.current = window.setTimeout(() => {
         setOpening(getOpening(g) || '--');
@@ -87,7 +91,7 @@ const GamesTableRow = ({
     if (extraClasses) classes = [...classes, ...extraClasses];
 
     if (linkToGame && game) {
-      data = <Link href={`/game/${game.gameId}`}>{data}</Link>
+      data = <Link href={`/game-review/${game.id}`}>{data}</Link>
     }
     return <div key={key} className={classes.join(' ')}>{data}</div>;
   };
