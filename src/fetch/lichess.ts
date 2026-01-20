@@ -1,7 +1,7 @@
 import { parse as parsePGN, ParsedPGN } from 'pgn-parser';
 import hash from 'string-hash';
 import { getUserColor, getHeader } from '@/utils/lichess';
-import { GameData, PieceColor } from '@/types/chess';
+import { GameData, PieceColor, ChessWebsite } from '@/types/chess';
 import {
   getStartTime,
   getGameResult,
@@ -97,6 +97,7 @@ export async function fetchLichessGames(
       whiteElo: getPlayerElo(pgn, PieceColor.WHITE),
       blackName: getPlayerName(pgn, PieceColor.BLACK),
       blackElo: getPlayerElo(pgn, PieceColor.BLACK),
+      website: ChessWebsite.Lichess,
     };
 
     const gameId = hash(JSON.stringify(partialGameData)).toString();

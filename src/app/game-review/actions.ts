@@ -5,7 +5,7 @@ import { games } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import type { GameData } from "@/types/chess";
-import { PieceColor, GameResult } from "@/types/chess";
+import { PieceColor, GameResult, ChessWebsite } from "@/types/chess";
 
 /**
  * Save multiple games to the database for the current user.
@@ -41,6 +41,7 @@ export async function saveGames(
       whiteElo: game.whiteElo,
       blackName: game.blackName,
       blackElo: game.blackElo,
+      website: game.website,
       hasBeenCompletelyAnalyzed: game.hasBeenCompletelyAnalyzed ?? false,
     }));
 
@@ -94,6 +95,7 @@ export async function getUserGames(): Promise<GameData[]> {
       whiteElo: game.whiteElo ?? undefined,
       blackName: game.blackName ?? undefined,
       blackElo: game.blackElo ?? undefined,
+      website: game.website as ChessWebsite | undefined,
     }));
   } catch (error) {
     console.error("Error fetching user games:", error);
@@ -142,6 +144,7 @@ export async function getUserGameById(
         whiteElo: game.whiteElo ?? undefined,
         blackName: game.blackName ?? undefined,
         blackElo: game.blackElo ?? undefined,
+        website: game.website as ChessWebsite | undefined,
       },
     };
   } catch (error) {

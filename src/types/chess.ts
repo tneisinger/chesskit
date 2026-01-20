@@ -31,6 +31,7 @@ export interface GameData {
   whiteElo?: number;
   blackName?: string;
   blackElo?: number;
+  website?: ChessWebsite;
 }
 
 export enum GameResult {

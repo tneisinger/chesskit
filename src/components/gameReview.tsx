@@ -98,14 +98,10 @@ const GameReview = ({ game }: Props) => {
     currentMove,
     setCurrentMove,
     playMove,
-    reset,
-    undoLastMove,
-    deleteMove,
   } = useChessboardEngine();
 
   // Set up engine evaluator
   const {
-    setupEvalerForNewGame,
     gameEvals,
     fenBeingEvaluated,
     evalDepth,
@@ -243,7 +239,7 @@ const GameReview = ({ game }: Props) => {
       <div className={containerClasses.join(' ')}>
         <div className="flex flex-row gap-2">
           <div className="flex flex-col w-54">
-            <GameDetails game={game} />
+            <GameDetails game={game} orientation={game.userColor} />
           </div>
           <div className="flex flex-col items-center">
             {chessboardDiv}

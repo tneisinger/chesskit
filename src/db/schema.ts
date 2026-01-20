@@ -109,6 +109,7 @@ export const games = sqliteTable("games", {
 	whiteElo: integer("white_elo"),
 	blackName: text("black_name"),
 	blackElo: integer("black_elo"),
+	website: text("website", { enum: ["chess.com", "lichess.org"] }),
 	hasBeenCompletelyAnalyzed: integer("has_been_completely_analyzed", { mode: "boolean" })
 		.notNull()
 		.default(false),
