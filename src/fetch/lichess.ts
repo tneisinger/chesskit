@@ -87,7 +87,7 @@ export async function fetchLichessGames(
     }
 
     const partialGameData: Omit<GameData, "gameId"> = {
-      pgn,
+      pgn: pgnString,
       startTime,
       result: getGameResult(pgnString),
       userColor,

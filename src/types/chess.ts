@@ -1,4 +1,3 @@
-import type { ParsedPGN } from 'pgn-parser';
 import { RequireOnlyOne } from '../utils';
 
 export interface ShortMove {
@@ -20,7 +19,7 @@ export enum ChessWebsite {
 export interface GameData {
   id?: number;
   gameId: string;
-  pgn: ParsedPGN;
+  pgn: string;
   userColor: PieceColor;
   result?: GameResult;
   startTime: number;

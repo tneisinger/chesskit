@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getUserGameById } from "@/app/game-review/actions";
+import GameReview from "@/components/gameReview";
 
 interface PageProps {
 	params: Promise<{
@@ -10,19 +11,13 @@ interface PageProps {
 export default async function Page({ params }: PageProps) {
 	const { id } = await params;
 
-	// Fetch lesson from database
-	const game = await getUserGameById(id);
+	// Fetch game from database
+	const result = await getUserGameById(id);
 
-	// If lesson not found, show 404
-	if (!game) {
+	// If game not found, show 404
+	if (!result.success || !result.game) {
 		notFound();
 	}
 
-	return (
-    <div>
-      <p>Game Review Page for Game ID: {id}</p>
-      <div>{JSON.stringify(game)}</div>
-    </div>
-
-  );
+	return <GameReview game={result.game} />;
 }

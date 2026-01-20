@@ -95,28 +95,28 @@ export async function fetchChesscomMonthlyArchiveURLs(
 
 function chesscomGameToGameData(game: ChesscomGame, username: string): GameData {
   const pgnString = game.pgn;
-  const pgn = parsePGN(game.pgn)[0];
+  const parsedPgn = parsePGN(game.pgn)[0];
   const userColor = getUserColor(game, username);
   if (userColor == null) {
     throw new Error(`Failed to get userColor for ${username}`);
   }
 
-  const startTime = getStartTime(pgn);
+  const startTime = getStartTime(parsedPgn);
   if (startTime == undefined) {
     throw new Error('Failed to get startTime from pgn')
   }
 
   const partialGameData: Omit<GameData, "gameId"> = {
-    pgn,
+    pgn: pgnString,
     startTime,
     result: getGameResult(pgnString),
     userColor,
     url: game.url,
-    timeControl: getTimeControl(pgn),
-    whiteName: getPlayerName(pgn, PieceColor.WHITE),
-    whiteElo: getPlayerElo(pgn, PieceColor.WHITE),
-    blackName: getPlayerName(pgn, PieceColor.BLACK),
-    blackElo: getPlayerElo(pgn, PieceColor.BLACK),
+    timeControl: getTimeControl(parsedPgn),
+    whiteName: getPlayerName(parsedPgn, PieceColor.WHITE),
+    whiteElo: getPlayerElo(parsedPgn, PieceColor.WHITE),
+    blackName: getPlayerName(parsedPgn, PieceColor.BLACK),
+    blackElo: getPlayerElo(parsedPgn, PieceColor.BLACK),
   }
 
   const gameId = hash(JSON.stringify(partialGameData)).toString();
