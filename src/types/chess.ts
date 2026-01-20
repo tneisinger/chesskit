@@ -25,13 +25,13 @@ export interface GameData {
   startTime: number;
   url?: string;
   createdAt?: Date;
-  hasBeenCompletelyAnalyzed?: boolean;
   timeControl?: string;
   whiteName?: string;
   whiteElo?: number;
   blackName?: string;
   blackElo?: number;
   website?: ChessWebsite;
+  engineAnalysis?: GameEvals;
 }
 
 export enum GameResult {

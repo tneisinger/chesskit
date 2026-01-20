@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { games } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import type { GameData } from "@/types/chess";
+import type { GameData, GameEvals } from "@/types/chess";
 import { PieceColor, GameResult, ChessWebsite } from "@/types/chess";
 
 /**
@@ -42,7 +42,7 @@ export async function saveGames(
       blackName: game.blackName,
       blackElo: game.blackElo,
       website: game.website,
-      hasBeenCompletelyAnalyzed: game.hasBeenCompletelyAnalyzed ?? false,
+      engineAnalysis: game.engineAnalysis,
     }));
 
     // Batch insert with onConflictDoNothing to skip duplicates
@@ -89,7 +89,7 @@ export async function getUserGames(): Promise<GameData[]> {
       startTime: game.startTime,
       url: game.url ?? undefined,
       createdAt: game.createdAt,
-      hasBeenCompletelyAnalyzed: game.hasBeenCompletelyAnalyzed,
+      engineAnalysis: game.engineAnalysis ?? undefined,
       timeControl: game.timeControl ?? undefined,
       whiteName: game.whiteName ?? undefined,
       whiteElo: game.whiteElo ?? undefined,
@@ -138,7 +138,7 @@ export async function getUserGameById(
         startTime: game.startTime,
         url: game.url ?? undefined,
         createdAt: game.createdAt,
-        hasBeenCompletelyAnalyzed: game.hasBeenCompletelyAnalyzed,
+        engineAnalysis: game.engineAnalysis ?? undefined,
         timeControl: game.timeControl ?? undefined,
         whiteName: game.whiteName ?? undefined,
         whiteElo: game.whiteElo ?? undefined,
@@ -225,5 +225,43 @@ export async function deleteUserGames(
   } catch (error) {
     console.error("Error deleting games:", error);
     return { success: false, error: "Failed to delete games" };
+  }
+}
+
+/**
+ * Update a game's engine analysis in the database.
+ */
+export async function updateGameAnalysis(
+  id: number,
+  engineAnalysis: GameEvals
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in" };
+    }
+
+    // Verify ownership
+    const existingGame = await db.query.games.findFirst({
+      where: and(
+        eq(games.id, id),
+        eq(games.userId, Number(session.user.id))
+      ),
+    });
+
+    if (!existingGame) {
+      return { success: false, error: "Game not found or access denied" };
+    }
+
+    await db
+      .update(games)
+      .set({ engineAnalysis })
+      .where(eq(games.id, id));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating game analysis:", error);
+    return { success: false, error: "Failed to update game analysis" };
   }
 }

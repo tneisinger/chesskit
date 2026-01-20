@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text, primaryKey, unique } from "drizzle-orm/sqlite-core";
 import type { Chapter } from "@/types/lesson";
+import type { GameEvals } from "@/types/chess";
 
 export const users = sqliteTable("users", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
@@ -110,9 +111,7 @@ export const games = sqliteTable("games", {
 	blackName: text("black_name"),
 	blackElo: integer("black_elo"),
 	website: text("website", { enum: ["chess.com", "lichess.org"] }),
-	hasBeenCompletelyAnalyzed: integer("has_been_completely_analyzed", { mode: "boolean" })
-		.notNull()
-		.default(false),
+	engineAnalysis: text("engine_analysis", { mode: "json" }).$type<GameEvals>(),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.notNull()
 		.default(sql`(unixepoch())`),
