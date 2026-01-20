@@ -78,7 +78,7 @@ const GameReview = ({ game }: Props) => {
 
   const initialState: State = {
     isEvaluatorOn: false,
-    allowBoardInteraction: false,
+    allowBoardInteraction: true,
     boardCursor: null,
     markers: [],
     arrows: [],
@@ -180,7 +180,7 @@ const GameReview = ({ game }: Props) => {
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
       useMobileLayout={useMobile}
-      showVariations={false}
+      showVariations={true}
     />
   );
 
