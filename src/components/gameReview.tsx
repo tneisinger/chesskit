@@ -11,6 +11,7 @@ import Chessboard from '@/components/Chessboard';
 import EvalerDisplay from '@/components/evalerDisplay';
 import MovesDisplay from '@/components/movesDisplay';
 import ArrowButtons from '@/components/arrowButtons';
+import GameChart from '@/components/gameChart';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
@@ -190,8 +191,6 @@ const GameReview = ({ game }: Props) => {
     />
   );
 
-  const containerClasses = ['flex flex-col items-center justify-center w-full h-full'];
-
   if (useMobile) {
     const divHeight = (windowSize.height || 0) - NAV_BAR_HEIGHT;
 
@@ -199,7 +198,7 @@ const GameReview = ({ game }: Props) => {
       <ScrollLock>
         <div
           style={{ height: divHeight }}
-          className={containerClasses.join(' ')}
+          className='flex flex-col items-center justify-center w-full h-full'
         >
           {chessboardDiv}
           <div className="p-2 flex flex-row w-screen justify-center">
@@ -234,14 +233,16 @@ const GameReview = ({ game }: Props) => {
     );
   }
 
+  const leftColWidth = "w-56";
+
   return (
     <ScrollLock>
-      <div className={containerClasses.join(' ')}>
+      <div className='flex flex-col items-center justify-center w-full h-full gap-2 mt-2'>
         <div className="flex flex-row gap-2">
-          <div className="flex flex-col w-54">
+          <div className={`flex flex-col ${leftColWidth}`}>
             <GameDetails game={game} orientation={game.userColor} />
           </div>
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center gap-2">
             {chessboardDiv}
           </div>
           <div className="w-[275px]">
@@ -259,6 +260,12 @@ const GameReview = ({ game }: Props) => {
               </div>
               {arrowButtons}
             </div>
+          </div>
+        </div>
+        <div className="flex-1 w-full flex flex-row gap-2 mb-4">
+          <div className={`${leftColWidth}`} />
+          <div style={{ width: boardSize }}>
+            <GameChart game={game} />
           </div>
         </div>
       </div>
