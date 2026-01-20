@@ -1,6 +1,6 @@
 import { parse as parsePGN } from 'pgn-parser';
 import hash from 'string-hash';
-import { GameData, PieceColor } from '@/types/chess';
+import { GameData, PieceColor, ChessWebsite } from '@/types/chess';
 import type { ChesscomGame } from '@/types/chesscom';
 import {
   getStartTime,
@@ -117,6 +117,7 @@ function chesscomGameToGameData(game: ChesscomGame, username: string): GameData 
     whiteElo: getPlayerElo(parsedPgn, PieceColor.WHITE),
     blackName: getPlayerName(parsedPgn, PieceColor.BLACK),
     blackElo: getPlayerElo(parsedPgn, PieceColor.BLACK),
+    website: ChessWebsite.Chesscom,
   }
 
   const gameId = hash(JSON.stringify(partialGameData)).toString();
