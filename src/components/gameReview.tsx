@@ -4,7 +4,7 @@ import React, { useState, useEffect, useReducer } from 'react';
 import { ScrollLock } from '@/components/ScrollLock';
 import { GameData, PieceColor, ShortMove } from '@/types/chess';
 import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
-import { Marker } from '@/utils/cmchess';
+import { Marker, loadPgnIntoCmChess } from '@/utils/cmchess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import Chessboard from '@/components/Chessboard';
 import EvalerDisplay from '@/components/evalerDisplay';
@@ -113,19 +113,18 @@ const GameReview = ({ game }: Props) => {
     numLines,
   } = useEvaler(s.isEvaluatorOn, currentMove, { numLines: 2 });
 
+  useEffect(() => {
+    if (game) {
+      loadPgnIntoCmChess(game.pgn, cmchess.current);
+      setHistory(cmchess.current.history());
+    }
+  }, [game]);
+
   // Calculate board size
   const useMobile = shouldUseMobileLayout(windowSize);
   const boardSize = useMobile
     ? Math.min(windowSize.width || 400, windowSize.height || 400) - 10
     : 600;
-
-  // Get game info for display
-  const whitePlayer = game.whiteName
-    ? `${game.whiteName}${game.whiteElo ? ` (${game.whiteElo})` : ''}`
-    : 'White';
-  const blackPlayer = game.blackName
-    ? `${game.blackName}${game.blackElo ? ` (${game.blackElo})` : ''}`
-    : 'Black';
 
   const chessboard = (
     <div className="relative">
@@ -205,10 +204,6 @@ const GameReview = ({ game }: Props) => {
           style={{ height: divHeight }}
           className={containerClasses.join(' ')}
         >
-          <div className="p-1 text-center">
-            <h2 className="text-xl font-bold">{whitePlayer} vs {blackPlayer}</h2>
-            {game.result && <p className="text-sm">{game.result}</p>}
-          </div>
           {chessboardDiv}
           <div className="p-2 flex flex-row w-screen justify-center">
             <div>{arrowButtons}</div>
@@ -245,14 +240,6 @@ const GameReview = ({ game }: Props) => {
   return (
     <ScrollLock>
       <div className={containerClasses.join(' ')}>
-        <div style={{ width: `${boardSize + 8 + 275}px` }}>
-          <div className="text-center" style={{ width: `${boardSize}px` }}>
-            <h2 className="text-[1.5rem] h-12">
-              {whitePlayer} vs {blackPlayer}
-            </h2>
-            {game.result && <p className="text-sm mb-2">{game.result}</p>}
-          </div>
-        </div>
         <div className="flex flex-row">
           <div className="flex flex-col items-center">
             {chessboardDiv}
