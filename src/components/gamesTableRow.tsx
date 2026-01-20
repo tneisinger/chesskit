@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PieceColor, GameData, GameResult } from '@/types/chess';
 import Link from 'next/link';
 import { getOpening } from '@/utils/bookPositions';
+import { makeDateStringYYMMDD } from '@/utils';
 import DotsSpinner from '@/components/dotsSpinner';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import { makeReadableTimeControl } from '@/utils/chess';
@@ -145,9 +146,7 @@ const GamesTableRow = ({
       priority: 2,
       makeDataDiv: (game, key) => {
         const date = new Date(game.startTime);
-        const formattedDate = date.toLocaleDateString('en-CA');
-        // Manually format to YY/MM/DD
-        const yymmdd = formattedDate.substring(2).replace(/-/g, '/');
+        const yymmdd = makeDateStringYYMMDD(date);
         const dateSpan = <span className="w-[8ch] block text-left">{yymmdd}</span>;
         return makeTableDataDiv(dateSpan, key, true, []);
       }
