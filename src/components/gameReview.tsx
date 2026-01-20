@@ -278,6 +278,7 @@ const GameReview = ({ game }: Props) => {
           <div className={`${leftColWidth}`} />
           <div style={{ width: boardSize }}>
             <GameAnalysis
+              game={game}
               analyzeGame={analyzeGame}
               depth={depth}
               changeDepth={setDepth}

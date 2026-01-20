@@ -37,8 +37,8 @@ const GameChart = ({ gameEvals }: Props) => {
   const offset = max / (max - min);
 
   return (
-    <ResponsiveContainer>
-      <AreaChart data={chartData} >
+    <ResponsiveContainer width="100%" height="100%">
+      <AreaChart data={chartData}>
         <defs>
           <linearGradient id="colorCp" x1="0" y1="0" x2="0" y2="1">
             <stop offset={offset} stopColor="#eee" stopOpacity={1}/>
@@ -51,7 +51,7 @@ const GameChart = ({ gameEvals }: Props) => {
         <Area
           type="monotone"
           dataKey="cp"
-          stroke="#4c946a"
+          stroke="#aaa"
           strokeWidth={1}
           fillOpacity={1}
           fill="url(#colorCp)"

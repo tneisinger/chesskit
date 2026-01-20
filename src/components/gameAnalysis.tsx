@@ -1,9 +1,10 @@
-import { GameEvals } from '@/types/chess';
+import { GameData, GameEvals } from '@/types/chess';
 import Button from '@/components/button';
 import Spinner from '@/components/spinner';
 import GameChart from '@/components/gameChart'
 
 interface Props {
+  game: GameData;
   analyzeGame: () => void;
   depth: number;
   changeDepth: (newDepth: number) => void;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 const GameAnalysis = ({
+  game,
   analyzeGame,
   depth,
   changeDepth,
@@ -30,6 +32,11 @@ const GameAnalysis = ({
 
   return (
     <div className="bg-stone-800 rounded-md w-full h-full">
+      {game.engineAnalysis != undefined && (
+        <div className='h-full w-full'>
+          <GameChart gameEvals={game.engineAnalysis} />
+        </div>
+      )}
       {!isAnalyzing && progress === 0 && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
           <Button onClick={handleAnalyzeGame} disabled={isAnalyzing}>
@@ -87,7 +94,7 @@ const GameAnalysis = ({
           <GameChart gameEvals={gameEvals} />
         </div>
       )}
-</div>
+    </div>
   );
 }
 
