@@ -15,7 +15,7 @@ import GameChart from '@/components/gameChart';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
-import useEvaler from '@/hooks/useChessEvaler';
+import useGameAnalyzer from '@/hooks/useGameAnalyzer';
 import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
 
@@ -78,6 +78,9 @@ interface Props {
 const GameReview = ({ game }: Props) => {
   const windowSize = useWindowSize();
 
+  const [depth, setDepth] = useState(20);
+  const [numLines, setNumLines] = useState(2);
+
   const initialState: State = {
     isEvaluatorOn: false,
     allowBoardInteraction: true,
@@ -101,15 +104,30 @@ const GameReview = ({ game }: Props) => {
     playMove,
   } = useChessboardEngine();
 
-  // Set up engine evaluator
+  // Set up game analyzer
   const {
+    analyzeGame,
     gameEvals,
-    fenBeingEvaluated,
-    evalDepth,
-    engineName,
     lines: engineLines,
-    numLines,
-  } = useEvaler(s.isEvaluatorOn, currentMove, { numLines: 2 });
+    isAnalyzing,
+    progress,
+    currentPosition: positionBeingAnalyzed,
+    totalPositions: totalPositionsToBeAnalyzed,
+  } = useGameAnalyzer(game, 20, 2);
+
+  useEffect(() => {
+    console.log('gameEvals changed:');
+    console.log(gameEvals);
+  }, [gameEvals]);
+
+  useEffect(() => {
+    console.log('engineLines changed:');
+    console.log(engineLines);
+  }, [engineLines]);
+
+  useEffect(() => {
+    console.log('progress changed: ' + progress);
+  }, [progress]);
 
   useEffect(() => {
     if (game) {
@@ -155,21 +173,7 @@ const GameReview = ({ game }: Props) => {
   );
 
   const engineDisplay = (
-    <EvalerDisplay
-      isEngineOn={s.isEvaluatorOn}
-      setIsEngineOn={(b) => dispatch({ type: 'setIsEvaluatorOn', value: b })}
-      gameEvals={gameEvals}
-      currentMove={currentMove}
-      evalerMaxDepth={evalDepth}
-      engineName={engineName}
-      engineLines={engineLines}
-      isEvaluating={fenBeingEvaluated !== null}
-      maxLineLengthPx={useMobile ? (windowSize.width || 400) - 6 : 275}
-      numLines={numLines}
-      isSwitchDisabled={false}
-      switchDisabledMsg={''}
-      showMoveJudgements={true}
-    />
+    <div>Engine stuff here</div>
   );
 
   const movesDisplay = (
@@ -265,7 +269,16 @@ const GameReview = ({ game }: Props) => {
         <div className="flex-1 w-full flex flex-row gap-2 mb-4">
           <div className={`${leftColWidth}`} />
           <div style={{ width: boardSize }}>
-            <GameChart game={game} />
+            <GameChart
+              game={game}
+              analyzeGame={analyzeGame}
+              depth={depth}
+              changeDepth={setDepth}
+              numLines={numLines}
+              changeNumLines={setNumLines}
+              isAnalyzing={isAnalyzing}
+              progress={progress}
+            />
           </div>
         </div>
       </div>

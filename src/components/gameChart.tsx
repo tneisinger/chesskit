@@ -5,21 +5,32 @@ import Spinner from '@/components/spinner';
 
 interface Props {
   game: GameData;
+  analyzeGame: () => void;
+  depth: number;
+  changeDepth: (newDepth: number) => void;
+  numLines: number;
+  changeNumLines: (newNumLines: number) => void;
+  isAnalyzing: boolean;
+  progress: number;
 }
 
-const GameChart = ({ game }: Props) => {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isAnalysisComplete, setIsAnalysisComplete] = useState(false);
-  const [depth, setDepth] = useState<number>(20);
-  const [numLines, setNumLines] = useState<number>(3);
-
+const GameChart = ({
+  game,
+  analyzeGame,
+  depth,
+  changeDepth,
+  numLines,
+  changeNumLines,
+  isAnalyzing,
+  progress,
+}: Props) => {
   const handleAnalyzeGame = () => {
-    setIsAnalyzing(true);
+    analyzeGame();
   }
 
   return (
     <div className="bg-background-page rounded-md w-full h-full">
-      {!isAnalyzing && !isAnalysisComplete && (
+      {!isAnalyzing && progress === 0 && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
           <Button onClick={handleAnalyzeGame} disabled={isAnalyzing}>
             Analyze Game
@@ -36,7 +47,7 @@ const GameChart = ({ game }: Props) => {
                   min={18}
                   max={30}
                   value={depth}
-                  onChange={(e) => setDepth(Number(e.target.value))}
+                  onChange={(e) => changeDepth(Number(e.target.value))}
                 />
                 <span>{depth}</span>
               </div>
@@ -52,7 +63,7 @@ const GameChart = ({ game }: Props) => {
                   min={1}
                   max={5}
                   value={numLines}
-                  onChange={(e) => setNumLines(Number(e.target.value))}
+                  onChange={(e) => changeNumLines(Number(e.target.value))}
                 />
                 <span>{numLines}</span>
               </div>
@@ -70,7 +81,10 @@ const GameChart = ({ game }: Props) => {
           </div>
         </div>
       )}
-    </div>
+      {!isAnalyzing && progress >= 100 && (
+        <div>Analysis Complete!</div>
+      )}
+</div>
   );
 }
 
