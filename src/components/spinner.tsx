@@ -1,5 +1,3 @@
-import React from 'react';
-
 // The width and height of the spinner in pixels when scale === 1;
 const naturalSizePx = 80;
 
@@ -9,31 +7,25 @@ const centeredOriginY = 3;
 
 interface Props {
   scale?: number;
-  alwaysDark?: boolean;
-  centerOrigin?: boolean;
+  tailwindColor?: string;
 }
 
-const Spinner = ({ scale = 1, alwaysDark, centerOrigin }: Props) => {
+const Spinner = ({ scale = 1, tailwindColor = 'bg-black' }: Props) => {
   const classes = ['inline-block relative w-20 h-20'];
 
   const size = { width: naturalSizePx, height: naturalSizePx };
   size.width = scale * size.width;
   size.height = scale * size.height;
 
-  var transformOrigin = '0px 0px';
-  if (centerOrigin) {
-    transformOrigin = `${centeredOriginX * scale}px ${centeredOriginY * scale}px`;
-  }
-
-  const childDivClass = `absolute top-[3px] left-[37px] w-[6px] h-[18px] rounded-[20%] origin-[40px_40px] animate-[ldsSpinner_1.2s_linear_infinite]
+  const childDivClass = `absolute w-[6px] h-[18px] rounded-[20%] origin-[40px_40px] animate-[ldsSpinner_1.2s_linear_infinite]
     after:content-[''] after:block after:absolute after:top-[3px] after:left-[37px] after:w-[6px] after:h-[18px] after:rounded-[20%]
-    ${alwaysDark ? 'after:bg-black' : 'after:bg-black dark:after:bg-white'}`;
+    after:${tailwindColor}`;
 
 
   return (
     <div style={{ ...size }}>
       <div
-        style={{ transform: `scale(${scale})`, transformOrigin }}
+        style={{ transform: `scale(${scale})`}}
         className={classes.join(' ')}
       >
         <div className={`${childDivClass} rotate-0 [animation-delay:-1.1s]`} />
