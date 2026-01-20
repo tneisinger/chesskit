@@ -15,7 +15,6 @@ import {
 import { getFen } from '@/utils/chess';
 import useStockfish from '@/hooks/useStockfish';
 import usePrevious from '@/hooks/usePrevious';
-// import useStore from '../zustand/store';
 
 const MAX_THREADS_USAGE = 0.5;
 
@@ -42,8 +41,6 @@ export default function useEvaler(
   currentMove: Move | undefined,
   options?: Options
 ): Toolkit {
-  // const { puzzles } = useStore((state) => state);
-
   const evalDepth = (options && options.evalDepth) || 20;
   const numLines = (options && options.numLines) || 1;
 
