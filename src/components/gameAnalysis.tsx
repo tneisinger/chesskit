@@ -82,7 +82,9 @@ const GameAnalysis = ({
         </div>
       )}
       {!isAnalyzing && progress >= 100 && (
-        <GameChart gameEvals={gameEvals} />
+        <div className='h-full w-full'>
+          <GameChart gameEvals={gameEvals} />
+        </div>
       )}
 </div>
   );

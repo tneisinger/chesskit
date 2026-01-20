@@ -38,11 +38,7 @@ const GameChart = ({ gameEvals }: Props) => {
 
   return (
     <ResponsiveContainer>
-      <AreaChart
-        width={400}
-        height={200}
-        data={chartData}
-      >      {/* Define a gradient for the fill */}
+      <AreaChart data={chartData} >
         <defs>
           <linearGradient id="colorCp" x1="0" y1="0" x2="0" y2="1">
             <stop offset={offset} stopColor="#eee" stopOpacity={1}/>
