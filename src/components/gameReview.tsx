@@ -1,17 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useReducer } from 'react';
+import { useState, useEffect, useReducer } from 'react';
 import { ScrollLock } from '@/components/ScrollLock';
-import { GameData, PieceColor, ShortMove } from '@/types/chess';
+import { GameData } from '@/types/chess';
 import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
 import { Marker, loadPgnIntoCmChess } from '@/utils/cmchess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import GameDetails from '@/components/gameDetails';
 import Chessboard from '@/components/Chessboard';
-import EvalerDisplay from '@/components/evalerDisplay';
 import MovesDisplay from '@/components/movesDisplay';
 import ArrowButtons from '@/components/arrowButtons';
-import GameChart from '@/components/gameChart';
+import GameAnalysis from '@/components/gameAnalysis';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
@@ -269,8 +268,7 @@ const GameReview = ({ game }: Props) => {
         <div className="flex-1 w-full flex flex-row gap-2 mb-4">
           <div className={`${leftColWidth}`} />
           <div style={{ width: boardSize }}>
-            <GameChart
-              game={game}
+            <GameAnalysis
               analyzeGame={analyzeGame}
               depth={depth}
               changeDepth={setDepth}
