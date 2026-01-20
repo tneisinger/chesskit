@@ -6,6 +6,7 @@ import { GameData, PieceColor, ShortMove } from '@/types/chess';
 import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
 import { Marker, loadPgnIntoCmChess } from '@/utils/cmchess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
+import GameDetails from '@/components/gameDetails';
 import Chessboard from '@/components/Chessboard';
 import EvalerDisplay from '@/components/evalerDisplay';
 import MovesDisplay from '@/components/movesDisplay';
@@ -240,11 +241,14 @@ const GameReview = ({ game }: Props) => {
   return (
     <ScrollLock>
       <div className={containerClasses.join(' ')}>
-        <div className="flex flex-row">
+        <div className="flex flex-row gap-2">
+          <div className="flex flex-col w-54">
+            <GameDetails game={game} />
+          </div>
           <div className="flex flex-col items-center">
             {chessboardDiv}
           </div>
-          <div className="ml-2 w-[275px]">
+          <div className="w-[275px]">
             <div
               style={{ height: boardSize }}
               className="flex flex-col flex-1 items-center w-full"

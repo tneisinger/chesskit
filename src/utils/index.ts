@@ -119,3 +119,9 @@ export function deleteUndefinedPairs<T extends Record<string, any>>(t: T): undef
   })
   return;
 }
+
+// Create a date string in the format YY/MM/DD
+export function makeDateStringYYMMDD(date: Date): string {
+  const formattedDate = date.toLocaleDateString('en-CA');
+  return formattedDate.substring(2).replace(/-/g, '/');
+}
