@@ -1,7 +1,32 @@
 import { useState } from 'react';
-import { GameData } from '@/types/chess';
+import { GameData, GameEvals } from '@/types/chess';
 import Button from '@/components/button';
 import Spinner from '@/components/spinner';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getPlyFromFen } from '@/utils/chess';
+
+function makeChartData(gameEvals: GameEvals): {ply: number, cp: number}[] {
+  const result: {ply: number, cp: number}[] = [];
+
+  Object.entries(gameEvals).forEach(([fen, e]) => {
+    const ply = getPlyFromFen(fen);
+    if (e.cp !== undefined) {
+      let cp = e.cp;
+      if (cp > 1000) cp = 1000;
+      result.push({ ply, cp });
+    } else if (e.mate !== undefined) {
+      // Represent mate as a large centipawn value
+      const sign = e.mate > 0 ? 1 : -1;
+      result.push({ ply, cp: sign * 1000 });
+    } else {
+      // No evaluation available so set cp to 0
+      result.push({ ply, cp: 0 });
+    }
+  });
+
+  result.sort(({ply: ply1}, {ply: ply2}) => ply1 - ply2);
+  return result;
+}
 
 interface Props {
   game: GameData;
@@ -12,6 +37,7 @@ interface Props {
   changeNumLines: (newNumLines: number) => void;
   isAnalyzing: boolean;
   progress: number;
+  gameEvals: GameEvals
 }
 
 const GameChart = ({
@@ -23,13 +49,19 @@ const GameChart = ({
   changeNumLines,
   isAnalyzing,
   progress,
+  gameEvals,
 }: Props) => {
   const handleAnalyzeGame = () => {
     analyzeGame();
   }
 
+  const chartData = makeChartData(gameEvals);
+  const max = Math.max(...chartData.map((d) => d.cp));
+  const min = Math.min(...chartData.map((d) => d.cp));
+  const offset = max / (max - min);
+
   return (
-    <div className="bg-background-page rounded-md w-full h-full">
+    <div className="bg-stone-800 rounded-md w-full h-full">
       {!isAnalyzing && progress === 0 && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
           <Button onClick={handleAnalyzeGame} disabled={isAnalyzing}>
@@ -82,7 +114,32 @@ const GameChart = ({
         </div>
       )}
       {!isAnalyzing && progress >= 100 && (
-        <div>Analysis Complete!</div>
+        <ResponsiveContainer>
+          <AreaChart
+            width={400}
+            height={200}
+            data={chartData}
+          >      {/* Define a gradient for the fill */}
+            <defs>
+              <linearGradient id="colorCp" x1="0" y1="0" x2="0" y2="1">
+                <stop offset={offset} stopColor="#eee" stopOpacity={1}/>
+                <stop offset={offset} stopColor="#111" stopOpacity={1}/>
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="ply" hide /> 
+            <YAxis domain={[-1000, 1000]} hide /> 
+            <Tooltip /> 
+            <Area
+              type="monotone"
+              dataKey="cp"
+              stroke="#4c946a"
+              strokeWidth={1}
+              fillOpacity={1}
+              fill="url(#colorCp)"
+              activeDot={{ r: 3 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       )}
 </div>
   );

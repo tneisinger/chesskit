@@ -278,6 +278,7 @@ const GameReview = ({ game }: Props) => {
               changeNumLines={setNumLines}
               isAnalyzing={isAnalyzing}
               progress={progress}
+              gameEvals={gameEvals}
             />
           </div>
         </div>
