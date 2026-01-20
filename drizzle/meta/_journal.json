@@ -33,8 +33,22 @@
     {
       "idx": 4,
       "version": "6",
+      "when": 1734690600000,
+      "tag": "0004_rename_user_lessons_to_user_repertoire",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
       "when": 1737191000000,
       "tag": "0005_add_chess_usernames",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1737409200000,
+      "tag": "0006_add_games_table",
       "breakpoints": true
     }
   ]

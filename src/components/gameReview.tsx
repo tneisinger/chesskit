@@ -17,6 +17,8 @@ import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import useGameAnalyzer from '@/hooks/useGameAnalyzer';
 import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
+import usePrevious from '@/hooks/usePrevious';
+import { updateGameAnalysis } from '@/app/game-review/actions';
 
 enum MobileTab {
   Moves = 'Moves',
@@ -114,19 +116,26 @@ const GameReview = ({ game }: Props) => {
     totalPositions: totalPositionsToBeAnalyzed,
   } = useGameAnalyzer(game, 20, 2);
 
-  useEffect(() => {
-    console.log('gameEvals changed:');
-    console.log(gameEvals);
-  }, [gameEvals]);
+  const prevIsAnalyzing = usePrevious(isAnalyzing);
 
   useEffect(() => {
-    console.log('engineLines changed:');
-    console.log(engineLines);
-  }, [engineLines]);
-
-  useEffect(() => {
-    console.log('progress changed: ' + progress);
-  }, [progress]);
+    if (prevIsAnalyzing && !isAnalyzing && progress >= 100 && gameEvals) {
+      // Save analysis results to db
+      if (game.id) {
+        updateGameAnalysis(game.id, gameEvals)
+          .then((result:any) => {
+            if (result.success) {
+              console.log('Game analysis saved successfully');
+            } else {
+              console.error('Failed to save game analysis:', result.error);
+            }
+          })
+          .catch((error: any) => {
+            console.error('Error saving game analysis:', error);
+          });
+      }
+    }
+  }, [isAnalyzing, prevIsAnalyzing, progress, gameEvals, game.id])
 
   useEffect(() => {
     if (game) {
