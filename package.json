@@ -31,6 +31,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-switch": "^7.1.0",
+    "recharts": "^3.6.0",
     "stockfish": "^17.1.0",
     "string-hash": "^1.1.3"
   },
