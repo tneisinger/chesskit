@@ -13,7 +13,6 @@ import { Chess as ChessJS } from 'chess.js';
 import { Chess as CmChess, Move, FEN  } from 'cm-chess/src/Chess';
 import { Move as ChessJsMove } from 'chess.js';
 import { assertUnreachable, average, pluralizeWord } from '.';
-// import { Settings } from '../zustand/store';
 import { povDiff } from '@/utils/winningChances';
 import { ChessMoveColors } from '@/constants/colors';
 import { isBookPosition } from '@/utils/bookPositions';
@@ -341,7 +340,8 @@ export function getFenStringsOfGame(
   const result = [];
   const chessjs = new ChessJS();
 
-  let moves = game.pgn.moves;
+  const parsedPgn = parsePGN(game.pgn)[0];
+  let moves = parsedPgn.moves;
   if (sliceEnd != undefined) {
     moves = moves.slice(0, sliceEnd);
   }

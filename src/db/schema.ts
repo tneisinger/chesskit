@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text, primaryKey, unique } from "drizzle-orm/sqlite-core";
 import type { Chapter } from "@/types/lesson";
-import type { ParsedPGN } from "pgn-parser";
 
 export const users = sqliteTable("users", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
@@ -100,9 +99,7 @@ export const games = sqliteTable("games", {
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
 	gameId: text("game_id").notNull(),
-	pgn: text("pgn", { mode: "json" })
-		.notNull()
-		.$type<ParsedPGN>(),
+	pgn: text("pgn").notNull(),
 	userColor: text("user_color", { enum: ["WHITE", "BLACK"] }).notNull(),
 	result: text("result", { enum: ["1-0", "0-1", "1/2-1/2"] }),
 	startTime: integer("start_time").notNull(),

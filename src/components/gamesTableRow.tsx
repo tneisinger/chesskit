@@ -6,6 +6,7 @@ import DotsSpinner from '@/components/dotsSpinner';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import { makeReadableTimeControl } from '@/utils/chess';
 import useWindowSize from '@/hooks/useWindowSize';
+import { parse as parsePGN } from 'pgn-parser';
 
 interface Column {
   name: string;
@@ -185,8 +186,10 @@ const GamesTableRow = ({
     {
       name: 'Moves',
       priority: 6,
-      makeDataDiv: (game, key) =>
-        makeTableDataDiv(Math.round(game.pgn.moves.length / 2), key, true),
+      makeDataDiv: (game, key) => {
+        const parsedPgn = parsePGN(game.pgn)[0];
+        return makeTableDataDiv(Math.round(parsedPgn.moves.length / 2), key, true);
+      },
     },
     {
       name: 'Opponent',
