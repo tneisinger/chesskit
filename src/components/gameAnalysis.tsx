@@ -15,6 +15,7 @@ interface Props {
   progress: number;
   gameEvals: GameEvals
   currentMove: Move | undefined;
+  width: number;
 }
 
 const GameAnalysis = ({
@@ -28,20 +29,20 @@ const GameAnalysis = ({
   progress,
   gameEvals,
   currentMove,
+  width,
 }: Props) => {
   const handleAnalyzeGame = () => {
     analyzeGame();
   }
 
   return (
-    <div className="bg-stone-800 rounded-md w-full h-full">
+    <div className="bg-radial from-stone-600 to-stone-800 rounded-md" style={{ width, height: '100%' }}>
       {game.engineAnalysis != undefined && (
-        <div className='h-full w-full'>
-          <GameChart
-            gameEvals={game.engineAnalysis}
-            currentMove={currentMove}
-          />
-        </div>
+        <GameChart
+          gameEvals={game.engineAnalysis}
+          currentMove={currentMove}
+          width={width}
+        />
       )}
       {!isAnalyzing && progress === 0 && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
@@ -96,12 +97,11 @@ const GameAnalysis = ({
         </div>
       )}
       {!isAnalyzing && progress >= 100 && (
-        <div className='h-full w-full'>
-          <GameChart
-            gameEvals={gameEvals}
-            currentMove={currentMove}
-          />
-        </div>
+        <GameChart
+          gameEvals={gameEvals}
+          currentMove={currentMove}
+          width={width}
+        />
       )}
     </div>
   );
