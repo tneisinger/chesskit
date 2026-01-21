@@ -15,6 +15,7 @@ export default function GameReviewPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const { height } = useWindowSize();
+  const mainDivHeight = height ? height - NAV_BAR_HEIGHT : undefined;
 
   const loadGames = async () => {
     setIsLoading(true);
@@ -28,13 +29,30 @@ export default function GameReviewPage() {
   }, []);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (userGames.length === 0) {
+    return (
+      <div
+        className="flex flex-col h-full items-center justify-center gap-4"
+        style={{ height: mainDivHeight }}
+      >
+
+        <p className="text-xl">No games exist</p>
+        <Button href="/game-review/add-games">Add Games</Button>
+      </div>
+    );
   }
 
   return (
     <div
       className="flex flex-col max-w-[1200px] w-[99vw]"
-      style={{ height: height ? height - NAV_BAR_HEIGHT : undefined }}
+      style={{ height: mainDivHeight }}
     >
       <div className="py-4">
         <h3 className="text-center text-2xl">Imported Games</h3>
