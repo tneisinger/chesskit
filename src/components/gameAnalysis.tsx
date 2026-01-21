@@ -92,7 +92,7 @@ const GameAnalysis = ({
           <div className='flex flex-row gap-8 text-sm'>
             <span>depth: {depth}</span>
             <span>lines: {numLines}</span>
-            <span>progress: {progress}</span>
+            <span>progress: {progress}%</span>
           </div>
         </div>
       )}
