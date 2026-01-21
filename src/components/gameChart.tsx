@@ -60,9 +60,14 @@ function makeChartData(gameEvals: GameEvals): ChartDataPoint[] {
 interface Props {
   gameEvals: GameEvals;
   currentMove: Move | undefined;
+  width: number;
 }
 
-const GameChart = ({ gameEvals, currentMove }: Props) => {
+const GameChart = ({
+  gameEvals,
+  currentMove,
+  width,
+}: Props) => {
 
   const chartData = makeChartData(gameEvals);
   const max = Math.max(...chartData.map((d) => d.chartCp));
@@ -71,7 +76,7 @@ const GameChart = ({ gameEvals, currentMove }: Props) => {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={chartData}>
+      <AreaChart data={chartData} margin={{ top: 5, right: 0, bottom: 5, left: 0 }}>
         <defs>
           <linearGradient id="colorCp" x1="0" y1="0" x2="0" y2="1">
             <stop offset={offset} stopColor="#eee" stopOpacity={1}/>
