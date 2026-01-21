@@ -2,6 +2,7 @@ import { GameData, GameEvals } from '@/types/chess';
 import Button from '@/components/button';
 import Spinner from '@/components/spinner';
 import GameChart from '@/components/gameChart'
+import { Move } from 'cm-chess/src/Chess';
 
 interface Props {
   game: GameData;
@@ -13,6 +14,7 @@ interface Props {
   isAnalyzing: boolean;
   progress: number;
   gameEvals: GameEvals
+  currentMove: Move | undefined;
 }
 
 const GameAnalysis = ({
@@ -25,6 +27,7 @@ const GameAnalysis = ({
   isAnalyzing,
   progress,
   gameEvals,
+  currentMove,
 }: Props) => {
   const handleAnalyzeGame = () => {
     analyzeGame();
@@ -34,7 +37,10 @@ const GameAnalysis = ({
     <div className="bg-stone-800 rounded-md w-full h-full">
       {game.engineAnalysis != undefined && (
         <div className='h-full w-full'>
-          <GameChart gameEvals={game.engineAnalysis} />
+          <GameChart
+            gameEvals={game.engineAnalysis}
+            currentMove={currentMove}
+          />
         </div>
       )}
       {!isAnalyzing && progress === 0 && (
@@ -91,7 +97,10 @@ const GameAnalysis = ({
       )}
       {!isAnalyzing && progress >= 100 && (
         <div className='h-full w-full'>
-          <GameChart gameEvals={gameEvals} />
+          <GameChart
+            gameEvals={gameEvals}
+            currentMove={currentMove}
+          />
         </div>
       )}
     </div>

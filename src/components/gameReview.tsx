@@ -287,6 +287,7 @@ const GameReview = ({ game }: Props) => {
               isAnalyzing={isAnalyzing}
               progress={progress}
               gameEvals={gameEvals}
+              currentMove={currentMove}
             />
           </div>
         </div>
