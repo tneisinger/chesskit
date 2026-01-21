@@ -14,6 +14,7 @@ import {
 import useStockfish from '@/hooks/useStockfish';
 import { parse as parsePGN } from 'pgn-parser';
 import { Chess as ChessJS } from 'chess.js';
+import usePrevious from '@/hooks/usePrevious';
 
 const MAX_THREADS_USAGE = 0.5;
 
@@ -46,6 +47,10 @@ export default function useGameAnalyzer(
   const lastDepth = useRef<number>(0);
   const lastAddedEval = useRef<Evaluation | null>(null);
   const afterBestMoveFoundCallback = useRef<((bestMoveInfo?: BestMoveInfo) => void) | undefined>(undefined);
+  const fensAnalyzed = useRef<Set<string>>(new Set());
+
+  const prevPositionIndex = usePrevious(currentPositionIndex);
+  const prevIsAnalyzing = usePrevious(isAnalyzing);
 
   // Generate all FENs from the game
   const generateFensFromGame = useCallback(() => {
@@ -124,40 +129,71 @@ export default function useGameAnalyzer(
     };
 
     const handleBestMoveInfo = (bestMoveInfo: BestMoveInfo) => {
-      if (bestMoveInfo.bestmove && lastDepth.current >= depth) {
-        const bestMove = parseLanMove(bestMoveInfo.bestmove);
-        if (fenRef.current == null) {
-          console.error('fenRef was null');
-          return;
-        }
-
-        if (!lastAddedEval.current) {
-          console.error('lastAddedEval should be defined');
-          return;
-        }
-
-        if (fenRef.current !== lastAddedEval.current.fen) {
-          console.error('lastAddedEval fen should match fenRef');
-          return;
-        }
-
-        if (lastAddedEval.current.depth !== lastDepth.current) {
-          console.error('lastAddedEval depth should match lastDepth');
-          return;
-        }
-
-        const evaluation: Evaluation = {
-          ...lastAddedEval.current,
-          bestMove,
-          depth: lastDepth.current
-        };
-
-        addEval(evaluation);
+      if (fenRef.current == null) {
+        console.error('fenRef was null in handleBestMoveInfo');
+        changeFenBeingEvaluated(null);
+        setCurrentPositionIndex((prev) => prev + 1);
+        return;
       }
 
-      // If there is no best move (probably because the game is over)
-      if (bestMoveInfo.bestmove == null) {
-        // Continue to next position anyway
+      // Ensure we have an evaluation for this position
+      let evaluationSaved = false;
+
+      if (bestMoveInfo.bestmove) {
+        // Best move exists - save evaluation with best move if we have it
+        const bestMove = parseLanMove(bestMoveInfo.bestmove);
+
+        if (lastAddedEval.current && lastAddedEval.current.fen === fenRef.current) {
+          // We have an evaluation for this position
+          const evaluation: Evaluation = {
+            ...lastAddedEval.current,
+            bestMove,
+            depth: lastDepth.current
+          };
+          addEval(evaluation);
+          evaluationSaved = true;
+        } else {
+          console.warn(`Best move returned but no evaluation found for FEN: ${fenRef.current}`);
+        }
+      } else {
+        // No best move available (terminal position like checkmate or stalemate)
+        if (lastAddedEval.current && lastAddedEval.current.fen === fenRef.current) {
+          // We have a partial evaluation, save it
+          addEval(lastAddedEval.current);
+          evaluationSaved = true;
+        }
+      }
+
+      // If we still don't have an evaluation, create one based on position state
+      if (!evaluationSaved) {
+        console.warn(`No evaluation saved for position, creating synthetic evaluation for: ${fenRef.current}`);
+        const chessjs = new ChessJS(fenRef.current);
+        let evaluation: Evaluation;
+
+        if (chessjs.isCheckmate()) {
+          // Checkmate - the side to move is mated
+          evaluation = {
+            mate: 0,
+            depth: 0,
+            fen: fenRef.current,
+          };
+        } else if (chessjs.isStalemate() || chessjs.isDraw()) {
+          // Draw
+          evaluation = {
+            cp: 0,
+            depth: 0,
+            fen: fenRef.current,
+          };
+        } else {
+          // Other state - use neutral evaluation
+          evaluation = {
+            cp: 0,
+            depth: 0,
+            fen: fenRef.current,
+          };
+        }
+
+        addEval(evaluation);
       }
 
       // Move to next position
@@ -239,6 +275,7 @@ export default function useGameAnalyzer(
 
     const addEval = (evaluation: Evaluation) => {
       lastAddedEval.current = evaluation;
+      fensAnalyzed.current.add(evaluation.fen);
 
       setGameEvals((evals) => {
         const storedEval = evals[evaluation.fen];
@@ -263,6 +300,14 @@ export default function useGameAnalyzer(
 
   // Analyze next position when currentPositionIndex changes
   useEffect(() => {
+    // In general, we only want to proceed if currentPositionIndex has changed.
+    // However, we also need to make sure that we proceed when currentPositionIndex
+    // has not changed, but isAnalyzing has changed from false to true (i.e., analysis
+    // is being started or resumed).
+    if (prevPositionIndex === currentPositionIndex) {
+      if (prevIsAnalyzing === isAnalyzing) return;
+    }
+
     if (!isAnalyzing) return;
     if (!stockfish) return;
     if (fenRef.current !== null) return; // Already analyzing a position
