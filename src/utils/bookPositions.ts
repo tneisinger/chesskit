@@ -2144,7 +2144,7 @@ export const bookPositions: Record<string, BookPos> = {
     }
   },
   "rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -": {
-    "name": "Zukertort Opening",
+    "name": "Réti Opening",
     "eval": {
       "depth": 30,
       "cp": 30,
@@ -2935,7 +2935,20 @@ export const bookPositions: Record<string, BookPos> = {
       }
     }
   },
+  // English: With passant
   "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3": {
+    "name": "English Opening",
+    "eval": {
+      "depth": 30,
+      "cp": 15,
+      "bestMove": {
+        "from": "e7",
+        "to": "e5"
+      }
+    }
+  },
+  // English: No enpassant
+  "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq -": {
     "name": "English Opening",
     "eval": {
       "depth": 30,
@@ -11834,7 +11847,22 @@ export const bookPositions: Record<string, BookPos> = {
       }
     }
   },
+
+  // Sicilian with enpassant
   "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6": {
+    "name": "Sicilian Defense",
+    "eval": {
+      "depth": 30,
+      "cp": 29,
+      "bestMove": {
+        "from": "g1",
+        "to": "f3"
+      }
+    }
+  },
+
+  // Sicilian: no enpassant
+  "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": {
     "name": "Sicilian Defense",
     "eval": {
       "depth": 30,
@@ -79154,9 +79182,10 @@ export const bookPositions: Record<string, BookPos> = {
   }
 }
 
-// TODO: Use full fen strings here.
 export const commonOpeningPositions = [
   'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6',  // Sicilian Defense
+  'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -',  // Sicilian Defense (no enpassant target square specified)
+
   'rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -', // French Defense
   'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq -', // Ruy López
   'rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -', // Caro-Kann Defense
@@ -79184,7 +79213,10 @@ export const commonOpeningPositions = [
   'rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/5N2/PPP1PPPP/RN1QKB1R b KQkq -', // London System
 
   'rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -', // Reti Opening
+
   'rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3',  // English Opening
+  'rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq -', // English Opening (no enpassant)
+
   'rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq f3', // Bird's Opening
   'rnbqkbnr/ppp1pppp/8/3p4/8/5NP1/PPPPPP1P/RNBQKB1R b KQkq -', // King's Indian Attack
   'rnbqkbnr/pppppppp/8/8/8/6P1/PPPPPP1P/RNBQKBNR b KQkq -', // King's Fianchetto Opening
@@ -79203,6 +79235,8 @@ export const commonOpeningPositions = [
 
   'rnbqkb1r/pppppppp/5n2/8/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq -', // Accelerated London Nf6
   'r1bqkbnr/pppppppp/2n5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -', // Nimzowitsch Defense
+
+  'rnbqkb1r/pppppppp/5n2/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -', // Indian Defense
 ];
 
 function makeKey(fen: string): string {
