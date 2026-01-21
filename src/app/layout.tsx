@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/Navigation";
@@ -27,8 +27,11 @@ export const metadata: Metadata = {
     ],
   },
   manifest: '/manifest.webmanifest',
-  themeColor: '#000000',
 };
+
+export const viewport: Viewport = {
+  themeColor: 'black',
+}
 
 export default function RootLayout({
   children,
