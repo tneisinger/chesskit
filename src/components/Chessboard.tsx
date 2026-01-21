@@ -22,7 +22,7 @@ const Chessboard = (props: Props) => {
   return (
     <CmChessboard
       {...props}
-      showCoordinates={false}
+      showCoordinates={true}
       borderType={BORDER_TYPE.none}
       cssClass='green'
       moveSound={moveSound}

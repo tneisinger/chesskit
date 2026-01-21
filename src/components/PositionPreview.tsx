@@ -85,6 +85,7 @@ export default function PositionPreview({
 			style: {
 				borderType: BORDER_TYPE.none,
 				cssClass: 'green',
+        showCoordinates: false,
 				pieces: {
 					file: '/assets/pieces/staunty.svg',
 				},
