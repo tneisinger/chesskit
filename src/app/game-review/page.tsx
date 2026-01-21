@@ -8,6 +8,7 @@ import type { GameData } from "@/types/chess";
 import { getUserGames } from './actions';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import useWindowSize from '@/hooks/useWindowSize';
+import Spinner from '@/components/spinner';
 
 export default function GameReviewPage() {
   const [selectedGameIds, setSelectedGameIds] = useState<number[]>([]);
@@ -30,8 +31,12 @@ export default function GameReviewPage() {
 
   if (isLoading) {
     return (
-      <div>
-        <p>Loading...</p>
+      <div
+        className="flex flex-col h-full items-center justify-center gap-4"
+        style={{ height: mainDivHeight }}
+      >
+        <p className="text-3xl">Loading</p>
+        <Spinner scale={2} white />
       </div>
     );
   }

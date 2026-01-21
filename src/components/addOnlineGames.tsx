@@ -97,7 +97,7 @@ const AddOnlineGames = ({ chessWebsite, initialUsername }: Props) => {
     return (
       <>
         <h2>Fetching games...</h2>
-        <Spinner scale={3} />
+        <Spinner scale={3} white />
       </>
     );
   }
@@ -113,7 +113,7 @@ const AddOnlineGames = ({ chessWebsite, initialUsername }: Props) => {
       return (
         <div>
           <p>Saving {fetchedGames.length} games to database...</p>
-          <Spinner scale={2} />
+          <Spinner scale={2} white />
         </div>
       );
     }

@@ -88,7 +88,7 @@ const GameAnalysis = ({
       {isAnalyzing && (
         <div className='flex flex-col h-full justify-center items-center gap-4'>
           <p>Analyzing game</p>
-          <Spinner scale={1} tailwindColor={'bg-white'} />
+          <Spinner white />
           <div className='flex flex-row gap-8 text-sm'>
             <span>depth: {depth}</span>
             <span>lines: {numLines}</span>
