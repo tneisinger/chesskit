@@ -108,7 +108,7 @@ const GameChart = ({
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart
         data={chartData}
-        margin={{ top: 5, right: 0, bottom: 5, left: 0 }}
+        margin={{ top: 3, right: 4, bottom: 3, left: 4 }}
         onClick={(e) => handleChartClick(e, chartData, history)}
       >
         <defs>
