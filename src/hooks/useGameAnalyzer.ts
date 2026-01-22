@@ -36,7 +36,6 @@ export default function useGameAnalyzer(
   const { stockfish, recommendation } = useStockfish();
 
   const [fensToAnalyze, setFensToAnalyze] = useState<string[]>([]);
-  const [fenBeingEvaluated, setFenBeingEvaluated] = useState<string | null>(null);
   const [currentPositionIndex, setCurrentPositionIndex] = useState<number>(0);
   const [lines, setLines] = useState<Lines>({});
   const [gameEvals, setGameEvals] = useState<GameEvals>({});
@@ -98,7 +97,6 @@ export default function useGameAnalyzer(
 
   const changeFenBeingEvaluated = (fen: string | null) => {
     fenRef.current = fen;
-    setFenBeingEvaluated(fen);
   };
 
   // Handle stockfish messages
