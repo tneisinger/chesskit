@@ -55,3 +55,8 @@ body.scroll-lock {
     background-color: #ebe6ff;
   }
 }
+.recharts-wrapper *:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
