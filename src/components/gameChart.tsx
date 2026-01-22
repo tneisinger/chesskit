@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { GameData, GameEvals } from '@/types/chess';
 import {
   AreaChart,
@@ -92,15 +93,24 @@ const GameChart = ({
   history,
   width,
 }: Props) => {
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [offset, setOffset] = useState<number>(0);
+
+  // Recompute chart data when history or gameEvals change
+  useEffect(() => {
+    const data = makeChartData(history, gameEvals);
+    setChartData(data);
+
+    const max = Math.max(...data.map((d) => d.chartCp));
+    const min = Math.min(...data.map((d) => d.chartCp));
+    const offsetOrNan = max / (max - min);
+    if (!isNaN(offsetOrNan)) setOffset(offsetOrNan);
+  }, [history, gameEvals]);
+
   const handleChartClick = (data: any, chartData: ChartDataPoint[], history: Move[]) => {
     if (data.activeIndex === undefined) return;
     changeCurrentMove(history.find((m) => m.ply === chartData[data.activeIndex].ply));
   }
-
-  const chartData = makeChartData(history, gameEvals);
-  const max = Math.max(...chartData.map((d) => d.chartCp));
-  const min = Math.min(...chartData.map((d) => d.chartCp));
-  const offset = max / (max - min);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
