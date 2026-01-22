@@ -59,7 +59,7 @@ export default function useGameAnalyzer(
       if (!parsedPgn) return [];
 
       const chessjs = new ChessJS();
-      const fens: string[] = [chessjs.fen()]; // Starting position
+      const fens: string[] = [];
 
       parsedPgn.moves.forEach((move) => {
         try {
