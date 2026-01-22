@@ -175,6 +175,9 @@ const CmChessboard = ({
       return;
     }
 
+    // Do not play any sound if the ply change is more than 1
+    if (plyChange && Math.abs(plyChange) > 1) return;
+
     // If the parent component has defined the nextMoveSound, play that sound
     if (nextMoveSound != undefined) {
       if (nextMoveSound === MoveSound.Move && moveSound) soundPlay(moveSound);
