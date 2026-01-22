@@ -4,6 +4,8 @@ import type { NextPage } from 'next';
 import Image from 'next/image';
 import { getChessUsername } from '@/app/user/actions';
 
+export const dynamic = 'force-dynamic';
+
 const imgHeight = 82;
 const imgWidth = 200;
 
