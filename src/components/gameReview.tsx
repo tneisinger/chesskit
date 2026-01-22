@@ -288,6 +288,8 @@ const GameReview = ({ game }: Props) => {
               progress={progress}
               gameEvals={gameEvals}
               currentMove={currentMove}
+              changeCurrentMove={setCurrentMove}
+              history={history}
               width={boardSize}
             />
           </div>

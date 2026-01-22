@@ -9,9 +9,8 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { Move } from 'cm-chess/src/Chess';
-import { getFenParts, getPlyFromFen } from '@/utils/chess';
+import { getPlyFromFen, areFensEqual } from '@/utils/chess';
 import { FEN } from 'cm-chessboard/src/Chessboard';
-import { Chess as ChessJS } from 'chess.js';
 import GameChartToolTip from '@/components/gameChartToolTip';
 
 const CHART_MAX_CP = 1000;
@@ -38,27 +37,18 @@ interface ChartDataPointWithMate extends ChartDataPointBaseType {
 // A data point must have either cp or mate, but not both
 type ChartDataPoint = ChartDataPointWithCP | ChartDataPointWithMate;
 
-function makeChartData(game: GameData, gameEvals: GameEvals): ChartDataPoint[] {
+function makeChartData(history: Move[], gameEvals: GameEvals): ChartDataPoint[] {
   const result: ChartDataPoint[] = [];
-
-  const chessjs = new ChessJS();
-  chessjs.loadPgn(game.pgn);
-  const history = chessjs.history({ verbose: true });
 
   Object.entries(gameEvals).forEach(([fen, e]) => {
     // Skip starting position
     if (fen === FEN.start) return;
 
-    const moveInfo = history.find((m) => m.after === fen);
-    if (!moveInfo) {
-      console.warn('Failed to find move info in history for fen:', fen)
-      console.warn('history:');
-      console.warn(history);
-      throw new Error(`Could not find move info for fen ${fen}`);
-    }
+    const moveInfo = history.find((m) => areFensEqual(m.fen, fen, { allowEnpassantDif: true }));
+    if (!moveInfo) return;
 
     const move = moveInfo.san;
-    const { fullMoveNumber: moveNumber } = getFenParts(moveInfo.before);
+    const moveNumber = Math.ceil(moveInfo.ply / 2);
     const color = moveInfo.color;
 
 
@@ -85,10 +75,12 @@ function makeChartData(game: GameData, gameEvals: GameEvals): ChartDataPoint[] {
   return result;
 }
 
-interface Props {
+export interface Props {
   game: GameData;
   gameEvals: GameEvals;
   currentMove: Move | undefined;
+  changeCurrentMove: (newCurrentMove?: Move) => void;
+  history: Move[];
   width: number;
 }
 
@@ -96,17 +88,29 @@ const GameChart = ({
   game,
   gameEvals,
   currentMove,
+  changeCurrentMove,
+  history,
   width,
 }: Props) => {
+  const handleChartClick = (data: any, chartData: ChartDataPoint[], history: Move[]) => {
+    if (data.activeIndex === undefined) return;
+    console.log('Chart clicked:');
+    console.log(chartData[data.activeIndex]);
+    changeCurrentMove(history.find((m) => m.ply === chartData[data.activeIndex].ply));
+  }
 
-  const chartData = makeChartData(game, gameEvals);
+  const chartData = makeChartData(history, gameEvals);
   const max = Math.max(...chartData.map((d) => d.chartCp));
   const min = Math.min(...chartData.map((d) => d.chartCp));
   const offset = max / (max - min);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={chartData} margin={{ top: 5, right: 0, bottom: 5, left: 0 }}>
+      <AreaChart
+        data={chartData}
+        margin={{ top: 5, right: 0, bottom: 5, left: 0 }}
+        onClick={(e) => handleChartClick(e, chartData, history)}
+      >
         <defs>
           <linearGradient id="colorCp" x1="0" y1="0" x2="0" y2="1">
             <stop offset={offset} stopColor="#eee" stopOpacity={1}/>

@@ -805,3 +805,25 @@ export function cleanPGN(pgn: string): string | undefined {
   }
   return trimmedPgn;
 }
+
+// Return true if the two fens are equal. If options.allowEnpassantDif is true,
+// then ignore differences in enpassant squares unless both fens have an enpassant square.
+export function areFensEqual(
+  fen1: string,
+  fen2: string,
+  options?: { allowEnpassantDif: boolean }
+): boolean {
+  const parts1 = getFenParts(fen1);
+  const parts2 = getFenParts(fen2);
+
+  if (parts1.piecePlacement !== parts2.piecePlacement) return false;
+  if (parts1.activeColor !== parts2.activeColor) return false;
+  if (parts1.castling !== parts2.castling) return false;
+  if (parts1.halfMoveClock !== parts2.halfMoveClock) return false;
+  if (parts1.fullMoveNumber !== parts2.fullMoveNumber) return false;
+
+  if (options && options.allowEnpassantDif) {
+    return parts1.enPassantSquare === '-' || parts2.enPassantSquare === '-';
+  }
+  return parts1.enPassantSquare === parts2.enPassantSquare;
+}
