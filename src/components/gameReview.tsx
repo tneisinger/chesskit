@@ -118,6 +118,7 @@ const GameReview = ({ game }: Props) => {
 
   const prevIsAnalyzing = usePrevious(isAnalyzing);
 
+  // When game analysis completes, save the results to the db
   useEffect(() => {
     if (prevIsAnalyzing && !isAnalyzing && progress >= 100 && gameEvals) {
       // Save analysis results to db
