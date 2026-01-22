@@ -46,7 +46,6 @@ export default function useGameAnalyzer(
   const lastDepth = useRef<number>(0);
   const lastAddedEval = useRef<Evaluation | null>(null);
   const afterBestMoveFoundCallback = useRef<((bestMoveInfo?: BestMoveInfo) => void) | undefined>(undefined);
-  const fensAnalyzed = useRef<Set<string>>(new Set());
 
   const prevPositionIndex = usePrevious(currentPositionIndex);
   const prevIsAnalyzing = usePrevious(isAnalyzing);
@@ -95,10 +94,6 @@ export default function useGameAnalyzer(
     }
   }, [generateFensFromGame, stockfish]);
 
-  const changeFenBeingEvaluated = (fen: string | null) => {
-    fenRef.current = fen;
-  };
-
   // Handle stockfish messages
   useEffect(() => {
     const handleStockfishMessage = (event: MessageEvent) => {
@@ -127,75 +122,44 @@ export default function useGameAnalyzer(
     };
 
     const handleBestMoveInfo = (bestMoveInfo: BestMoveInfo) => {
-      if (fenRef.current == null) {
-        console.error('fenRef was null in handleBestMoveInfo');
-        changeFenBeingEvaluated(null);
-        setCurrentPositionIndex((prev) => prev + 1);
-        return;
-      }
-
-      // Ensure we have an evaluation for this position
-      let evaluationSaved = false;
-
-      if (bestMoveInfo.bestmove) {
-        // Best move exists - save evaluation with best move if we have it
+      if (bestMoveInfo.bestmove && lastDepth.current >= depth) {
         const bestMove = parseLanMove(bestMoveInfo.bestmove);
-
-        if (lastAddedEval.current && lastAddedEval.current.fen === fenRef.current) {
-          // We have an evaluation for this position
-          const evaluation: Evaluation = {
-            ...lastAddedEval.current,
-            bestMove,
-            depth: lastDepth.current
-          };
-          addEval(evaluation);
-          evaluationSaved = true;
-        } else {
-          console.warn(`Best move returned but no evaluation found for FEN: ${fenRef.current}`);
+        if (fenRef.current == null) {
+          console.error('fenRef was null');
+          return;
         }
-      } else {
-        // No best move available (terminal position like checkmate or stalemate)
-        if (lastAddedEval.current && lastAddedEval.current.fen === fenRef.current) {
-          // We have a partial evaluation, save it
-          addEval(lastAddedEval.current);
-          evaluationSaved = true;
-        }
-      }
 
-      // If we still don't have an evaluation, create one based on position state
-      if (!evaluationSaved) {
-        console.warn(`No evaluation saved for position, creating synthetic evaluation for: ${fenRef.current}`);
-        const chessjs = new ChessJS(fenRef.current);
-        let evaluation: Evaluation;
-
-        if (chessjs.isCheckmate()) {
-          // Checkmate - the side to move is mated
-          evaluation = {
-            mate: 0,
-            depth: 0,
-            fen: fenRef.current,
-          };
-        } else if (chessjs.isStalemate() || chessjs.isDraw()) {
-          // Draw
-          evaluation = {
-            cp: 0,
-            depth: 0,
-            fen: fenRef.current,
-          };
-        } else {
-          // Other state - use neutral evaluation
-          evaluation = {
-            cp: 0,
-            depth: 0,
-            fen: fenRef.current,
-          };
+        if (!lastAddedEval.current) {
+          console.error('lastAddedEval should be defined');
+          return;
         }
+
+        if (fenRef.current !== lastAddedEval.current.fen) {
+          console.error('lastAddedEval fen should match fenRef');
+          return;
+        }
+
+        if (lastAddedEval.current.depth !== lastDepth.current) {
+          console.error('lastAddedEval depth should match lastDepth');
+          return;
+        }
+
+        const evaluation: Evaluation = {
+          ...lastAddedEval.current,
+          bestMove,
+          depth: lastDepth.current
+        };
 
         addEval(evaluation);
       }
 
+      // If there is no best move (probably because the game is over)
+      if (bestMoveInfo.bestmove == null) {
+        // Continue to next position anyway
+      }
+
       // Move to next position
-      changeFenBeingEvaluated(null);
+      fenRef.current = null;
       setCurrentPositionIndex((prev) => prev + 1);
 
       if (afterBestMoveFoundCallback.current) {
@@ -273,7 +237,6 @@ export default function useGameAnalyzer(
 
     const addEval = (evaluation: Evaluation) => {
       lastAddedEval.current = evaluation;
-      fensAnalyzed.current.add(evaluation.fen);
 
       setGameEvals((evals) => {
         const storedEval = evals[evaluation.fen];
@@ -313,7 +276,7 @@ export default function useGameAnalyzer(
     if (currentPositionIndex >= fensToAnalyze.length) {
       // Analysis complete
       setIsAnalyzing(false);
-      changeFenBeingEvaluated(null);
+      fenRef.current = null;
       return;
     }
 
@@ -328,7 +291,7 @@ export default function useGameAnalyzer(
 
     // Start analyzing this position
     lastDepth.current = 0;
-    changeFenBeingEvaluated(nextFen);
+    fenRef.current = nextFen;
     stockfish.postMessage(`position fen ${nextFen}`);
     stockfish.postMessage(`go depth ${depth}`);
   }, [isAnalyzing, currentPositionIndex, fensToAnalyze, stockfish, depth, gameEvals, lines]);
