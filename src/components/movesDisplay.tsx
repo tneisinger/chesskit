@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Move } from 'cm-chess/src/Chess';
 import { makeMoveHistoryHtml } from '../utils/movesDisplay';
-// import type { GamePuzzle } from '../types/puzzle';
 
 interface Props {
   history: Move[];
@@ -11,7 +10,6 @@ interface Props {
   // If defined, these moves will be visually highlighted in some way
   keyMoves?: Move[];
 
-  // gamePuzzles?: GamePuzzle[];
   useMobileLayout?: boolean,
   showVariations?: boolean,
 }

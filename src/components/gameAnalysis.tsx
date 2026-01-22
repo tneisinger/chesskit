@@ -1,11 +1,8 @@
-import { GameData, GameEvals } from '@/types/chess';
 import Button from '@/components/button';
 import Spinner from '@/components/spinner';
-import GameChart from '@/components/gameChart'
-import { Move } from 'cm-chess/src/Chess';
+import GameChart, { Props as GameChartProps } from '@/components/gameChart'
 
-interface Props {
-  game: GameData;
+interface Props extends GameChartProps {
   analyzeGame: () => void;
   depth: number;
   changeDepth: (newDepth: number) => void;
@@ -13,9 +10,6 @@ interface Props {
   changeNumLines: (newNumLines: number) => void;
   isAnalyzing: boolean;
   progress: number;
-  gameEvals: GameEvals
-  currentMove: Move | undefined;
-  width: number;
 }
 
 const GameAnalysis = ({
@@ -29,6 +23,8 @@ const GameAnalysis = ({
   progress,
   gameEvals,
   currentMove,
+  changeCurrentMove,
+  history,
   width,
 }: Props) => {
   const handleAnalyzeGame = () => {
@@ -42,6 +38,8 @@ const GameAnalysis = ({
           game={game}
           gameEvals={game.engineAnalysis}
           currentMove={currentMove}
+          changeCurrentMove={changeCurrentMove}
+          history={history}
           width={width}
         />
       )}
@@ -102,6 +100,8 @@ const GameAnalysis = ({
           game={game}
           gameEvals={gameEvals}
           currentMove={currentMove}
+          changeCurrentMove={changeCurrentMove}
+          history={history}
           width={width}
         />
       )}
