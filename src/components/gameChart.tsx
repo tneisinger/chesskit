@@ -129,6 +129,7 @@ const GameChart = ({
           fillOpacity={1}
           fill="url(#colorCp)"
           activeDot={{ r: 3 }}
+          isAnimationActive={false}
         />
       </AreaChart>
     </ResponsiveContainer>
