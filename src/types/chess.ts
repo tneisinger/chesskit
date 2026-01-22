@@ -1,4 +1,5 @@
-import { RequireOnlyOne } from '../utils';
+import { RequireOnlyOne } from '@/utils';
+import { Score } from '@/utils/stockfish';
 
 export interface ShortMove {
   from: string;
@@ -87,3 +88,16 @@ interface TimedGameTimeControl {
   limitSeconds: number;
   incrementSeconds: number;
 }
+
+export interface PositionEvaluation {
+  depth: number;
+  fen: string;
+  score: Score;
+  lines: {score: Score, lanLine: string}[];
+  bestMove?: ShortMove;
+}
+
+/**
+ * A map from fen strings to PositionEvaluations for one chess game.
+ */
+export type GameEvaluation = Record<string, PositionEvaluation>;
