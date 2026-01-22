@@ -39,6 +39,7 @@ const GameAnalysis = ({
     <div className="bg-radial from-stone-600 to-stone-800 rounded-md" style={{ width, height: '100%' }}>
       {game.engineAnalysis != undefined && (
         <GameChart
+          game={game}
           gameEvals={game.engineAnalysis}
           currentMove={currentMove}
           width={width}
@@ -98,6 +99,7 @@ const GameAnalysis = ({
       )}
       {!isAnalyzing && progress >= 100 && (
         <GameChart
+          game={game}
           gameEvals={gameEvals}
           currentMove={currentMove}
           width={width}
