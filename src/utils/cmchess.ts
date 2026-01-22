@@ -229,7 +229,8 @@ export function deleteMoveFromCmChess(cmchess: CmChess, move: Move): CmChess {
   return newCmChess;
 }
 
-export function loadPgnIntoCmChess(pgn: string, cmchess: CmChess): CmChess {
+export function loadPgnIntoCmChess(pgn: string, cmchess?: CmChess): CmChess {
+  if (!cmchess) cmchess = new CmChess();
   try {
     cmchess.loadPgn(pgn.trim());
   } catch (error: any) {
