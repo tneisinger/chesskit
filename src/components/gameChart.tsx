@@ -94,8 +94,6 @@ const GameChart = ({
 }: Props) => {
   const handleChartClick = (data: any, chartData: ChartDataPoint[], history: Move[]) => {
     if (data.activeIndex === undefined) return;
-    console.log('Chart clicked:');
-    console.log(chartData[data.activeIndex]);
     changeCurrentMove(history.find((m) => m.ply === chartData[data.activeIndex].ply));
   }
 
