@@ -20,9 +20,6 @@ const GameChartToolTip = ({ active, payload }: TooltipContentProps<ValueType, Na
                 {d.payload.mate === 0 ? 'Checkmate' : `Mate in ${Math.abs(d.payload.mate)}`}
               </p>
             )}
-            <p>
-              Judgement: {d.payload.judgement}
-            </p>
           </div>
         ))}
       </div>

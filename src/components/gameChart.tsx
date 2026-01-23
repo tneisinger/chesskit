@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GameData, GameEvaluation, MoveJudgement } from '@/types/chess';
+import { GameData, GameEvaluation, MoveJudgement, PieceColor } from '@/types/chess';
 import {
   AreaChart,
   Area,
@@ -10,9 +10,10 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { Move } from 'cm-chess/src/Chess';
-import { getPlyFromFen, areFensEqual, makeMoveJudgements } from '@/utils/chess';
+import { getPlyFromFen, areFensEqual, makeMoveJudgements, getFenParts } from '@/utils/chess';
 import { FEN } from 'cm-chessboard/src/Chessboard';
 import GameChartToolTip from '@/components/gameChartToolTip';
+import GameChartJudgementDots from '@/components/gameChartJudgementDots';
 
 const CHART_MAX_CP = 1000;
 
@@ -23,6 +24,7 @@ interface ChartDataPointBaseType {
   moveNumber: number;
   chartCp: number;
   judgement: MoveJudgement | null;
+  isUserMove: boolean;
 }
 
 interface ChartDataPointWithCP extends ChartDataPointBaseType {
@@ -39,7 +41,11 @@ interface ChartDataPointWithMate extends ChartDataPointBaseType {
 // A data point must have either cp or mate, but not both
 type ChartDataPoint = ChartDataPointWithCP | ChartDataPointWithMate;
 
-function makeChartData(history: Move[], gameEvaluation: GameEvaluation): ChartDataPoint[] {
+function makeChartData(
+  history: Move[],
+  gameEvaluation: GameEvaluation,
+  userColor: PieceColor
+): ChartDataPoint[] {
   const result: ChartDataPoint[] = [];
 
   const moveJudgements = makeMoveJudgements(gameEvaluation);
@@ -58,7 +64,18 @@ function makeChartData(history: Move[], gameEvaluation: GameEvaluation): ChartDa
 
 
     const ply = getPlyFromFen(fen);
-    const partial = { moveNumber, move, color, ply, judgement };
+    const { activeColor } = getFenParts(fen);
+    const partial = {
+      moveNumber,
+      move,
+      color,
+      ply,
+      judgement,
+
+      // Indicate if this move was played by the user
+      // Use not equal because activeColor is the color to move
+      isUserMove: activeColor !== userColor,
+    };
 
     if (e.score.key === 'cp') {
       let chartCp = e.score.value;
@@ -102,7 +119,7 @@ const GameChart = ({
 
   // Recompute chart data when history or gameEvaluation changes
   useEffect(() => {
-    const data = makeChartData(history, gameEvaluation);
+    const data = makeChartData(history, gameEvaluation, game.userColor);
     setChartData(data);
 
     const max = Math.max(...data.map((d) => d.chartCp));
@@ -141,6 +158,7 @@ const GameChart = ({
           fillOpacity={1}
           fill="url(#colorCp)"
           activeDot={{ r: 3 }}
+          dot={GameChartJudgementDots}
           isAnimationActive={false}
         />
       </AreaChart>
