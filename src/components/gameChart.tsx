@@ -128,7 +128,7 @@ const GameChart = ({
         <XAxis dataKey="ply" hide />
         <YAxis domain={[-CHART_MAX_CP, CHART_MAX_CP]} hide />
         <ReferenceLine x={currentMove ? currentMove.ply : 0} stroke="white" />
-        <Tooltip content={GameChartToolTip} />
+        <Tooltip cursor={false} content={GameChartToolTip} />
         <Area
           type="monotone"
           dataKey="chartCp"
