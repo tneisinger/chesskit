@@ -260,3 +260,18 @@ export function loadPgnIntoCmChess(pgn: string, cmchess?: CmChess): CmChess {
   }
   return cmchess;
 }
+
+export function isInVariation(move: Move): boolean {
+  const makeVariationString = (move: Move): string => {
+    return move.variation.map((m) => m.san).join(' ');
+  }
+
+  const moveVariation = makeVariationString(move);
+  let previous: Move | null | undefined = move.previous;
+  while (previous !== null && previous !== undefined) {
+    const previousVariation = makeVariationString(previous);
+    if (moveVariation !== previousVariation) return true;
+    previous = previous.previous;
+  }
+  return false;
+}
