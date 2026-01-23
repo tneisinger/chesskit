@@ -14,6 +14,7 @@ import { getPlyFromFen, areFensEqual, makeMoveJudgements, getFenParts } from '@/
 import { FEN } from 'cm-chessboard/src/Chessboard';
 import GameChartToolTip from '@/components/gameChartToolTip';
 import GameChartJudgementDots from '@/components/gameChartJudgementDots';
+import { isInVariation } from '@/utils/cmchess';
 
 const CHART_MAX_CP = 1000;
 
@@ -116,6 +117,15 @@ const GameChart = ({
 }: Props) => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [offset, setOffset] = useState<number>(0);
+  const [inVariation, setInVariation] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (currentMove && isInVariation(currentMove)) {
+      setInVariation(true);
+    } else {
+      setInVariation(false);
+    }
+  }, [currentMove]);
 
   // Recompute chart data when history or gameEvaluation changes
   useEffect(() => {
@@ -148,7 +158,11 @@ const GameChart = ({
         </defs>
         <XAxis dataKey="ply" hide />
         <YAxis domain={[-CHART_MAX_CP, CHART_MAX_CP]} hide />
-        <ReferenceLine x={currentMove ? currentMove.ply : 0} stroke="white" />
+        <ReferenceLine
+          x={currentMove ? currentMove.ply : 0}
+          stroke="white"
+          strokeDasharray={inVariation ? '3 5' : '0'}
+        />
         <Tooltip cursor={false} content={GameChartToolTip} />
         <Area
           type="monotone"
