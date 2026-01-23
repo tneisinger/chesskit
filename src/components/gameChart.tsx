@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GameData, GameEvaluation } from '@/types/chess';
+import { GameData, GameEvaluation, MoveJudgement } from '@/types/chess';
 import {
   AreaChart,
   Area,
@@ -10,7 +10,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { Move } from 'cm-chess/src/Chess';
-import { getPlyFromFen, areFensEqual } from '@/utils/chess';
+import { getPlyFromFen, areFensEqual, makeMoveJudgements } from '@/utils/chess';
 import { FEN } from 'cm-chessboard/src/Chessboard';
 import GameChartToolTip from '@/components/gameChartToolTip';
 
@@ -22,6 +22,7 @@ interface ChartDataPointBaseType {
   color: 'w' | 'b';
   moveNumber: number;
   chartCp: number;
+  judgement: MoveJudgement | null;
 }
 
 interface ChartDataPointWithCP extends ChartDataPointBaseType {
@@ -41,10 +42,13 @@ type ChartDataPoint = ChartDataPointWithCP | ChartDataPointWithMate;
 function makeChartData(history: Move[], gameEvaluation: GameEvaluation): ChartDataPoint[] {
   const result: ChartDataPoint[] = [];
 
+  const moveJudgements = makeMoveJudgements(gameEvaluation);
+
   Object.entries(gameEvaluation).forEach(([fen, e]) => {
     // Skip starting position
     if (fen === FEN.start) return;
 
+    const judgement = moveJudgements[fen];
     const moveInfo = history.find((m) => areFensEqual(m.fen, fen, { allowEnpassantDif: true }));
     if (!moveInfo) return;
 
@@ -54,7 +58,7 @@ function makeChartData(history: Move[], gameEvaluation: GameEvaluation): ChartDa
 
 
     const ply = getPlyFromFen(fen);
-    const partial = { moveNumber, move, color, ply };
+    const partial = { moveNumber, move, color, ply, judgement };
 
     if (e.score.key === 'cp') {
       let chartCp = e.score.value;

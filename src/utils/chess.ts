@@ -6,7 +6,10 @@ import {
   MoveJudgement,
   PieceColor,
   ShortMove,
+  Evaluation,
   GameEvals,
+  GameEvaluation,
+  PositionEvaluation,
   TimeControl,
 } from '../types/chess';
 import { Chess as ChessJS } from 'chess.js';
@@ -15,7 +18,7 @@ import { Move as ChessJsMove } from 'chess.js';
 import { assertUnreachable, average, pluralizeWord } from '.';
 import { povDiff } from '@/utils/winningChances';
 import { ChessMoveColors } from '@/constants/colors';
-import { isBookPosition } from '@/utils/bookPositions';
+import { getBookPosition, isBookPosition } from '@/utils/bookPositions';
 import { parse } from 'pgn-parser'
 import { parseLanMove } from './stockfish';
 
@@ -433,17 +436,17 @@ export function wasBestMovePlayed(
 export function makeMoveJudgement(
   fen1: string,
   fen2: string,
-  gameEvals: GameEvals,
-  // settings: Settings,
+  ev: GameEvals | GameEvaluation,
 ): MoveJudgement | undefined {
-  if (wasBestMovePlayed(fen1, fen2, gameEvals)) return MoveJudgement.Best;
+  if (isGameEvaluation(ev)) {
+    ev = convertGameEvaluationToGameEvals(ev);
+  }
+  if (wasBestMovePlayed(fen1, fen2, ev)) return MoveJudgement.Best;
 
-  const evalBefore = gameEvals[fen1];
-  const evalAfter = gameEvals[fen2];
+  const evalBefore = ev[fen1];
+  const evalAfter = ev[fen2];
 
   if (evalBefore && evalAfter
-    // && evalBefore.depth >= settings.minEvalDepth
-    // && evalAfter.depth >= settings.minEvalDepth
     && evalBefore.depth >= 20
     && evalAfter.depth >= 20
   ) {
@@ -826,4 +829,92 @@ export function areFensEqual(
     return parts1.enPassantSquare === '-' || parts2.enPassantSquare === '-';
   }
   return parts1.enPassantSquare === parts2.enPassantSquare;
+}
+
+export function convertPositionEvaluationToEvaluation(
+  posEval: PositionEvaluation
+): Evaluation {
+  let partial = { depth: posEval.depth, fen: posEval.fen, bestMove: posEval.bestMove };
+  if (posEval.score.key === 'cp') {
+    return { ...partial, cp: posEval.score.value };
+  }
+  return { ...partial, mate: posEval.score.value };
+}
+
+export function convertGameEvaluationToGameEvals(
+gev: GameEvaluation
+): GameEvals {
+  const result: GameEvals = {};
+  for (const [fen, posEval] of Object.entries(gev)) {
+    result[fen] = convertPositionEvaluationToEvaluation(posEval);
+  }
+  return result;
+}
+
+export function isPositionEvaluation(
+  ev: Evaluation | PositionEvaluation
+): ev is PositionEvaluation {
+  return (ev as PositionEvaluation).score !== undefined;
+}
+
+export function isGameEvaluation(
+  ev: GameEvals | GameEvaluation
+): ev is GameEvaluation {
+  const firstKey = Object.keys(ev)[0];
+  if (firstKey == undefined) return false;
+  const firstValue = ev[firstKey];
+  return isPositionEvaluation(firstValue);
+}
+
+// Convert a GameEvaluation object to an array of PositionEvaluation objects,
+// sorted by fen ply.
+export function makeGameEvaluationArray(gev: GameEvaluation): PositionEvaluation[] {
+  const gevArray = Object.values(gev).map((posEval) => posEval);
+  gevArray.sort((a, b) => getPlyFromFen(a.fen) - getPlyFromFen(b.fen));
+  return gevArray;
+}
+
+// Given a GameEvaluation object, produce a mapping of fenAfter strings
+// to MoveJudgement for each move in the game.
+export function makeMoveJudgements(
+  gev: GameEvaluation
+): Record<string, MoveJudgement> {
+  const result: Record<string, MoveJudgement> = {};
+  const gevArray = makeGameEvaluationArray(gev);
+
+  // Make a copy of gev to avoid modifying the input object.
+  // We may need to modify it by adding the starting position.
+  const modifiedGev = {...gev };
+
+  // Check gevArray starts with the starting position.
+  const firstPly = getPlyFromFen(gevArray[0].fen);
+  if (firstPly !== 0) {
+    // If the first position is not ply 0, ensure it is ply 1.
+    if (firstPly !== 1) throw new Error('GameEvaluation is missing evaluation for move 1');
+
+    // If the first position is not the starting position, we need to
+    // add the starting position evaluation to the front of the array.
+    const startEval = getBookPosition(FEN.start)!.eval;
+    const positionEvaluationForStart: PositionEvaluation = {
+      depth: startEval.depth,
+      fen: FEN.start,
+      score: { key: 'cp', value: startEval.cp! },
+      lines: [],
+      bestMove: startEval.bestMove,
+    }
+    gevArray.unshift(positionEvaluationForStart);
+    modifiedGev[FEN.start] = positionEvaluationForStart;
+  }
+
+  // Loop through each consecutive pair of fens and make a MoveJudgement for each move.
+  for (let i = 0; i < gevArray.length - 1; i++) {
+    const fenBefore = gevArray[i].fen;
+    const fenAfter = gevArray[i + 1].fen;
+    const judgement = makeMoveJudgement(fenBefore, fenAfter, modifiedGev);
+    if (judgement == undefined) {
+      throw new Error(`Failed to make move judgement for fens ${fenBefore} -> ${fenAfter}`);
+    }
+    result[fenAfter] = judgement;
+  }
+  return result;
 }
