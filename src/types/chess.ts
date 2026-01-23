@@ -32,7 +32,7 @@ export interface GameData {
   blackName?: string;
   blackElo?: number;
   website?: ChessWebsite;
-  engineAnalysis?: GameEvals;
+  engineAnalysis?: GameEvaluation;
 }
 
 export enum GameResult {

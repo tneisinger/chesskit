@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { games } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import type { GameData, GameEvals } from "@/types/chess";
+import type { GameData, GameEvaluation } from "@/types/chess";
 import { PieceColor, GameResult, ChessWebsite } from "@/types/chess";
 
 /**
@@ -233,7 +233,7 @@ export async function deleteUserGames(
  */
 export async function updateGameAnalysis(
   id: number,
-  engineAnalysis: GameEvals
+  engineAnalysis: GameEvaluation
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await auth();
