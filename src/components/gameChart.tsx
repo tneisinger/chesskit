@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GameData, GameEvals } from '@/types/chess';
+import { GameData, GameEvaluation } from '@/types/chess';
 import {
   AreaChart,
   Area,
@@ -38,10 +38,10 @@ interface ChartDataPointWithMate extends ChartDataPointBaseType {
 // A data point must have either cp or mate, but not both
 type ChartDataPoint = ChartDataPointWithCP | ChartDataPointWithMate;
 
-function makeChartData(history: Move[], gameEvals: GameEvals): ChartDataPoint[] {
+function makeChartData(history: Move[], gameEvaluation: GameEvaluation): ChartDataPoint[] {
   const result: ChartDataPoint[] = [];
 
-  Object.entries(gameEvals).forEach(([fen, e]) => {
+  Object.entries(gameEvaluation).forEach(([fen, e]) => {
     // Skip starting position
     if (fen === FEN.start) return;
 
@@ -56,16 +56,16 @@ function makeChartData(history: Move[], gameEvals: GameEvals): ChartDataPoint[] 
     const ply = getPlyFromFen(fen);
     const partial = { moveNumber, move, color, ply };
 
-    if (e.cp !== undefined) {
-      let chartCp = e.cp;
+    if (e.score.key === 'cp') {
+      let chartCp = e.score.value;
       if (Math.abs(chartCp) > CHART_MAX_CP) {
         chartCp = chartCp > 0 ? CHART_MAX_CP : -CHART_MAX_CP
       }
-      result.push({ ...partial, chartCp, cp: e.cp });
-    } else if (e.mate !== undefined) {
+      result.push({ ...partial, chartCp, cp: e.score.value });
+    } else if (e.score.key === 'mate') {
       // Represent mate as CHART_MAX_CP with sign indicating who is mating
-      const sign = e.mate > 0 ? 1 : -1;
-      result.push({ ...partial, chartCp: sign * CHART_MAX_CP, mate: e.mate });
+      const sign = e.score.value > 0 ? 1 : -1;
+      result.push({ ...partial, chartCp: sign * CHART_MAX_CP, mate: e.score.value });
     } else {
       // No evaluation available so set cp to 0
       result.push({ ...partial, chartCp: 0, cp: 0 });
@@ -78,7 +78,7 @@ function makeChartData(history: Move[], gameEvals: GameEvals): ChartDataPoint[] 
 
 export interface Props {
   game: GameData;
-  gameEvals: GameEvals;
+  gameEvaluation: GameEvaluation;
   currentMove: Move | undefined;
   changeCurrentMove: (newCurrentMove?: Move) => void;
   history: Move[];
@@ -87,7 +87,7 @@ export interface Props {
 
 const GameChart = ({
   game,
-  gameEvals,
+  gameEvaluation,
   currentMove,
   changeCurrentMove,
   history,
@@ -96,16 +96,16 @@ const GameChart = ({
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [offset, setOffset] = useState<number>(0);
 
-  // Recompute chart data when history or gameEvals change
+  // Recompute chart data when history or gameEvaluation changes
   useEffect(() => {
-    const data = makeChartData(history, gameEvals);
+    const data = makeChartData(history, gameEvaluation);
     setChartData(data);
 
     const max = Math.max(...data.map((d) => d.chartCp));
     const min = Math.min(...data.map((d) => d.chartCp));
     const offsetOrNan = max / (max - min);
     if (!isNaN(offsetOrNan)) setOffset(offsetOrNan);
-  }, [history, gameEvals]);
+  }, [history, gameEvaluation]);
 
   const handleChartClick = (data: any, chartData: ChartDataPoint[], history: Move[]) => {
     if (data.activeIndex === undefined) return;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { GameData, Evaluation, GameEvals } from '@/types/chess';
+import { GameData, GameEvaluation, PositionEvaluation } from '@/types/chess';
 import {
   parseBestMoveLine,
   parseInfoLine,
@@ -20,8 +20,7 @@ const MAX_THREADS_USAGE = 0.5;
 
 interface Toolkit {
   analyzeGame: () => void;
-  gameEvals: GameEvals;
-  lines: Lines;
+  gameEvaluation: GameEvaluation;
   isAnalyzing: boolean;
   progress: number; // Percentage (0-100)
   currentPosition: number; // Current position being analyzed
@@ -37,18 +36,31 @@ export default function useGameAnalyzer(
 
   const [fensToAnalyze, setFensToAnalyze] = useState<string[]>([]);
   const [currentPositionIndex, setCurrentPositionIndex] = useState<number>(0);
-  const [lines, setLines] = useState<Lines>({});
-  const [gameEvals, setGameEvals] = useState<GameEvals>({});
+  const [gameEvaluation, setGameEvaluation] = useState<GameEvaluation>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [_isStockfishReady, setIsStockfishReady] = useState(false);
 
   const fenRef = useRef<string | null>(null);
   const lastDepth = useRef<number>(0);
-  const lastAddedEval = useRef<Evaluation | null>(null);
+  const lastAddedEval = useRef<PositionEvaluation | null>(null);
   const afterBestMoveFoundCallback = useRef<((bestMoveInfo?: BestMoveInfo) => void) | undefined>(undefined);
-
   const prevPositionIndex = usePrevious(currentPositionIndex);
   const prevIsAnalyzing = usePrevious(isAnalyzing);
+
+  const linesRef = useRef<Lines>({});
+
+  const getLinesForFen = (fen: string): PositionEvaluation['lines'] => {
+    let result: PositionEvaluation['lines'] = [];
+    if (fen in linesRef.current) {
+      result = linesRef.current[fen].map((mpv) => {
+        return {
+          score: mpv.score,
+          lanLine: mpv.lanLine.join(' '),
+        };
+      });
+    }
+    return result;
+  };
 
   // Generate all FENs from the game
   const generateFensFromGame = useCallback(() => {
@@ -85,8 +97,8 @@ export default function useGameAnalyzer(
 
     setFensToAnalyze(fens);
     setCurrentPositionIndex(0);
-    setGameEvals({});
-    setLines({});
+    setGameEvaluation({});
+    linesRef.current = {};
     setIsAnalyzing(true);
 
     if (stockfish) {
@@ -144,7 +156,7 @@ export default function useGameAnalyzer(
           return;
         }
 
-        const evaluation: Evaluation = {
+        const evaluation: PositionEvaluation = {
           ...lastAddedEval.current,
           bestMove,
           depth: lastDepth.current
@@ -191,19 +203,17 @@ export default function useGameAnalyzer(
         lanLine: info.pv.split(' '),
       };
 
-      setLines((lines) => {
-        if (fen in lines) {
-          lines[fen][evalerLine.multipv - 1] = evalerLine;
-        } else {
-          const newLines = [];
-          newLines[evalerLine.multipv - 1] = evalerLine;
-          lines[fen] = newLines;
-        }
-        return { ...lines };
-      });
+      // Update linesRef
+      if (fen in linesRef.current) {
+        linesRef.current[fen][evalerLine.multipv - 1] = evalerLine;
+      } else {
+        const newLines = [];
+        newLines[evalerLine.multipv - 1] = evalerLine;
+        linesRef.current[fen] = newLines;
+      }
     };
 
-    const saveEvaluation = (evalDepth: number, scoreKey: string, scoreValue: number) => {
+    const saveEvaluation = (evalDepth: number, scoreKey: "cp" | "mate", scoreValue: number) => {
       // If lastDepth is 0, that means evaluation just started
       // In that case, if the new 'depth' value is not 1, then this message
       // from Stockfish must be residual from a previous run
@@ -215,35 +225,34 @@ export default function useGameAnalyzer(
 
       if (fenRef.current == null) return;
 
-      let cp = undefined;
-      let mate = undefined;
-      if (scoreKey === 'cp') cp = scoreValue;
-      else if (scoreKey === 'mate') mate = scoreValue;
-
-      if (cp != undefined) {
-        addEval({
-          cp,
-          depth: evalDepth,
-          fen: fenRef.current
-        });
-      } else if (mate != undefined) {
-        addEval({
-          mate,
-          depth: evalDepth,
-          fen: fenRef.current,
-        });
-      }
+      const lines = getLinesForFen(fenRef.current);
+      addEval({
+        depth: evalDepth,
+        fen: fenRef.current,
+        score: { key: scoreKey, value: scoreValue },
+        lines,
+      });
     };
 
-    const addEval = (evaluation: Evaluation) => {
+    const addEval = (evaluation: PositionEvaluation) => {
       lastAddedEval.current = evaluation;
 
-      setGameEvals((evals) => {
-        const storedEval = evals[evaluation.fen];
+      setGameEvaluation((g) => {
+        const storedEval = g[evaluation.fen];
         if (storedEval && storedEval.depth > evaluation.depth) {
-          return evals;
+          return g;
         } else {
-          return { ...evals, [evaluation.fen]: evaluation };
+          // Get the most up-to-date lines for this position
+          const lines = getLinesForFen(evaluation.fen);
+
+          const p: PositionEvaluation = {
+            depth: evaluation.depth,
+            fen: evaluation.fen,
+            score: evaluation.score,
+            lines,
+            bestMove: evaluation.bestMove,
+          };
+          return { ...g, [evaluation.fen]: p };
         }
       });
     };
@@ -283,7 +292,7 @@ export default function useGameAnalyzer(
     const nextFen = fensToAnalyze[currentPositionIndex];
 
     // Check if we already have this evaluation at the required depth
-    if (nextFen in gameEvals && gameEvals[nextFen].depth >= depth && nextFen in lines) {
+    if (nextFen in gameEvaluation && gameEvaluation[nextFen].depth >= depth && nextFen in linesRef.current) {
       // Skip this position, move to next
       setCurrentPositionIndex((prev) => prev + 1);
       return;
@@ -294,7 +303,7 @@ export default function useGameAnalyzer(
     fenRef.current = nextFen;
     stockfish.postMessage(`position fen ${nextFen}`);
     stockfish.postMessage(`go depth ${depth}`);
-  }, [isAnalyzing, currentPositionIndex, fensToAnalyze, stockfish, depth, gameEvals, lines]);
+  }, [isAnalyzing, currentPositionIndex, fensToAnalyze, stockfish, depth, gameEvaluation]);
 
   const progress = fensToAnalyze.length > 0
     ? Math.round((currentPositionIndex / fensToAnalyze.length) * 100)
@@ -302,8 +311,7 @@ export default function useGameAnalyzer(
 
   return {
     analyzeGame,
-    gameEvals,
-    lines,
+    gameEvaluation,
     isAnalyzing,
     progress,
     currentPosition: currentPositionIndex,

@@ -21,7 +21,7 @@ const GameAnalysis = ({
   changeNumLines,
   isAnalyzing,
   progress,
-  gameEvals,
+  gameEvaluation,
   currentMove,
   changeCurrentMove,
   history,
@@ -36,7 +36,7 @@ const GameAnalysis = ({
       {game.engineAnalysis != undefined && (
         <GameChart
           game={game}
-          gameEvals={game.engineAnalysis}
+          gameEvaluation={game.engineAnalysis}
           currentMove={currentMove}
           changeCurrentMove={changeCurrentMove}
           history={history}
@@ -98,7 +98,7 @@ const GameAnalysis = ({
       {!isAnalyzing && progress >= 100 && (
         <GameChart
           game={game}
-          gameEvals={gameEvals}
+          gameEvaluation={gameEvaluation}
           currentMove={currentMove}
           changeCurrentMove={changeCurrentMove}
           history={history}

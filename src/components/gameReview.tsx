@@ -108,22 +108,19 @@ const GameReview = ({ game }: Props) => {
   // Set up game analyzer
   const {
     analyzeGame,
-    gameEvals,
-    lines: engineLines,
+    gameEvaluation,
     isAnalyzing,
     progress,
-    currentPosition: positionBeingAnalyzed,
-    totalPositions: totalPositionsToBeAnalyzed,
   } = useGameAnalyzer(game, 20, 2);
 
   const prevIsAnalyzing = usePrevious(isAnalyzing);
 
   // When game analysis completes, save the results to the db
   useEffect(() => {
-    if (prevIsAnalyzing && !isAnalyzing && progress >= 100 && gameEvals) {
+    if (prevIsAnalyzing && !isAnalyzing && progress >= 100 && gameEvaluation) {
       // Save analysis results to db
       if (game.id) {
-        updateGameAnalysis(game.id, gameEvals)
+        updateGameAnalysis(game.id, gameEvaluation)
           .then((result:any) => {
             if (result.success) {
               console.log('Game analysis saved successfully');
@@ -136,7 +133,7 @@ const GameReview = ({ game }: Props) => {
           });
       }
     }
-  }, [isAnalyzing, prevIsAnalyzing, progress, gameEvals, game.id])
+  }, [isAnalyzing, prevIsAnalyzing, progress, game.id, gameEvaluation])
 
   useEffect(() => {
     if (game) {
@@ -287,7 +284,7 @@ const GameReview = ({ game }: Props) => {
               changeNumLines={setNumLines}
               isAnalyzing={isAnalyzing}
               progress={progress}
-              gameEvals={gameEvals}
+              gameEvaluation={gameEvaluation}
               currentMove={currentMove}
               changeCurrentMove={setCurrentMove}
               history={history}
