@@ -27,7 +27,7 @@ enum MobileTab {
 }
 
 interface State {
-  isEvaluatorOn: boolean;
+  isPositionAnalysisOn: boolean;
   allowBoardInteraction: boolean;
   boardCursor: Cursor | null;
   markers: Marker[];
@@ -38,7 +38,7 @@ interface State {
 }
 
 type Action =
-  | { type: 'setIsEvaluatorOn'; value: boolean }
+  | { type: 'setIsPositionAnalysisOn'; value: boolean }
   | { type: 'setMarkers'; markers: Marker[] }
   | { type: 'setArrows'; arrows: Arrow[] }
   | { type: 'clearMoveSound' }
@@ -49,11 +49,11 @@ type Action =
 
 function reducer(s: State, a: Action): State {
   switch (a.type) {
-    case 'setIsEvaluatorOn':
+    case 'setIsPositionAnalysisOn':
       if (a.value === false) {
-        return { ...s, isEvaluatorOn: a.value, markers: [], arrows: [] };
+        return { ...s, isPositionAnalysisOn: a.value, markers: [], arrows: [] };
       }
-      return { ...s, isEvaluatorOn: a.value };
+      return { ...s, isPositionAnalysisOn: a.value };
     case 'setMarkers':
       return { ...s, markers: a.markers };
     case 'setArrows':
@@ -84,7 +84,7 @@ const GameReview = ({ game }: Props) => {
   const [numLines, setNumLines] = useState(2);
 
   const initialState: State = {
-    isEvaluatorOn: false,
+    isPositionAnalysisOn: false,
     allowBoardInteraction: true,
     boardCursor: null,
     markers: [],
@@ -113,7 +113,7 @@ const GameReview = ({ game }: Props) => {
     isAnalyzingGame,
     progress,
     engineName,
-  } = useGameAnalyzer(false, undefined, { evalDepth: 20, numLines: 2 });
+  } = useGameAnalyzer(s.isPositionAnalysisOn, currentMove, { evalDepth: 20, numLines: 2 });
 
   const prevIsAnalyzingGame = usePrevious(isAnalyzingGame);
 
@@ -182,8 +182,8 @@ const GameReview = ({ game }: Props) => {
 
   const engineDisplay = (
     <EngineDisplay
-      isEngineOn={s.isEvaluatorOn}
-      setIsEngineOn={(b) => dispatch({ type: 'setIsEvaluatorOn', value: b })}
+      isEngineOn={s.isPositionAnalysisOn}
+      setIsEngineOn={(b) => dispatch({ type: 'setIsPositionAnalysisOn', value: b })}
       gameEvaluation={game.engineAnalysis ? game.engineAnalysis : gameEvaluation}
       currentMove={currentMove}
       evalerMaxDepth={20}
