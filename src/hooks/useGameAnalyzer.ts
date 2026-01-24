@@ -13,7 +13,7 @@ import {
 } from '@/utils/stockfish';
 import useStockfish from '@/hooks/useStockfish';
 import { parse as parsePGN } from 'pgn-parser';
-import { Chess as ChessJS } from 'chess.js';
+import { Chess as CmChess } from 'cm-chess/src/Chess';
 import usePrevious from '@/hooks/usePrevious';
 
 const MAX_THREADS_USAGE = 0.5;
@@ -68,13 +68,13 @@ export default function useGameAnalyzer(
       const parsedPgn = parsePGN(game.pgn)[0];
       if (!parsedPgn) return [];
 
-      const chessjs = new ChessJS();
+      const cmchess = new CmChess();
       const fens: string[] = [];
 
       parsedPgn.moves.forEach((move) => {
         try {
-          chessjs.move(move.move);
-          fens.push(chessjs.fen());
+          cmchess.move(move.move);
+          fens.push(cmchess.fen());
         } catch (error) {
           console.error('Invalid move:', move.move, error);
         }
