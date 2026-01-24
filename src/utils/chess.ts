@@ -461,14 +461,12 @@ export function makeMoveJudgement(
 export function getMoveJudgement(
   currentMove: Move | undefined,
   gameEvals: GameEvals,
-  // settings: Settings,
 ): MoveJudgement | undefined {
   if (currentMove && currentMove.previous) {
     const judgement = makeMoveJudgement(
       currentMove.previous.fen,
       currentMove.fen,
       gameEvals,
-      // settings
     );
     return judgement;
   }
