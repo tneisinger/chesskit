@@ -10,7 +10,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { Move } from 'cm-chess/src/Chess';
-import { getPlyFromFen, areFensEqual, makeMoveJudgements, getFenParts } from '@/utils/chess';
+import { getPlyFromFen, makeMoveJudgements, getFenParts } from '@/utils/chess';
 import { FEN } from 'cm-chessboard/src/Chessboard';
 import GameChartToolTip from '@/components/gameChartToolTip';
 import GameChartJudgementDots from '@/components/gameChartJudgementDots';
@@ -56,7 +56,7 @@ function makeChartData(
     if (fen === FEN.start) return;
 
     const judgement = moveJudgements[fen];
-    const moveInfo = history.find((m) => areFensEqual(m.fen, fen, { allowEnpassantDif: true }));
+    const moveInfo = history.find((m) => m.fen === fen);
     if (!moveInfo) return;
 
     const move = moveInfo.san;
