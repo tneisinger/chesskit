@@ -824,6 +824,7 @@ export function areFensEqual(
   if (parts1.fullMoveNumber !== parts2.fullMoveNumber) return false;
 
   if (options && options.allowEnpassantDif) {
+    if (parts1.enPassantSquare === parts2.enPassantSquare) return true;
     return parts1.enPassantSquare === '-' || parts2.enPassantSquare === '-';
   }
   return parts1.enPassantSquare === parts2.enPassantSquare;
