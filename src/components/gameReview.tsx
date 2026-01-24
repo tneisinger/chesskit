@@ -110,15 +110,16 @@ const GameReview = ({ game }: Props) => {
   const {
     analyzeGame,
     gameEvaluation,
-    isAnalyzing,
+    isAnalyzingGame,
     progress,
-  } = useGameAnalyzer(game, 20, 2);
+    engineName,
+  } = useGameAnalyzer(false, undefined, { evalDepth: 20, numLines: 2 });
 
-  const prevIsAnalyzing = usePrevious(isAnalyzing);
+  const prevIsAnalyzingGame = usePrevious(isAnalyzingGame);
 
   // When game analysis completes, save the results to the db
   useEffect(() => {
-    if (prevIsAnalyzing && !isAnalyzing && progress >= 100 && gameEvaluation) {
+    if (prevIsAnalyzingGame && !isAnalyzingGame && progress >= 100 && gameEvaluation) {
       // Save analysis results to db
       if (game.id) {
         updateGameAnalysis(game.id, gameEvaluation)
@@ -134,7 +135,7 @@ const GameReview = ({ game }: Props) => {
           });
       }
     }
-  }, [isAnalyzing, prevIsAnalyzing, progress, game.id, gameEvaluation])
+  }, [isAnalyzingGame, prevIsAnalyzingGame, progress, game.id, gameEvaluation])
 
   useEffect(() => {
     if (game) {
@@ -186,7 +187,7 @@ const GameReview = ({ game }: Props) => {
       gameEvaluation={game.engineAnalysis ? game.engineAnalysis : gameEvaluation}
       currentMove={currentMove}
       evalerMaxDepth={20}
-      engineName={'stockfish'}
+      engineName={engineName ? engineName : undefined}
       isEvaluating={false}
       maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
       numLines={numLines}
@@ -295,7 +296,7 @@ const GameReview = ({ game }: Props) => {
               changeDepth={setDepth}
               numLines={numLines}
               changeNumLines={setNumLines}
-              isAnalyzing={isAnalyzing}
+              isAnalyzing={isAnalyzingGame}
               progress={progress}
               gameEvaluation={gameEvaluation}
               currentMove={currentMove}

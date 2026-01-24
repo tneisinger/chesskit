@@ -1,9 +1,10 @@
 import Button from '@/components/button';
 import Spinner from '@/components/spinner';
-import GameChart, { Props as GameChartProps } from '@/components/gameChart'
+import GameChart, { Props as GameChartProps } from '@/components/gameChart';
+import { GameData } from '@/types/chess';
 
 interface Props extends GameChartProps {
-  analyzeGame: () => void;
+  analyzeGame: (game: GameData) => void;
   depth: number;
   changeDepth: (newDepth: number) => void;
   numLines: number;
@@ -28,7 +29,7 @@ const GameAnalysis = ({
   width,
 }: Props) => {
   const handleAnalyzeGame = () => {
-    analyzeGame();
+    analyzeGame(game);
   }
 
   return (
