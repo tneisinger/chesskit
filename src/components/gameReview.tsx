@@ -11,6 +11,7 @@ import Chessboard from '@/components/Chessboard';
 import MovesDisplay from '@/components/movesDisplay';
 import ArrowButtons from '@/components/arrowButtons';
 import GameAnalysis from '@/components/gameAnalysis';
+import EngineDisplay from '@/components/engineDisplay';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
@@ -179,7 +180,19 @@ const GameReview = ({ game }: Props) => {
   );
 
   const engineDisplay = (
-    <div>Engine stuff here</div>
+    <EngineDisplay
+      isEngineOn={s.isEvaluatorOn}
+      setIsEngineOn={(b) => dispatch({ type: 'setIsEvaluatorOn', value: b })}
+      gameEvaluation={game.engineAnalysis ? game.engineAnalysis : gameEvaluation}
+      currentMove={currentMove}
+      evalerMaxDepth={20}
+      engineName={'stockfish'}
+      isEvaluating={false}
+      maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
+      numLines={numLines}
+      isSwitchDisabled={false}
+      showMoveJudgements={false}
+    />
   );
 
   const movesDisplay = (
