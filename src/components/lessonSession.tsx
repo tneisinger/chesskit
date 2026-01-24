@@ -619,7 +619,10 @@ const LessonSession = ({
     if (newPgn == undefined) newPgn = makePgnFromHistory(history);
     const newLines = getLinesFromPGN(newPgn);
     if (newLines.length === 0 && savedLines.length === 0) return false;
-    return !newLines.every((line) => savedLines.includes(line));
+    if (newLines.length !== savedLines.length) return true;
+    if (!newLines.every((line) => savedLines.includes(line))) return true;
+    if (!savedLines.every((line) => newLines.includes(line))) return true;
+    return false;
   }, [savedLines, history, timeEditModeEntered, s.currentChapterIdx]);
 
 
