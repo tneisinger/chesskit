@@ -50,7 +50,8 @@ import useEvaler from '@/hooks/useChessEvaler';
 import LessonChapters from '@/components/lessonChapters';
 import EditLessonControls from '@/components/editLessonControls';
 import NewChapterModal from '@/components/newChapterModal';
-import LineCompleteModal from './lineCompleteModal';
+import LineCompleteModal from '@/components/lineCompleteModal';
+import AltMoveModal from '@/components/altMoveModal';
 import type { Viewport } from 'next'
 import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
 import { useSearchParams } from 'next/navigation';
@@ -113,6 +114,7 @@ interface State {
 
   showNewChapterModal: boolean,
   showLineCompleteModal: boolean,
+  showAltMoveModal: boolean,
 }
 
 const initialState: State = {
@@ -148,6 +150,7 @@ const initialState: State = {
   linesChapterIdx: undefined,
   showNewChapterModal: false,
   showLineCompleteModal: false,
+  showAltMoveModal: false,
 }
 
 interface ClearMoveSound {
@@ -244,6 +247,11 @@ interface showLineCompleteModal {
   show: boolean,
 }
 
+interface showAltMoveModal {
+  type: 'showAltMoveModal',
+  show: boolean,
+}
+
 type Action =
   | ClearMoveSound
   | SetIsChessboardMoving
@@ -264,6 +272,7 @@ type Action =
   | ChangeChapterIdx
   | ShowNewChapterModal
   | showLineCompleteModal
+  | showAltMoveModal
 
 function reducer(s: State, a: Action): State {
   let newState: State;
@@ -341,6 +350,9 @@ function reducer(s: State, a: Action): State {
       break;
     case 'showLineCompleteModal':
       newState = { ...s, showLineCompleteModal: a.show };
+      break;
+    case 'showAltMoveModal':
+      newState = { ...s, showAltMoveModal: a.show }
       break;
     default:
       assertUnreachable(a);
@@ -1010,8 +1022,7 @@ const LessonSession = ({
       isOpponentsTurn() &&
       relevantLines.every((rLine => s.lines[s.currentChapterIdx][rLine].isComplete))
     ) {
-      alert("That move is correct but an alternative move exists. Play an alternative move instead.");
-      performWrongAnswerActions({ indicateThatTheMoveWasWrong: false });
+      dispatch({ type: 'showAltMoveModal', show: true });
       return;
     }
 
@@ -1185,6 +1196,13 @@ const LessonSession = ({
         isNextLineInAnotherChapter={isNextLineInAnotherChapter}
         getIdxOfNextIncompleteChapter={getIdxOfNextIncompleteChapter}
         areAllLinesComplete={areAllLinesComplete}
+      />
+      <AltMoveModal
+        show={s.showAltMoveModal}
+        onClose={() => {
+          dispatch({ type: 'showAltMoveModal', show: false });
+          performWrongAnswerActions({ indicateThatTheMoveWasWrong: false });
+        }}
       />
       {chessboard}
     </div>
