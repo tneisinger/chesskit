@@ -14,6 +14,7 @@ export interface Props {
   setIsEngineOn: (isOn: boolean) => void;
   currentMove: Move | undefined;
   gameEvaluation: GameEvaluation;
+  variationEvaluations: GameEvaluation;
   numLines: number;
   isEvaluating: boolean;
   evalerMaxDepth?: number;
@@ -30,6 +31,7 @@ const EngineDisplay = ({
   setIsEngineOn,
   currentMove,
   gameEvaluation,
+  variationEvaluations,
   evalerMaxDepth,
   numLines,
   engineName = 'Engine loading...',
@@ -44,7 +46,9 @@ const EngineDisplay = ({
     setIsEngineOn(checked);
   }
   const getEvaluation = (): PositionEvaluation | undefined => {
-    return gameEvaluation[getFen(currentMove)];
+    const ev = gameEvaluation[getFen(currentMove)];
+    if (ev) return ev;
+    return variationEvaluations[getFen(currentMove)];
   }
 
   const makeMoveJudgementString = (mj?: MoveJudgement): string => {
@@ -83,8 +87,7 @@ const EngineDisplay = ({
   }
 
   const currentMoveLines: (MultiPV | undefined)[] = new Array(numLines).fill(undefined);
-  const fen = getFen(currentMove);
-  const posEval = gameEvaluation[fen];
+  const posEval = getEvaluation();
   if (isEngineOn && posEval && posEval.lines) {
     posEval.lines.forEach((line, i) => {
       currentMoveLines[i] = {
@@ -97,14 +100,15 @@ const EngineDisplay = ({
   }
 
   const getMoveJudgement = useCallback((): (MoveJudgement | undefined) => {
+    const evaluations = { ...gameEvaluation, ...variationEvaluations };
     if (currentMove && currentMove.previous) {
       return makeMoveJudgement(
         currentMove.previous.fen,
         currentMove.fen,
-        gameEvaluation,
+        evaluations,
       )
     }
-  }, [currentMove, gameEvaluation]);
+  }, [currentMove, gameEvaluation, variationEvaluations]);
 
   const debug = () => {
     console.log('debug');

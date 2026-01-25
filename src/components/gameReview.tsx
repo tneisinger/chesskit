@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useReducer } from 'react';
 import { ScrollLock } from '@/components/ScrollLock';
-import { GameData } from '@/types/chess';
+import { GameData, GameEvaluation } from '@/types/chess';
 import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
 import { Marker, loadPgnIntoCmChess } from '@/utils/cmchess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
@@ -96,6 +96,8 @@ const GameReview = ({ game }: Props) => {
 
   const [s, dispatch] = useReducer(reducer, initialState);
 
+  const [gameEvaluation, setGameEvaluation] = useState<GameEvaluation>({});
+
   // Set up chessboard engine
   const {
     cmchess,
@@ -109,11 +111,17 @@ const GameReview = ({ game }: Props) => {
   // Set up game analyzer
   const {
     analyzeGame,
-    gameEvaluation,
+    variationEvaluations,
     isAnalyzingGame,
     progress,
     engineName,
-  } = useGameAnalyzer(s.isPositionAnalysisOn, currentMove, { evalDepth: 20, numLines: 2 });
+  } = useGameAnalyzer(
+    gameEvaluation,
+    setGameEvaluation,
+    s.isPositionAnalysisOn,
+    currentMove,
+    { evalDepth: 20, numLines: 2 }
+  );
 
   const prevIsAnalyzingGame = usePrevious(isAnalyzingGame);
 
@@ -141,6 +149,9 @@ const GameReview = ({ game }: Props) => {
     if (game) {
       loadPgnIntoCmChess(game.pgn, cmchess.current);
       setHistory(cmchess.current.history());
+      if (game.engineAnalysis) {
+        setGameEvaluation(game.engineAnalysis);
+      }
     }
   }, [game]);
 
@@ -185,6 +196,7 @@ const GameReview = ({ game }: Props) => {
       isEngineOn={s.isPositionAnalysisOn}
       setIsEngineOn={(b) => dispatch({ type: 'setIsPositionAnalysisOn', value: b })}
       gameEvaluation={game.engineAnalysis ? game.engineAnalysis : gameEvaluation}
+      variationEvaluations={variationEvaluations}
       currentMove={currentMove}
       evalerMaxDepth={20}
       engineName={engineName ? engineName : undefined}
