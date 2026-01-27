@@ -881,6 +881,7 @@ export function makeMoveJudgements(
 ): Record<string, MoveJudgement> {
   const result: Record<string, MoveJudgement> = {};
   const gevArray = makeGameEvaluationArray(gev);
+  if (gevArray.length < 1) return result;
 
   // Make a copy of gev to avoid modifying the input object.
   // We may need to modify it by adding the starting position.

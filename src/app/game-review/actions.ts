@@ -235,6 +235,9 @@ export async function updateGameAnalysis(
   id: number,
   engineAnalysis: GameEvaluation
 ): Promise<{ success: boolean; error?: string }> {
+  if (Object.keys(engineAnalysis).length === 0) {
+    throw new Error('Engine analysis cannot be empty')
+  }
   try {
     const session = await auth();
 
