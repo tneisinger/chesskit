@@ -1,5 +1,6 @@
 import { DotItemDotProps } from 'recharts';
 import { MoveJudgement } from '@/types/chess';
+import { ChessMoveColors } from '@/constants/colors';
 
 const GameChartJudgementDots = (props: DotItemDotProps) => {
   const { cx, cy, payload } = props;
@@ -11,8 +12,8 @@ const GameChartJudgementDots = (props: DotItemDotProps) => {
   ]
 
   let color: string = '';
-  if (payload.judgement === MoveJudgement.Blunder) color = 'red';
-  if (payload.judgement === MoveJudgement.Mistake) color = 'orange';
+  if (payload.judgement === MoveJudgement.Blunder) color = ChessMoveColors.Blunder;
+  if (payload.judgement === MoveJudgement.Mistake) color = ChessMoveColors.Mistake;
   if (payload.isUserMove && judgementsToShow.includes(payload.judgement)) {
     return (
       <svg x={cx} y={cy} overflow="visible">
