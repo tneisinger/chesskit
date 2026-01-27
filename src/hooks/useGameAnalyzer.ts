@@ -66,6 +66,7 @@ export default function useGameAnalyzer(
   const afterBestMoveFoundCallback = useRef<((bestMoveInfo?: BestMoveInfo) => void) | undefined>(undefined);
   const hasStockfishBeenSetup = useRef<boolean>(false);
   const isAnalyzingPosition = useRef<boolean>(false);
+  const isAnalyzingGameRef = useRef<boolean>(false);
   const prevPositionIndex = usePrevious(currentPositionIndex);
   const prevIsAnalyzingGame = usePrevious(isAnalyzingGame);
   const prevPositionQueue = usePrevious(positionQueue);
@@ -174,7 +175,7 @@ export default function useGameAnalyzer(
 
   // Analyze a single position or variation
   const analyzePosition = useCallback((fen: string, prevFen?: string) => {
-    if (isAnalyzingGame) {
+    if (isAnalyzingGameRef.current) {
       console.warn('Cannot analyze position while game analysis is running');
       return;
     }
@@ -186,6 +187,10 @@ export default function useGameAnalyzer(
       isAnalyzingPosition.current = true;
     });
   }, [isAnalyzingGame, cancelAllAnalysis]);
+
+  useEffect(() => {
+    isAnalyzingGameRef.current = isAnalyzingGame;
+  }, [isAnalyzingGame])
 
   // Handle stockfish messages
   useEffect(() => {
@@ -260,7 +265,7 @@ export default function useGameAnalyzer(
       }
 
       // Move to next position (for game analysis) or clear fen (for position analysis)
-      if (isAnalyzingGame) {
+      if (isAnalyzingGameRef.current) {
         changeFenBeingAnalyzed(null);
         setCurrentPositionIndex((prev) => prev + 1);
       } else if (isAnalyzingPosition.current) {
@@ -356,7 +361,7 @@ export default function useGameAnalyzer(
         }
       };
 
-      if (isAnalyzingGame) {
+      if (isAnalyzingGameRef.current) {
         setGameEvaluation(updateEvaluation);
       } else if (isAnalyzingPosition.current) {
         setVariationEvaluations(updateEvaluation);
@@ -445,7 +450,7 @@ export default function useGameAnalyzer(
   // Automatically analyze position when isPositionAnalysisOn is true
   useEffect(() => {
     if (isPositionAnalysisOn) {
-      if (isAnalyzingGame) {
+      if (isAnalyzingGameRef.current) {
         console.warn('Cannot enable position analysis while game analysis is running');
         return;
       }
@@ -463,7 +468,7 @@ export default function useGameAnalyzer(
     if (isPositionAnalysisOn === prevIsPositionAnalysisOn) return;
 
     if (!isPositionAnalysisOn && fenBeingAnalyzed != null) {
-      if (isAnalyzingGame) {
+      if (isAnalyzingGameRef.current) {
         console.warn('Cannot disable position analysis while game analysis is running');
         return;
       }
