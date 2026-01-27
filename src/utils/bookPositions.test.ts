@@ -5,7 +5,9 @@ import {
   isBookPosition,
   getBookPosition,
   isCommonPos,
+  getOpening,
 } from '@/utils/bookPositions';
+import { GameData, PieceColor } from '@/types/chess';
 
 describe('makeAltFensWithEnPassantSquares', () => {
   it('should return an empty array when the input fen has an en passant value', () => {
@@ -90,5 +92,20 @@ describe('isCommonPos', () => {
   it('should return false on Sicilian fen position with incorrect en passant square specified', () => {
     const sicilian = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
     expect(isCommonPos(sicilian)).toBe(false);
+  });
+});
+
+describe('getOpening', () => {
+  it("should return a string containing 'sicilian' when input is a Sicilian game", () => {
+    const game: GameData = { gameId: 'gameId', pgn: '1. e4 c5 2. Nc3 g6 *', userColor: PieceColor.BLACK, startTime: 4 };
+    const result = getOpening(game);
+    expect(result).not.toBeNull();
+    expect(getOpening(game)).toMatch(/sicilian/i);
+  });
+  it("should return a string containing 'english' when input is an English game", () => {
+    const game: GameData = { gameId: 'gameId', pgn: '1. c4 c5 2. Nf3 g6 *', userColor: PieceColor.BLACK, startTime: 4 };
+    const result = getOpening(game);
+    expect(result).not.toBeNull();
+    expect(getOpening(game)).toMatch(/english/i);
   });
 });

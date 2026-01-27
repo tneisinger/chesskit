@@ -112,6 +112,14 @@ export function getOpening(game: GameData): string | null {
       const bookPosition = getBookPosition(fen);
       if (bookPosition) result = bookPosition.name;
     }
+    const altFens = makeAltFensWithEnPassantSquares(fen);
+    for (let i = 0; i < altFens.length; i++) {
+      const altFen = altFens[i];
+      if (commonOpeningPositions.includes(makeKey(altFen))) {
+        const bookPosition = getBookPosition(altFen);
+        if (bookPosition) result = bookPosition.name;
+      }
+    }
   }
   return result;
 }
