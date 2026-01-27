@@ -114,7 +114,7 @@ export default function Navigation() {
 										href={link.href}
 										className={`px-4 rounded transition-colors no-underline ${
 											isActiveLink(link.href)
-												? 'bg-btn-primary text-foreground font-semibold'
+												? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
 												: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
 										}`}
 									>
@@ -212,7 +212,7 @@ export default function Navigation() {
 										onClick={closeMobileMenu}
 										className={`px-4 py-3 rounded transition-colors no-underline ${
 											isActiveLink(link.href)
-												? 'bg-btn-primary text-foreground font-semibold'
+												? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
 												: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
 										}`}
 									>

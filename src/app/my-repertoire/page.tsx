@@ -9,7 +9,6 @@ import { MAX_USER_LESSONS } from "./constants";
 import type { Lesson } from "@/types/lesson";
 import { PieceColor } from "@/types/chess";
 import LessonDisplay from "@/components/lessonDisplay";
-import Button from "@/components/button";
 import { sortLessonsByTitle } from "@/utils/lesson";
 import { getAllLessons, createLesson, updateLesson } from "../openings/actions";
 
@@ -174,7 +173,7 @@ export default function MyRepertoirePage() {
 							onClick={() => handleFilterChange("all")}
 							className={`px-3 py-1.5 rounded transition-colors cursor-pointer text-sm font-medium ${
 								colorFilter === "all"
-									? "bg-btn-primary text-foreground"
+									? "bg-btn-normal text-foreground"
 									: "bg-background-page text-foreground/70 hover:bg-foreground/20"
 							}`}
 						>
@@ -184,7 +183,7 @@ export default function MyRepertoirePage() {
 							onClick={() => handleFilterChange(PieceColor.WHITE)}
 							className={`px-3 py-1.5 rounded transition-colors cursor-pointer text-sm font-medium ${
 								colorFilter === PieceColor.WHITE
-									? "bg-btn-primary text-foreground"
+									? "bg-btn-normal text-foreground"
 									: "bg-background-page text-foreground/70 hover:bg-foreground/20"
 							}`}
 						>
@@ -194,7 +193,7 @@ export default function MyRepertoirePage() {
 							onClick={() => handleFilterChange(PieceColor.BLACK)}
 							className={`px-3 py-1.5 rounded transition-colors cursor-pointer text-sm font-medium ${
 								colorFilter === PieceColor.BLACK
-									? "bg-btn-primary text-foreground"
+									? "bg-btn-normal text-foreground"
 									: "bg-background-page text-foreground/70 hover:bg-foreground/20"
 							}`}
 						>
