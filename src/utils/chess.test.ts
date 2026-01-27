@@ -18,10 +18,12 @@ import {
   stringToTimeControl,
   makePgnFromHistory,
   makeMovesOnlyPGN,
+  areFensEqual,
 } from './chess';
 import { PieceColor, ShortMove } from '@/types/chess';
 import { Chess as ChessJS } from 'chess.js';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
+import { FEN } from 'cm-chessboard/src/Chessboard';
 
 describe('chess utilities', () => {
   describe('areMovesEqual', () => {
@@ -386,4 +388,34 @@ describe('chess utilities', () => {
 
   });
 
+  describe('areFensEqual', () => {
+    it('should return true on two identical fens', () => {
+      const fen1 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2';
+      const fen2 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2';
+      expect(areFensEqual(fen1, fen2)).toBe(true);
+    });
+    it('should return false on two different fens', () => {
+      const fen1 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2';
+      const fen2 = FEN.start;
+      expect(areFensEqual(fen1, fen2)).toBe(false);
+    });
+    it("should return false when 'allowEnpassantDif' is not set and one en passant value is '-'", () => {
+      const fen1 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
+      const fen2 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2';
+      expect(areFensEqual(fen1, fen2)).toBe(false);
+      expect(areFensEqual(fen2, fen1)).toBe(false);
+    });
+    it("should return true when 'allowEnpassantDif' is set and one en passant value is '-'", () => {
+      const fen1 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
+      const fen2 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2';
+      expect(areFensEqual(fen1, fen2, { allowEnpassantDif: true })).toBe(true);
+      expect(areFensEqual(fen2, fen1, { allowEnpassantDif: true })).toBe(true);
+    });
+    it("should return false when 'allowEnpassantDif' is set and the en passant values are different squares", () => {
+      const fen1 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
+      const fen2 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2';
+      expect(areFensEqual(fen1, fen2, { allowEnpassantDif: true })).toBe(false);
+      expect(areFensEqual(fen2, fen1, { allowEnpassantDif: true })).toBe(false);
+    });
+  });
 });

@@ -814,6 +814,7 @@ export function areFensEqual(
   fen2: string,
   options?: { allowEnpassantDif: boolean }
 ): boolean {
+  if (fen1 === fen2) return true;
   const parts1 = getFenParts(fen1);
   const parts2 = getFenParts(fen2);
 
