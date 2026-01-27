@@ -6,6 +6,7 @@ export enum ButtonStyle {
   Primary,
   Secondary,
   Danger,
+  Normal,
 }
 
 export enum ButtonSize {
@@ -20,7 +21,7 @@ export interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button = ({
-  buttonStyle = ButtonStyle.Primary,
+  buttonStyle = ButtonStyle.Normal,
   buttonSize = ButtonSize.Normal,
   href,
   ...props
@@ -32,25 +33,30 @@ const Button = ({
     'px-2',
     href ? 'py-1.5' : 'py-1',
     'rounded',
-    'bg-btn-primary',
-    'hover:bg-btn-primary-hover',
     'no-underline',
     'whitespace-nowrap',
   ];
 
+  const colors = [];
+
   switch (buttonStyle) {
     case ButtonStyle.Primary:
-      classes.push('bg-color-btn-primary', 'hover:bg-color-btn-primary-hover');
+      colors.push('bg-btn-primary', 'hover:bg-btn-primary-hover');
       break;
     case ButtonStyle.Secondary:
-      classes.push('bg-color-btn-secondary', 'hover:bg-color-btn-secondary-hover');
+      colors.push('bg-btn-secondary', 'hover:bg-btn-secondary-hover');
       break;
     case ButtonStyle.Danger:
-      classes.push('!bg-[#c82333]', 'hover:!bg-[#b21f2e]');
+      colors.push('!bg-[#c82333]', 'hover:!bg-[#b21f2e]');
+      break;
+    case ButtonStyle.Normal:
+      colors.push('bg-btn-normal', 'hover:bg-btn-normal-hover');
       break;
     default:
       assertUnreachable(buttonStyle);
   }
+
+  classes.push(...colors);
 
   switch (buttonSize) {
     case ButtonSize.Normal:

@@ -392,7 +392,6 @@ export default function LessonForm({
           </Button>
           <Button
             type="button"
-            buttonStyle={ButtonStyle.Secondary}
             onClick={handleCancel}
             disabled={isSubmitting}
           >
