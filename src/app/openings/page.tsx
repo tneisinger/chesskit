@@ -155,7 +155,7 @@ export default function Page() {
 							onClick={() => handleFilterChange("all")}
 							className={`px-3 py-1.5 rounded transition-colors cursor-pointer text-sm font-medium ${
 								colorFilter === "all"
-									? "bg-btn-primary text-foreground"
+									? "bg-btn-normal text-foreground"
 									: "bg-background-page text-foreground/70 hover:bg-foreground/10"
 							}`}
 						>
@@ -165,7 +165,7 @@ export default function Page() {
 							onClick={() => handleFilterChange(PieceColor.WHITE)}
 							className={`px-3 py-1.5 rounded transition-colors cursor-pointer text-sm font-medium ${
 								colorFilter === PieceColor.WHITE
-									? "bg-btn-primary text-foreground"
+									? "bg-btn-normal text-foreground"
 									: "bg-background-page text-foreground/70 hover:bg-foreground/10"
 							}`}
 						>
@@ -175,7 +175,7 @@ export default function Page() {
 							onClick={() => handleFilterChange(PieceColor.BLACK)}
 							className={`px-3 py-1.5 rounded transition-colors cursor-pointer text-sm font-medium ${
 								colorFilter === PieceColor.BLACK
-									? "bg-btn-primary text-foreground"
+									? "bg-btn-normal text-foreground"
 									: "bg-background-page text-foreground/70 hover:bg-foreground/10"
 							}`}
 						>

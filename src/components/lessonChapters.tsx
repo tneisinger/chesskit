@@ -39,7 +39,7 @@ const LessonChapters = ({
                   w-full text-left p-2 rounded transition-colors
                   ${
 										isActive
-											? "bg-btn-primary text-foreground font-bold"
+											? "bg-btn-normal text-foreground font-bold"
 											: "hover:bg-foreground/10"
 									}
                 `}
