@@ -20,6 +20,7 @@ import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
 import usePrevious from '@/hooks/usePrevious';
 import { updateGameAnalysis } from '@/app/game-review/actions';
+import GameReviewButtons from './gameReviewButtons';
 
 enum MobileTab {
   Moves = 'Moves',
@@ -273,18 +274,19 @@ const GameReview = ({ game }: Props) => {
   }
 
   const leftColWidth = "w-56";
+  const rightColWidth = 275;
 
   return (
     <ScrollLock>
       <div className='flex flex-col items-center justify-center w-full h-full gap-2 mt-2'>
         <div className="flex flex-row gap-2">
-          <div className={`flex flex-col ${leftColWidth}`}>
+          <div className={`flex flex-col ${leftColWidth} gap-2`}>
             <GameDetails game={game} orientation={game.userColor} />
           </div>
           <div className="flex flex-col items-center gap-2">
             {chessboardDiv}
           </div>
-          <div className="w-[275px]">
+          <div style={{ width: rightColWidth }}>
             <div
               style={{ height: boardSize }}
               className="flex flex-col flex-1 items-center w-full"
@@ -318,6 +320,13 @@ const GameReview = ({ game }: Props) => {
               changeCurrentMove={setCurrentMove}
               history={history}
               width={boardSize}
+            />
+          </div>
+          <div style={{ width: rightColWidth }}>
+            <GameReviewButtons
+              game={game}
+              gameEvaluation={gameEvaluation}
+              currentMove={currentMove}
             />
           </div>
         </div>
