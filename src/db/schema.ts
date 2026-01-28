@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text, primaryKey, unique, index } from "drizzle-orm/sqlite-core";
 import type { Chapter } from "@/types/lesson";
-import type { GameEvaluation, ShortMove } from "@/types/chess";
+import type { GameEvaluation, PieceColor } from "@/types/chess";
 import type { Score } from "@/utils/stockfish";
 
 export const users = sqliteTable("users", {
@@ -131,12 +131,12 @@ export const flashcards = sqliteTable("flashcards", {
 	gameId: integer("game_id")
 		.references(() => games.id, { onDelete: "cascade" }),
 
-	// Chess position data
-	fen: text("fen").notNull(),
-	previousFen: text("previous_fen"),
-	moveToPlay: text("move_to_play", { mode: "json" }).$type<ShortMove>(),
-	sideToMove: text("side_to_move", { enum: ["WHITE", "BLACK"] }).notNull(),
-	opponentMove: text("opponent_move").notNull(), // SAN notation
+	// Chess data
+	pgn: text("pgn").notNull(),
+	positionIdx: integer("position_idx").notNull(),
+	userColor: text("user_color", { enum: ["WHITE", "BLACK"] })
+    .notNull()
+    .$type<PieceColor>(),
 
 	// Flashcard content
 	bestLines: text("best_lines", { mode: "json" }).$type<{score: Score, lanLine: string}[]>(),
@@ -158,8 +158,6 @@ export const flashcards = sqliteTable("flashcards", {
 }, (table) => ({
 	userReviewDateIdx: index("flashcards_user_review_date_idx")
 		.on(table.userId, table.nextReviewDate),
-	userFenIdx: index("flashcards_user_fen_idx")
-		.on(table.userId, table.fen),
 }));
 
 // Type exports

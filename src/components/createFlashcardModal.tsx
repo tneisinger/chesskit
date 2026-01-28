@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Modal from '@/components/modal';
 import Button, { ButtonStyle } from "@/components/button";
 import { Move } from 'cm-chess/src/Chess';
-import { GameData, PieceColor, ShortMove } from '@/types/chess';
+import { GameData, PieceColor } from '@/types/chess';
 import { createFlashcard } from '@/app/flashcards/actions';
 import { getColor } from '@/utils/cmchess';
 import type { Score } from '@/utils/stockfish';
@@ -13,12 +13,11 @@ interface Props {
   show: boolean;
   game: GameData;
   currentMove: Move;
-  bestMove?: ShortMove;
   bestLines?: {score: Score, lanLine: string}[];
   onClose: () => void;
 }
 
-const CreateFlashcardModal = ({ show, game, currentMove, bestMove, bestLines, onClose }: Props) => {
+const CreateFlashcardModal = ({ show, game, currentMove, bestLines, onClose }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,16 +33,13 @@ const CreateFlashcardModal = ({ show, game, currentMove, bestMove, bestLines, on
     setIsSubmitting(true);
 
     try {
-      const sideToMove = getColor(currentMove);
-      const opponentMove = currentMove.next?.san || 'unknown';
+      const positionIdx = currentMove.ply ?? 0;
 
       const result = await createFlashcard({
         gameId: game.id,
-        fen: currentMove.fen,
-        previousFen: currentMove.previous?.fen,
-        moveToPlay: bestMove,
-        sideToMove,
-        opponentMove,
+        pgn: game.pgn,
+        positionIdx,
+        userColor: game.userColor,
         bestLines,
       });
 
