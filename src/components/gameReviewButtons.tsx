@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { GameData, GameEvaluation, MoveJudgement, ShortMove } from "@/types/chess";
+import { GameData, GameEvaluation, MoveJudgement } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Move } from 'cm-chess/src/Chess';
 import { makeMoveJudgements } from "@/utils/chess";
@@ -28,12 +28,6 @@ const GameReviewButtons = ({
   useEffect(() => {
     setMoveJudgements(makeMoveJudgements(gameEvaluation));
   }, [gameEvaluation]);
-
-  const getBestMove = useCallback((): ShortMove | undefined => {
-    if (!currentMove?.next) return undefined;
-    const posEval = gameEvaluation[currentMove.next.fen];
-    return posEval?.bestMove;
-  }, [currentMove, gameEvaluation]);
 
   const getBestLines = useCallback(() => {
     if (!currentMove) return undefined;
@@ -73,7 +67,6 @@ const GameReviewButtons = ({
           show={showCreateFlashcardModal}
           game={game}
           currentMove={currentMove}
-          bestMove={getBestMove()}
           bestLines={getBestLines()}
           onClose={() => setShowCreateFlashcardModal(false)}
         />

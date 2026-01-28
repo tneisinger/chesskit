@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { flashcards } from "@/db/schema";
 import { eq, and, lte, asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { PieceColor, ShortMove } from "@/types/chess";
+import { PieceColor } from "@/types/chess";
 import {
   calculateNextReview,
   initializeSM2,
@@ -17,11 +17,9 @@ import type { Score } from "@/utils/stockfish";
 
 export interface CreateFlashcardInput {
   gameId?: number;
-  fen: string;
-  previousFen?: string;
-  moveToPlay?: ShortMove;
-  sideToMove: PieceColor;
-  opponentMove: string;
+  pgn: string;
+  positionIdx: number;
+  userColor: PieceColor;
   bestLines?: {score: Score, lanLine: string}[];
 }
 
@@ -40,18 +38,21 @@ export async function createFlashcard(
     const userId = Number(session.user.id);
 
     // Check if flashcard already exists for this position
-    const existing = await db.query.flashcards.findFirst({
-      where: and(
-        eq(flashcards.userId, userId),
-        eq(flashcards.fen, input.fen)
-      ),
-    });
+    if (input.gameId) {
+      const existing = await db.query.flashcards.findFirst({
+        where: and(
+          eq(flashcards.userId, userId),
+          eq(flashcards.gameId, input.gameId),
+          eq(flashcards.positionIdx, input.positionIdx)
+        ),
+      });
 
-    if (existing) {
-      return {
-        success: false,
-        error: "Flashcard already exists for this position",
-      };
+      if (existing) {
+        return {
+          success: false,
+          error: "Flashcard already exists for this position",
+        };
+      }
     }
 
     // Initialize SM-2 parameters for new flashcard
@@ -60,11 +61,9 @@ export async function createFlashcard(
     const result = await db.insert(flashcards).values({
       userId,
       gameId: input.gameId,
-      fen: input.fen,
-      previousFen: input.previousFen,
-      moveToPlay: input.moveToPlay,
-      sideToMove: input.sideToMove,
-      opponentMove: input.opponentMove,
+      pgn: input.pgn,
+      positionIdx: input.positionIdx,
+      userColor: input.userColor,
       bestLines: input.bestLines,
       repetitions: sm2.repetitions,
       easinessFactor: efToInt(sm2.easinessFactor),

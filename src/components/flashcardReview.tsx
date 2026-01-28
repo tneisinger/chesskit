@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import Button, { ButtonStyle } from '@/components/button';
 import { reviewFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
-import { Chess as CmChess } from 'cm-chess/src/Chess';
 import { useRouter } from 'next/navigation';
-import { ShortMove, PieceColor } from '@/types/chess';
+import { ShortMove } from '@/types/chess';
+import useChessboardEngine from '@/hooks/useChessboardEngine';
+import { loadPgnIntoCmChess } from '@/utils/cmchess';
 
 interface Props {
   flashcards: Flashcard[];
@@ -38,9 +39,24 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     );
   }
 
-  // Create CmChess instance and load the position
-  const chess = new CmChess();
-  chess.load(currentFlashcard.fen);
+  const {
+    cmchess,
+    history,
+    setHistory,
+    currentMove,
+    setCurrentMove,
+    playMove,
+  } = useChessboardEngine();
+
+  useEffect(() => {
+    const fc = flashcards[currentIndex];
+    if (fc) {
+      loadPgnIntoCmChess(fc.pgn, cmchess.current);
+      const cmhistory = cmchess.current.history();
+      setHistory(cmhistory);
+      setCurrentMove(cmhistory.find((m) => m.ply === fc.positionIdx));
+    }
+  }, [currentIndex]);
 
   const handleReveal = () => {
     setShowAnswer(true);
@@ -87,9 +103,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       {/* Chessboard */}
       <div className="w-full max-w-xl">
         <Chessboard
-          currentMove={chess.getHistory()}
+          currentMove={currentMove}
           boardSize={600}
-          orientation={currentFlashcard.sideToMove}
+          orientation={currentFlashcard.userColor}
           allowInteraction={!showAnswer}
           afterUserMove={handleUserMove}
           animate={true}
@@ -130,15 +146,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                   ))}
                 </div>
               </>
-            )}
-
-            {currentFlashcard.moveToPlay && (
-              <div className="mb-4 p-3 bg-green-900/20 border border-green-500 rounded">
-                <p className="text-sm text-green-200">
-                  Best move: {currentFlashcard.moveToPlay.from}{currentFlashcard.moveToPlay.to}
-                  {currentFlashcard.moveToPlay.promotion || ''}
-                </p>
-              </div>
             )}
 
             {/* Rating buttons */}
