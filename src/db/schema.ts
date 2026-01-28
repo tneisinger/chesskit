@@ -1,7 +1,8 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, primaryKey, unique } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, primaryKey, unique, index } from "drizzle-orm/sqlite-core";
 import type { Chapter } from "@/types/lesson";
-import type { GameEvaluation } from "@/types/chess";
+import type { GameEvaluation, ShortMove } from "@/types/chess";
+import type { Score } from "@/utils/stockfish";
 
 export const users = sqliteTable("users", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
@@ -119,6 +120,48 @@ export const games = sqliteTable("games", {
 	uniqueUserGame: unique().on(table.userId, table.gameId),
 }));
 
+// Flashcards table (spaced repetition learning)
+export const flashcards = sqliteTable("flashcards", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+
+	// Relationships
+	userId: integer("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	gameId: integer("game_id")
+		.references(() => games.id, { onDelete: "cascade" }),
+
+	// Chess position data
+	fen: text("fen").notNull(),
+	previousFen: text("previous_fen"),
+	moveToPlay: text("move_to_play", { mode: "json" }).$type<ShortMove>(),
+	sideToMove: text("side_to_move", { enum: ["WHITE", "BLACK"] }).notNull(),
+	opponentMove: text("opponent_move").notNull(), // SAN notation
+
+	// Flashcard content
+	bestLines: text("best_lines", { mode: "json" }).$type<{score: Score, lanLine: string}[]>(),
+
+	// SuperMemo-2 algorithm fields
+	repetitions: integer("repetitions").notNull().default(0),
+	easinessFactor: integer("easiness_factor").notNull().default(2500), // 2.5 * 1000
+	interval: integer("interval").notNull().default(0), // Days
+	nextReviewDate: integer("next_review_date", { mode: "timestamp" }).notNull(),
+	lastReviewedDate: integer("last_reviewed_date", { mode: "timestamp" }),
+
+	// Timestamps
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	updatedAt: integer("updated_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
+}, (table) => ({
+	userReviewDateIdx: index("flashcards_user_review_date_idx")
+		.on(table.userId, table.nextReviewDate),
+	userFenIdx: index("flashcards_user_fen_idx")
+		.on(table.userId, table.fen),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -131,3 +174,6 @@ export type InsertUserRepertoire = typeof userRepertoire.$inferInsert;
 
 export type Game = typeof games.$inferSelect;
 export type InsertGame = typeof games.$inferInsert;
+
+export type Flashcard = typeof flashcards.$inferSelect;
+export type InsertFlashcard = typeof flashcards.$inferInsert;

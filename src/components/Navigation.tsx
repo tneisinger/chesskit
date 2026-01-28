@@ -21,6 +21,7 @@ const publicNavLinks: NavLink[] = [
 	{ href: '/', label: 'Home' },
 	{ href: '/openings', label: 'Openings' },
 	{ href: '/game-review', label: 'Game Review' },
+	{ href: '/flashcards', label: 'Flashcards' },
 ];
 
 const authenticatedNavLinks: NavLink[] = [
@@ -28,6 +29,7 @@ const authenticatedNavLinks: NavLink[] = [
 	{ href: '/openings', label: 'Openings' },
 	{ href: '/my-repertoire', label: 'My Repertoire', requiresAuth: true },
 	{ href: '/game-review', label: 'Game Review' },
+	{ href: '/flashcards', label: 'Flashcards' },
 ];
 
 export default function Navigation() {
