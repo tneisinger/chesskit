@@ -6,6 +6,7 @@ interface UseCountdownReturn {
   unpause: () => void;
   reset: () => void;
   isPaused: boolean;
+  addTime: (seconds: number) => void;
 }
 
 /**
@@ -71,11 +72,16 @@ export function useCountdown(seconds: number): UseCountdownReturn {
     setIsPaused(true);
   }, []);
 
+  const addTime = useCallback((seconds: number) => {
+    setRemainingTime((t) => t + seconds);
+  }, []);
+
   return {
     remainingTime,
     pause,
     unpause,
     reset,
     isPaused,
+    addTime,
   };
 }
