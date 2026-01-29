@@ -61,7 +61,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }
 
   // Create a countdown for the countdownClock component (15 seconds)
-  const { remainingTime, pause, unpause, reset: resetCountdown, isPaused } = useCountdown(15);
+  const {
+    remainingTime,
+    pause,
+    unpause,
+    reset: resetCountdown,
+    isPaused,
+    addTime,
+  } = useCountdown(15);
 
   // Determine the board size
   const maxBoardSize = 600;
@@ -155,26 +162,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     };
   }, [opponentMove]);
 
-
-  useEffect(() => {
-    // If currentMove is undefined, do nothing
-    if (currentMove == undefined) return;
-
-    // If currentMove hasn't actually changed, do nothing
-    if (areCmMovesEqual(currentMove, previousMove)) return;
-
-    // If the user has already completed a line, stop here.
-    if (recentlyCompletedLine != null) return;
-
-    // If there are no relevant lines, the user has made a mistake.
-    // Perform wrong answer actions and do nothing else.
-    const relevantLines = getRelevantLessonLines(lines, currentMove);
-    if (relevantLines.length < 1) {
-      performWrongAnswerActions();
-      return;
-    }
-  }, [lines, currentMove]);
-
   useEffect(() => {
     // This prevents undoLastMove() from running on the initial render
     if (wrongAnswerCount < 1) return;
@@ -237,8 +224,19 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     }
   };
 
-  const handleUserMove = useCallback((move: ShortMove) => {
-    setUserAttemptedMove(move);
+  const handleUserMove = useCallback(() => {
+    // setUserAttemptedMove(move); - TODO: This is claude code
+
+    const relevantLines = getRelevantLessonLines(lines, currentMove);
+
+    // If there are no relevant lines, the user has made a mistake.
+    // Perform wrong answer actions and do nothing else.
+    if (relevantLines.length < 1) {
+      performWrongAnswerActions();
+      return;
+    } else {
+      addTime(10);
+    }
   }, [lines, currentMove]);
 
   const handleEditBtnClick = useCallback(() => {
