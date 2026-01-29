@@ -6,10 +6,10 @@ export default async function FlashcardsPage() {
   const stats = await getFlashcardStats();
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Flashcard Review</h1>
-        <div className="flex gap-4 text-sm text-gray-400">
+    <div>
+      <div className="my-3">
+        <h1 className="text-2xl font-bold mb-2 text-center">Flashcard Review</h1>
+        <div className="flex gap-4 text-sm text-gray-400 justify-center">
           <div>Total: <span className="font-semibold text-foreground">{stats.total}</span></div>
           <div>Due: <span className="font-semibold text-foreground">{stats.due}</span></div>
           <div>Learning: <span className="font-semibold text-foreground">{stats.learning}</span></div>
