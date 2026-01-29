@@ -9,6 +9,8 @@ import {
 } from "@/types/lesson";
 import { getLinesFromPGN } from "./pgn";
 import { convertSanLineToLanLine } from "./chess";
+import { Move } from 'cm-chess/src/Chess';
+import { getLanLineFromCmMove } from "./cmchess";
 
 export function sortLessonsByTitle(lessons: Lesson[]): void {
   lessons.sort((a, b) => {
@@ -82,4 +84,28 @@ export function makeLineStatsRecord(pgn: string): Record<string, LineStats> {
     result[line.join(' ')] = { isComplete: false };
   });
   return result;
+}
+
+export function getRelevantLessonLines(
+  lines: Record<string, LineStats>,
+  currentMove: Move | undefined,
+  options?: { incompleteLinesOnly: boolean },
+): string[] {
+  if (lines == undefined) return [];
+  if (currentMove == undefined) return Object.keys(lines);
+  const currentMoveLine = getLanLineFromCmMove(currentMove);
+  const relevantLines: string[] = [];
+  Object.keys(lines).forEach((k) => {
+    if (options?.incompleteLinesOnly && lines[k].isComplete) return;
+    const line = k.split(' ');
+    let isRelevant = true;
+    for (let i = 0; i < currentMoveLine.length; i++) {
+      if (currentMoveLine[i] !== line[i]) {
+        isRelevant = false;
+        break;
+      }
+    }
+    if (isRelevant) relevantLines.push(k);
+  });
+  return relevantLines;
 }

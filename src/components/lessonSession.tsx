@@ -56,7 +56,7 @@ import AltMoveModal from '@/components/altMoveModal';
 import type { Viewport } from 'next'
 import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
 import { useSearchParams } from 'next/navigation';
-import { makeLineStatsRecord } from '@/utils/lesson';
+import { getRelevantLessonLines, makeLineStatsRecord } from '@/utils/lesson';
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -652,30 +652,6 @@ const LessonSession = ({
     return true;
   }
 
-  // Get all the relevant lesson lines that start with the line played on the board.
-  // Returns completed and uncompleted lines.
-  const getRelevantLessonLines = useCallback((
-    options?: { incompleteLinesOnly: boolean }
-  ): string[] => {
-    if (s.lines[s.currentChapterIdx] == undefined) return [];
-    if (currentMove == undefined) return Object.keys(s.lines[s.currentChapterIdx]);
-    const currentMoveLine = getLanLineFromCmMove(currentMove);
-    const relevantLines: string[] = [];
-    Object.keys(s.lines[s.currentChapterIdx]).forEach((k) => {
-      if (options?.incompleteLinesOnly && s.lines[s.currentChapterIdx][k].isComplete) return;
-      const line = k.split(' ');
-      let isRelevant = true;
-      for (let i = 0; i < currentMoveLine.length; i++) {
-        if (currentMoveLine[i] !== line[i]) {
-          isRelevant = false;
-          break;
-        }
-      }
-      if (isRelevant) relevantLines.push(k);
-    });
-    return relevantLines;
-  }, [currentMove, s.lines, s.currentChapterIdx]);
-
   const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
     // By default, indicate that the move was wrong.
     if (options === undefined || options.indicateThatTheMoveWasWrong) {
@@ -784,7 +760,8 @@ const LessonSession = ({
     options?: { incompleteLinesOnly: boolean }
   ): ShortMove[] => {
     const incompleteLinesOnly = options?.incompleteLinesOnly ?? false;
-    let relevantLines = getRelevantLessonLines({ incompleteLinesOnly });
+    const lines = s.lines[s.currentChapterIdx];
+    let relevantLines = getRelevantLessonLines(lines, currentMove, { incompleteLinesOnly });
     const nextMoves: ShortMove[] = [];
     relevantLines.forEach((line) => {
       const shortMoves = convertLanLineToShortMoves(line.split(' '));
@@ -797,7 +774,7 @@ const LessonSession = ({
       }
     });
     return nextMoves;
-  }, [currentMove, getRelevantLessonLines]);
+  }, [currentMove, s.lines, s.currentChapterIdx]);
 
   const isOpponentsTurn = useCallback((): boolean => {
     const ply = currentMove ? currentMove.ply : 0;
@@ -1005,7 +982,8 @@ const LessonSession = ({
 
     // If there are no relevant lines, the user has made a mistake.
     // Perform wrong answer actions and do nothing else.
-    const relevantLines = getRelevantLessonLines();
+    const lines = s.lines[s.currentChapterIdx];
+    const relevantLines = getRelevantLessonLines(lines, currentMove);
     if (relevantLines.length < 1) {
       performWrongAnswerActions();
       return;
@@ -1046,9 +1024,9 @@ const LessonSession = ({
         }, 600);
       }
     }
-  }, [currentMove, getNextMoves, getRelevantLessonLines, isOpponentsTurn,
-    performWrongAnswerActions, playMove, previousMove, s.lineProgressIdx,
-    s.recentlyCompletedLine, s.restartedLine, s.mode]
+  }, [currentMove, getNextMoves, isOpponentsTurn, performWrongAnswerActions,
+      playMove, previousMove, s.lineProgressIdx, s.recentlyCompletedLine,
+      s.restartedLine, s.mode, s.lines, s.currentChapterIdx]
   );
 
   useEffect(() => {
@@ -1085,7 +1063,8 @@ const LessonSession = ({
     if (s.recentlyCompletedLine) return;
     if (s.lineProgressIdx === 0) return;
     if (currentMove.ply !== s.lineProgressIdx) return;
-    const relevantLines = getRelevantLessonLines({ incompleteLinesOnly: true })
+    const lines = s.lines[s.currentChapterIdx];
+    const relevantLines = getRelevantLessonLines(lines, currentMove, { incompleteLinesOnly: true })
 
     const currentLine = getLineFromCmMove(currentMove);
     const matchingLine = relevantLines.find((line) => {
@@ -1096,8 +1075,7 @@ const LessonSession = ({
     if (s.lines[s.currentChapterIdx][matchingLine] == undefined) throw new Error('Line not found');
     if (s.lines[s.currentChapterIdx][matchingLine].isComplete) return;
     dispatch({ type: 'declareLineComplete', completedLine: matchingLine })
-  }, [s.lineProgressIdx, s.lines, cmchess, currentMove, getRelevantLessonLines,
-  s.recentlyCompletedLine, s.currentChapterIdx])
+  }, [s.lineProgressIdx, s.lines, cmchess, currentMove, s.recentlyCompletedLine, s.currentChapterIdx])
 
   // When the userColor is BLACK, this useEffect is necessary to perform the first
   // opponent move of each line.
