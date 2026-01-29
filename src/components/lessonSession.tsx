@@ -56,6 +56,7 @@ import AltMoveModal from '@/components/altMoveModal';
 import type { Viewport } from 'next'
 import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
 import { useSearchParams } from 'next/navigation';
+import { makeLineStatsRecord } from '@/utils/lesson';
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -869,12 +870,7 @@ const LessonSession = ({
     const makeLines = (): Record<string, LineStats>[] => {
       const result: Record<string, LineStats>[] = [];
       lesson.chapters.forEach((chapter) => {
-        const chapterLines: Record<string, LineStats> = {};
-        const sanLines = getLinesFromPGN(chapter.pgn);
-        const lanLines = sanLines.map((l) => convertSanLineToLanLine(l.split(/\s+/)));
-        lanLines.forEach((line) => {
-          chapterLines[line.join(' ')] = { isComplete: false };
-        });
+        const chapterLines = makeLineStatsRecord(chapter.pgn);
         result.push(chapterLines);
       });
       return result;
