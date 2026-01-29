@@ -16,6 +16,8 @@ import { judgeLines } from '@/utils/chess';
 import { LineStats } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines } from '@/utils/lesson';
 import usePrevious from '@/hooks/usePrevious';
+import { useCountdown } from '@/hooks/useCountdown';
+import CountdownClock from '@/components/countdownClock';
 
 interface Props {
   flashcards: Flashcard[];
@@ -55,13 +57,16 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     );
   }
 
+  // Create a countdown for the countdownClock component (15 seconds)
+  const { remainingTime, pause, unpause, reset: resetCountdown, isPaused } = useCountdown(15);
+
   const {
     cmchess,
     setHistory,
     currentMove,
     setCurrentMove,
     playMove,
-    reset,
+    reset: resetChessboardEngine,
     undoLastMove,
   } = useChessboardEngine();
 
@@ -88,7 +93,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [currentIndex, currentMove]);
 
   useEffect(() => {
-    reset();
+    resetChessboardEngine();
     const fc = flashcards[currentIndex];
     if (fc) {
       if (fc.bestLines) {
@@ -175,6 +180,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     };
   }, [wrongAnswerCount]);
 
+  useEffect(() => {
+    isUsersTurn() ? unpause() : pause();
+  }, [isUsersTurn]);
+
   const handleReveal = () => {
     setShowAnswer(true);
   };
@@ -219,7 +228,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
       {/* Chessboard */}
       <div className="relative">
-      <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
+        <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
         <Chessboard
           currentMove={currentMove}
           boardSize={600}
@@ -230,6 +239,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
           animate={true}
         />
       </div>
+
+      {/* countdownClock */}
+      <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
 
       {/* Review Section */}
       <div className="bg-background-page p-6 rounded-md w-full max-w-xl">
