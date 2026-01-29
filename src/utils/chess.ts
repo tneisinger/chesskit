@@ -20,7 +20,7 @@ import { povDiff } from '@/utils/winningChances';
 import { ChessMoveColors } from '@/constants/colors';
 import { getBookPosition, isBookPosition } from '@/utils/bookPositions';
 import { parse } from 'pgn-parser'
-import { parseLanMove } from './stockfish';
+import { parseLanMove, Score } from './stockfish';
 
 /**
  * Try to play a move into a ChessJS or CmChess object. Throw an error if the move
@@ -433,6 +433,19 @@ export function wasBestMovePlayed(
   return fen2 === chessjs.fen();
 }
 
+function makeEvaluationScore(ev: Evaluation): Score {
+  if (ev.cp != undefined) {
+    return {
+      key: 'cp',
+      value: ev.cp,
+    }
+  }
+  return {
+    key: 'mate',
+    value: ev.mate,
+  }
+}
+
 export function makeMoveJudgement(
   fen1: string,
   fen2: string,
@@ -454,7 +467,9 @@ export function makeMoveJudgement(
     const color = getNextToPlay(fen1);
     if (!color) throw new Error(`Failed to get color from fen ${fen1}`);
 
-    return judgeShift(povDiff(color, evalBefore, evalAfter));
+    const score1 = makeEvaluationScore(evalBefore);
+    const score2 = makeEvaluationScore(evalAfter);
+    return judgeShift(povDiff(color, score1, score2));
   }
 }
 
@@ -917,5 +932,17 @@ export function makeMoveJudgements(
     }
     result[fenAfter] = judgement;
   }
+  return result;
+}
+
+// Judge each line from of a PositionEvaluation.lines array. We assume that the lines array
+// is ordered from best to worst, so the first element in the output array will always be
+// MoveJudgement.Excellent. Each element of the output array is the judgement for the
+// first move of the corresponding input line.
+export function judgeLines(color: PieceColor, lines: PositionEvaluation['lines']): MoveJudgement[] {
+  const result: MoveJudgement[] = [];
+  lines.forEach((line) => {
+    result.push(judgeShift(povDiff(color, lines[0].score, line.score)))
+  });
   return result;
 }
