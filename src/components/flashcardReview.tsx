@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import Button, { ButtonStyle } from '@/components/button';
@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { ShortMove } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import { loadPgnIntoCmChess } from '@/utils/cmchess';
+import { Move } from 'cm-chess/src/Chess';
 
 interface Props {
   flashcards: Flashcard[];
@@ -27,6 +28,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [showAnswer, setShowAnswer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
+  const [opponentMove, setOpponentMove] = useState<Move | undefined | null>(null);
+
+  const timeoutRef = useRef<number>(0);
 
   const currentFlashcard = flashcards[currentIndex];
 
@@ -54,9 +58,30 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       loadPgnIntoCmChess(fc.pgn, cmchess.current);
       const cmhistory = cmchess.current.history();
       setHistory(cmhistory);
-      setCurrentMove(cmhistory.find((m) => m.ply === fc.positionIdx));
+
+      // Set to one move before the target position so that we can animate into
+      // the target position.
+      setCurrentMove(cmhistory.find((m) => m.ply === fc.positionIdx - 1));
+      setOpponentMove(cmhistory.find((m) => m.ply === fc.positionIdx));
     }
   }, [currentIndex]);
+
+  useEffect(() => {
+    if (opponentMove) {
+      timeoutRef.current = window.setTimeout(() => {
+        setCurrentMove(opponentMove);
+        setOpponentMove(null);
+      }, 1000);
+    }
+
+    // Cleanup: clear timeouts
+    return () => {
+      if (timeoutRef.current !== 0) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = 0;
+      }
+    };
+  }, [opponentMove]);
 
   const handleReveal = () => {
     setShowAnswer(true);
