@@ -15,11 +15,12 @@ import { areCmMovesEqual, loadPgnIntoCmChess } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
 import { judgeLines } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
-import { makeLineStatsRecord, getRelevantLessonLines } from '@/utils/lesson';
+import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
 import usePrevious from '@/hooks/usePrevious';
 import { useCountdown } from '@/hooks/useCountdown';
 import CountdownClock from '@/components/countdownClock';
 import useWindowSize from '@/hooks/useWindowSize';
+import { getRandom } from '@/utils';
 
 interface Props {
   flashcards: Flashcard[];
@@ -141,6 +142,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setLineJudgements([]);
       setOpponentMove(null);
       setLines({});
+      setRecentlyCompletedLine(null);
+      setWrongAnswerCount(0);
     }
   }, [currentIndex]);
 
@@ -161,6 +164,16 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       }
     };
   }, [opponentMove]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current !== 0) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = 0;
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // This prevents undoLastMove() from running on the initial render
@@ -234,10 +247,30 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (relevantLines.length < 1) {
       performWrongAnswerActions();
       return;
-    } else {
-      addTime(10);
     }
-  }, [lines, currentMove]);
+
+    // If there are relevant lines, then a correct move has been played.
+    // TODO: Handle alternative moves here
+
+    const nextMoves = getNextMoves(lines, currentMove, {incompleteLinesOnly: true});
+
+    // If there are nextMoves, then we need to schedule an opponent move to be played.
+    if (nextMoves.length > 0) {
+      // At this point, the user has played a correct move but there are more moves to play.
+
+      // If time hasn't expired, add 5 seconds to the countdown clock.
+      if (remainingTime > 0) addTime(5);
+
+      // Pick a random next move (which should be an opponent move) and set up a timeout
+      // that will play the move after a short delay.
+      const nextMove = getRandom(nextMoves);
+      timeoutRef.current = window.setTimeout(() => {
+        playMove(nextMove!);
+      }, 800);
+    } else {
+      console.log('line complete!!!');
+    }
+  }, [lines, currentMove, remainingTime]);
 
   const handleEditBtnClick = useCallback(() => {
     if (currentMode === Mode.Edit) {
