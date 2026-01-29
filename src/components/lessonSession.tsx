@@ -56,7 +56,7 @@ import AltMoveModal from '@/components/altMoveModal';
 import type { Viewport } from 'next'
 import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
 import { useSearchParams } from 'next/navigation';
-import { getRelevantLessonLines, makeLineStatsRecord } from '@/utils/lesson';
+import { getNextMoves, getRelevantLessonLines, makeLineStatsRecord } from '@/utils/lesson';
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -756,26 +756,6 @@ const LessonSession = ({
     setupNextLine(s.fallbackMode);
   }, [s.currentChapterIdx, s.fallbackMode, s.mode, setupNextLine, doUnsavedChangesExist]);
 
-  const getNextMoves = useCallback((
-    options?: { incompleteLinesOnly: boolean }
-  ): ShortMove[] => {
-    const incompleteLinesOnly = options?.incompleteLinesOnly ?? false;
-    const lines = s.lines[s.currentChapterIdx];
-    let relevantLines = getRelevantLessonLines(lines, currentMove, { incompleteLinesOnly });
-    const nextMoves: ShortMove[] = [];
-    relevantLines.forEach((line) => {
-      const shortMoves = convertLanLineToShortMoves(line.split(' '));
-      const ply = currentMove ? currentMove.ply : 0;
-      const nextMove = shortMoves[ply];
-
-      // If there is a nextMove and it is not already in nextMoves, add it
-      if (nextMove && !nextMoves.some((m) => areMovesEqual(m, nextMove))) {
-        nextMoves.push(nextMove);
-      }
-    });
-    return nextMoves;
-  }, [currentMove, s.lines, s.currentChapterIdx]);
-
   const isOpponentsTurn = useCallback((): boolean => {
     const ply = currentMove ? currentMove.ply : 0;
     if (ply % 2 === 0) {
@@ -814,8 +794,9 @@ const LessonSession = ({
     setCurrentMove(newCurrentMove);
   }, [cmchess, lesson.chapters, setHistory, currentMove, setCurrentMove, s.currentChapterIdx]);
 
-  const giveHint = () => {
-    const nextMoves = getNextMoves();
+  const giveHint = useCallback(() => {
+    const lines = s.lines[s.currentChapterIdx];
+    const nextMoves = getNextMoves(lines, currentMove);
     if (nextMoves.length < 1) return;
     const uniqueFromSquares = new Set(nextMoves.map((m) => m.from));
     const markers: Marker[] = [];
@@ -823,16 +804,17 @@ const LessonSession = ({
       markers.push({ square: from, type: MARKER_TYPE.circle });
     });
     dispatch({ type: 'setMarkers', markers })
-  }
+  }, [s.lines, s.currentChapterIdx, currentMove]);
 
   const showMoves = useCallback(() => {
-    const nextMoves = getNextMoves();
+    const lines = s.lines[s.currentChapterIdx];
+    const nextMoves = getNextMoves(lines, currentMove);
     if (nextMoves.length < 1) return;
     const arrows = nextMoves.map(
       (m) => ({ type: blueArrowType, from: m.from, to: m.to })
     );
     dispatch({ type: 'clearMarkersAndSetArrows', arrows: arrows });
-  }, [getNextMoves]);
+  }, [s.lines, s.currentChapterIdx, currentMove]);
 
   useEffect(() => {
     if (lesson.chapters.length > 1) {
@@ -1013,7 +995,8 @@ const LessonSession = ({
       if (s.restartedLine && s.restartedLine[currentMove.ply]) {
         nextMoves = [s.restartedLine[currentMove.ply]];
       } else {
-        nextMoves = getNextMoves({ incompleteLinesOnly: true });
+        const lines = s.lines[s.currentChapterIdx];
+        nextMoves = getNextMoves(lines, currentMove, { incompleteLinesOnly: true });
       }
 
       if (isOpponentsTurn() && nextMoves.length > 0 && timeoutRef.current === 0) {
@@ -1024,7 +1007,7 @@ const LessonSession = ({
         }, 600);
       }
     }
-  }, [currentMove, getNextMoves, isOpponentsTurn, performWrongAnswerActions,
+  }, [currentMove, isOpponentsTurn, performWrongAnswerActions,
       playMove, previousMove, s.lineProgressIdx, s.recentlyCompletedLine,
       s.restartedLine, s.mode, s.lines, s.currentChapterIdx]
   );
@@ -1082,7 +1065,8 @@ const LessonSession = ({
   useEffect(() => {
     if (currentMove) return;
     if (s.lineProgressIdx !== 0) return;
-    const nextMoves = getNextMoves({ incompleteLinesOnly: true });
+    const lines = s.lines[s.currentChapterIdx];
+    const nextMoves = getNextMoves(lines, currentMove, { incompleteLinesOnly: true });
     if (nextMoves.length < 1) return;
     if (isOpponentsTurn() && timeoutRef.current === 0) {
       const nextMove = getRandom(nextMoves);
@@ -1099,7 +1083,7 @@ const LessonSession = ({
         timeoutRef.current = 0;
       }
     };
-  }, [currentMove, getNextMoves, isOpponentsTurn, playMove, s.lineProgressIdx])
+  }, [currentMove, isOpponentsTurn, playMove, s.lineProgressIdx, s.lines, s.currentChapterIdx])
 
   // If we have a best move from the engine and the engine is on, show the move
   // on the board with an arrow

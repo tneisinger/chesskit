@@ -8,9 +8,10 @@ import {
   LineStats,
 } from "@/types/lesson";
 import { getLinesFromPGN } from "./pgn";
-import { convertSanLineToLanLine } from "./chess";
+import { areMovesEqual, convertLanLineToShortMoves, convertSanLineToLanLine } from "./chess";
 import { Move } from 'cm-chess/src/Chess';
 import { getLanLineFromCmMove } from "./cmchess";
+import { ShortMove } from "@/types/chess";
 
 export function sortLessonsByTitle(lessons: Lesson[]): void {
   lessons.sort((a, b) => {
@@ -108,4 +109,25 @@ export function getRelevantLessonLines(
     if (isRelevant) relevantLines.push(k);
   });
   return relevantLines;
+}
+
+export function getNextMoves(
+  lines: Record<string, LineStats>,
+  currentMove: Move | undefined,
+  options?: { incompleteLinesOnly: boolean }
+): ShortMove[] {
+  const incompleteLinesOnly = options?.incompleteLinesOnly ?? false;
+  let relevantLines = getRelevantLessonLines(lines, currentMove, { incompleteLinesOnly });
+  const nextMoves: ShortMove[] = [];
+  relevantLines.forEach((line) => {
+    const shortMoves = convertLanLineToShortMoves(line.split(' '));
+    const ply = currentMove ? currentMove.ply : 0;
+    const nextMove = shortMoves[ply];
+
+    // If there is a nextMove and it is not already in nextMoves, add it
+    if (nextMove && !nextMoves.some((m) => areMovesEqual(m, nextMove))) {
+      nextMoves.push(nextMove);
+    }
+  });
+  return nextMoves;
 }
