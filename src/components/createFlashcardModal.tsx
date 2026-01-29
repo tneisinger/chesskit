@@ -3,18 +3,41 @@
 import { useState, useEffect } from 'react';
 import Modal from '@/components/modal';
 import Button, { ButtonStyle } from "@/components/button";
-import { Move } from 'cm-chess/src/Chess';
-import { GameData, PieceColor } from '@/types/chess';
+import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
+import { GameData } from '@/types/chess';
 import { createFlashcard } from '@/app/flashcards/actions';
-import { getColor } from '@/utils/cmchess';
 import type { Score } from '@/utils/stockfish';
+import { parse as parsePgn } from 'pgn-parser';
+import { lanToShortMove } from '@/utils/chess';
+import { renderPgn } from '@/utils/cmchess';
 
 interface Props {
   show: boolean;
   game: GameData;
   currentMove: Move;
-  bestLines?: {score: Score, lanLine: string}[];
+  bestLines: {score: Score, lanLine: string}[];
   onClose: () => void;
+}
+
+function createFlashcardPgn(
+  game: GameData,
+  ply: number,
+  bestLines: {score: Score, lanLine: string}[]
+): string {
+  // Create a new cmchess and play the game moves into it up to the current move.
+  const parsedPgn = parsePgn(game.pgn)[0];
+  const moves = parsedPgn.moves.slice(0, ply);
+  const cmchess = new CmChess();
+  moves.forEach((m) => {
+    cmchess.move(m.move);
+  })
+
+  // Play the best move into cmchess
+  const bestMoveLan = bestLines[0].lanLine.trim().split(' ')[0];
+  cmchess.move(lanToShortMove(bestMoveLan));
+
+  // Return a new pgn from cmchess
+  return renderPgn(cmchess);
 }
 
 const CreateFlashcardModal = ({ show, game, currentMove, bestLines, onClose }: Props) => {
@@ -37,7 +60,7 @@ const CreateFlashcardModal = ({ show, game, currentMove, bestLines, onClose }: P
 
       const result = await createFlashcard({
         gameId: game.id,
-        pgn: game.pgn,
+        pgn: createFlashcardPgn(game, currentMove.ply, bestLines),
         positionIdx,
         userColor: game.userColor,
         bestLines,

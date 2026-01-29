@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import Button, { ButtonStyle } from '@/components/button';
 import { reviewFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
-import { ShortMove } from '@/types/chess';
+import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import { loadPgnIntoCmChess } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
+import { judgeLines } from '@/utils/chess';
 
 interface Props {
   flashcards: Flashcard[];
@@ -29,6 +30,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
   const [opponentMove, setOpponentMove] = useState<Move | undefined | null>(null);
+  const [lineJudgements, setLineJudgements] = useState<MoveJudgement[]>([]);
 
   const timeoutRef = useRef<number>(0);
 
@@ -50,11 +52,27 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     currentMove,
     setCurrentMove,
     playMove,
+    reset,
   } = useChessboardEngine();
 
+  const isUsersTurn = useCallback(() => {
+    const fc = flashcards[currentIndex];
+    if (fc == undefined) return false;
+    const ply = currentMove ? currentMove.ply : 0;
+    if (ply % 2 === 0) {
+      return fc.userColor === PieceColor.WHITE;
+    } else {
+      return fc.userColor == PieceColor.BLACK;
+    }
+  }, [currentIndex, currentMove]);
+
   useEffect(() => {
+    reset();
     const fc = flashcards[currentIndex];
     if (fc) {
+      if (fc.bestLines) {
+        setLineJudgements(judgeLines(fc.userColor, fc.bestLines));
+      }
       loadPgnIntoCmChess(fc.pgn, cmchess.current);
       const cmhistory = cmchess.current.history();
       setHistory(cmhistory);
@@ -63,6 +81,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       // the target position.
       setCurrentMove(cmhistory.find((m) => m.ply === fc.positionIdx - 1));
       setOpponentMove(cmhistory.find((m) => m.ply === fc.positionIdx));
+    } else {
+      setLineJudgements([]);
+      setOpponentMove(null);
     }
   }, [currentIndex]);
 
@@ -131,7 +152,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
           currentMove={currentMove}
           boardSize={600}
           orientation={currentFlashcard.userColor}
-          allowInteraction={!showAnswer}
+          allowInteraction={isUsersTurn()}
+          playMove={playMove}
           afterUserMove={handleUserMove}
           animate={true}
         />
