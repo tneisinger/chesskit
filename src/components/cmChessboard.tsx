@@ -412,7 +412,10 @@ const CmChessboard = ({
 
     // If fenOverride is defined, use that. Otherwise, get the fen from the currentMove
     const fen = fenOverride ? fenOverride : getFen(currentMove);
-    chessjs.current.load(fen);
+    if (fen !== FEN.empty) {
+      // chessjs will throw an error if it tries to load the empty fen.
+      chessjs.current.load(fen);
+    }
 
     if (!isLoading && prevOrientation != undefined && boardFen.current !== fen) {
       if (!allowSound.current) allowSound.current = true;
