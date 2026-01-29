@@ -5,6 +5,7 @@ import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import BlinkOverlay from '@/components/blinkOverlay';
 import Button, { ButtonStyle } from '@/components/button';
+import MovesDisplay from '@/components/movesDisplay';
 import { reviewFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
@@ -13,11 +14,12 @@ import useChessboardEngine from '@/hooks/useChessboardEngine';
 import { areCmMovesEqual, loadPgnIntoCmChess } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
 import { judgeLines } from '@/utils/chess';
-import { LineStats } from '@/types/lesson';
+import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines } from '@/utils/lesson';
 import usePrevious from '@/hooks/usePrevious';
 import { useCountdown } from '@/hooks/useCountdown';
 import CountdownClock from '@/components/countdownClock';
+import useWindowSize from '@/hooks/useWindowSize';
 
 interface Props {
   flashcards: Flashcard[];
@@ -41,6 +43,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [recentlyCompletedLine, setRecentlyCompletedLine] = useState<string | null>(null);
   const [wrongAnswerBlinkTrigger, setWrongAnswerBlinkTrigger] = useState(0);
   const [wrongAnswerCount, setWrongAnswerCount] = useState(0)
+  const [currentMode, setCurrentMode] = useState<Mode>(Mode.Practice);
 
   const timeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -60,8 +63,27 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   // Create a countdown for the countdownClock component (15 seconds)
   const { remainingTime, pause, unpause, reset: resetCountdown, isPaused } = useCountdown(15);
 
+  // Determine the board size
+  const maxBoardSize = 600;
+  const windowSize = useWindowSize();
+  let boardSize: number;
+  if (windowSize.width && windowSize.width < maxBoardSize) {
+    boardSize = windowSize.width;
+  } else {
+    if (windowSize.width == undefined || windowSize.height == undefined) {
+      boardSize = maxBoardSize;
+    } else {
+      // These values are based on the current layout and will need to updated if the
+      // layout changes.
+      const maxBoardWidth = Math.min(maxBoardSize, windowSize.width - 625);
+      const maxBoardHeight = Math.min(maxBoardSize, windowSize.height - 175);
+      boardSize = Math.min(maxBoardWidth, maxBoardHeight);
+    }
+  }
+
   const {
     cmchess,
+    history,
     setHistory,
     currentMove,
     setCurrentMove,
@@ -219,119 +241,181 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     setUserAttemptedMove(move);
   }, [lines, currentMove]);
 
+  const handleEditBtnClick = useCallback(() => {
+    if (currentMode === Mode.Edit) {
+      setCurrentMode(Mode.Practice);
+    }
+    if (currentMode === Mode.Practice) {
+      setCurrentMode(Mode.Edit);
+    }
+  }, [currentMode]);
+
+  const movesDisplay = (
+    <MovesDisplay
+      history={history}
+      currentMove={currentMove}
+      changeCurrentMove={setCurrentMove}
+      useMobileLayout={false}
+      showVariations={false}
+    />
+  );
+
   return (
-    <div className="flex flex-col items-center gap-6">
-      {/* Progress indicator */}
-      <div className="text-sm text-gray-400">
-        Card {currentIndex + 1} of {flashcards.length}
-      </div>
+    <div className="flex flex-col items-center gap-3" style={{ width: boardSize + 500 }}>
 
-      {/* Chessboard */}
-      <div className="relative">
-        <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
-        <Chessboard
-          currentMove={currentMove}
-          boardSize={600}
-          orientation={currentFlashcard.userColor}
-          allowInteraction={isUsersTurn()}
-          playMove={playMove}
-          afterUserMove={handleUserMove}
-          animate={true}
-        />
-      </div>
+      {/* First row - Board is center column  */}
+      <div className="flex flex-row w-full max-w-[1400px] gap-3">
 
-      {/* countdownClock */}
-      <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
-
-      {/* Review Section */}
-      <div className="bg-background-page p-6 rounded-md w-full max-w-xl">
-        <h2 className="text-lg font-semibold mb-4">Find the best move</h2>
-
-        {userAttemptedMove && !showAnswer && (
-          <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500 rounded">
-            <p className="text-sm text-blue-200">
-              You played: {userAttemptedMove.from}{userAttemptedMove.to}
-              {userAttemptedMove.promotion || ''}
-            </p>
-          </div>
-        )}
-
-        {showAnswer ? (
-          <>
-            {currentFlashcard.bestLines && currentFlashcard.bestLines.length > 0 && (
-              <>
-                <h3 className="text-md font-semibold mb-2">Best Lines:</h3>
-                <div className="space-y-2 mb-4">
-                  {currentFlashcard.bestLines.map((line, idx) => (
-                    <div key={idx} className="p-2 bg-background rounded border border-gray-600">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-400">Line {idx + 1}</span>
-                        <span className="text-xs font-mono text-gray-300">
-                          {line.score.key === 'cp'
-                            ? `${(line.score.value / 100).toFixed(2)}`
-                            : `M${line.score.value}`}
-                        </span>
-                      </div>
-                      <p className="text-sm font-mono text-foreground">{line.lanLine}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Rating buttons */}
-            <div className="mt-6">
-              <p className="text-sm mb-3 text-gray-400">How well did you know this?</p>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  onClick={() => handleRate(ReviewQuality.Again)}
-                  disabled={isSubmitting}
-                  buttonStyle={ButtonStyle.Normal}
-                >
-                  Again
-                  <span className="block text-xs text-gray-400">Forgot completely</span>
-                </Button>
-                <Button
-                  onClick={() => handleRate(ReviewQuality.Hard)}
-                  disabled={isSubmitting}
-                  buttonStyle={ButtonStyle.Normal}
-                >
-                  Hard
-                  <span className="block text-xs text-gray-400">Difficult recall</span>
-                </Button>
-                <Button
-                  onClick={() => handleRate(ReviewQuality.Good)}
-                  disabled={isSubmitting}
-                  buttonStyle={ButtonStyle.Normal}
-                >
-                  Good
-                  <span className="block text-xs text-gray-400">Correct with effort</span>
-                </Button>
-                <Button
-                  onClick={() => handleRate(ReviewQuality.Easy)}
-                  disabled={isSubmitting}
-                  buttonStyle={ButtonStyle.Primary}
-                >
-                  Easy
-                  <span className="block text-xs text-gray-400">Perfect recall</span>
-                </Button>
-              </div>
+        {/* Left Column */}
+        <div className="flex flex-col items-center flex-1">
+          {currentMode === Mode.Edit && (
+            <div className="text-sm text-gray-400 w-full bg-background-page">
+              <p>Card Details</p>
+              <p>Card {currentIndex + 1} of {flashcards.length}</p>
             </div>
-          </>
-        ) : (
-          <Button
-            onClick={handleReveal}
-            buttonStyle={ButtonStyle.Primary}
-            disabled={isSubmitting}
-          >
-            Show Answer
-          </Button>
-        )}
+          )}
+        </div>
+
+        {/* Center Column - Chessboard */}
+        <div className="relative" style={{ width: boardSize }}>
+          <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
+          <Chessboard
+            currentMove={currentMove}
+            boardSize={boardSize}
+            orientation={currentFlashcard.userColor}
+            allowInteraction={isUsersTurn()}
+            playMove={playMove}
+            afterUserMove={handleUserMove}
+            animate={true}
+          />
+        </div>
+
+        {/* Right column */}
+        <div className="flex flex-col items-center flex-1">
+          {currentMode === Mode.Edit && (
+            <div className="my-1 rounded-md p-1 w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
+              {movesDisplay}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Stats reminder */}
-      <div className="text-xs text-gray-500">
-        Remaining today: {stats.due - currentIndex - 1}
+      {/* Second Row  */}
+      <div className="flex flex-row w-full max-w-[1400px] gap-3">
+
+        {/* Left Column */}
+        <div className="flex flex-col items-center flex-1">
+        </div>
+
+        {/* Center Column */}
+        <div className="relative" style={{ width: boardSize }}>
+          <div className="flex justify-center">
+            <div className="flex flex-1 justify-between">
+              <Button onClick={handleEditBtnClick} >
+                {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Stop Editing')}
+              </Button>
+            </div>
+            <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="flex flex-col items-center flex-1">
+        </div>
+
+      </div>
+
+      <div>
+        {/* Review Section */}
+        <div className="bg-background-page p-6 rounded-md w-full max-w-xl">
+          <h2 className="text-lg font-semibold mb-4">Find the best move</h2>
+
+          {userAttemptedMove && !showAnswer && (
+            <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500 rounded">
+              <p className="text-sm text-blue-200">
+                You played: {userAttemptedMove.from}{userAttemptedMove.to}
+                {userAttemptedMove.promotion || ''}
+              </p>
+            </div>
+          )}
+
+          {showAnswer ? (
+            <>
+              {currentFlashcard.bestLines && currentFlashcard.bestLines.length > 0 && (
+                <>
+                  <h3 className="text-md font-semibold mb-2">Best Lines:</h3>
+                  <div className="space-y-2 mb-4">
+                    {currentFlashcard.bestLines.map((line, idx) => (
+                      <div key={idx} className="p-2 bg-background rounded border border-gray-600">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-400">Line {idx + 1}</span>
+                          <span className="text-xs font-mono text-gray-300">
+                            {line.score.key === 'cp'
+                              ? `${(line.score.value / 100).toFixed(2)}`
+                              : `M${line.score.value}`}
+                          </span>
+                        </div>
+                        <p className="text-sm font-mono text-foreground">{line.lanLine}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Rating buttons */}
+              <div className="mt-6">
+                <p className="text-sm mb-3 text-gray-400">How well did you know this?</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    onClick={() => handleRate(ReviewQuality.Again)}
+                    disabled={isSubmitting}
+                    buttonStyle={ButtonStyle.Normal}
+                  >
+                    Again
+                    <span className="block text-xs text-gray-400">Forgot completely</span>
+                  </Button>
+                  <Button
+                    onClick={() => handleRate(ReviewQuality.Hard)}
+                    disabled={isSubmitting}
+                    buttonStyle={ButtonStyle.Normal}
+                  >
+                    Hard
+                    <span className="block text-xs text-gray-400">Difficult recall</span>
+                  </Button>
+                  <Button
+                    onClick={() => handleRate(ReviewQuality.Good)}
+                    disabled={isSubmitting}
+                    buttonStyle={ButtonStyle.Normal}
+                  >
+                    Good
+                    <span className="block text-xs text-gray-400">Correct with effort</span>
+                  </Button>
+                  <Button
+                    onClick={() => handleRate(ReviewQuality.Easy)}
+                    disabled={isSubmitting}
+                    buttonStyle={ButtonStyle.Primary}
+                  >
+                    Easy
+                    <span className="block text-xs text-gray-400">Perfect recall</span>
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <Button
+              onClick={handleReveal}
+              buttonStyle={ButtonStyle.Primary}
+              disabled={isSubmitting}
+            >
+              Show Answer
+            </Button>
+          )}
+        </div>
+
+        {/* Stats reminder */}
+        <div className="text-xs text-gray-500">
+          Remaining today: {stats.due - currentIndex - 1}
+        </div>
       </div>
     </div>
   );

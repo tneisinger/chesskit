@@ -33,7 +33,7 @@ const CountdownClock = ({ remainingTime, isPaused }: Props) => {
 
   return (
     <div
-      className={`${bgColor} px-2 py-2 rounded-md font-mono text-2xl font-bold text-black transition-colors duration-300`}
+      className={`${bgColor} px-2 py-0.5 rounded-md font-mono text-2xl font-bold text-black transition-colors duration-300`}
     >
       {formatTime(remainingTime)}
     </div>
