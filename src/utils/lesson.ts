@@ -5,7 +5,10 @@ import {
   MAX_PGN_LENGTH,
   MAX_LESSON_TITLE_LENGTH,
   MAX_DISPLAY_LINE_PLIES,
+  LineStats,
 } from "@/types/lesson";
+import { getLinesFromPGN } from "./pgn";
+import { convertSanLineToLanLine } from "./chess";
 
 export function sortLessonsByTitle(lessons: Lesson[]): void {
   lessons.sort((a, b) => {
@@ -67,4 +70,16 @@ export function performLessonLimitChecks(
   }
 
   return { success: true };
+}
+
+// Create a record from a lanLine string to a LineStats object. There will be an
+// entry for each line in the pgn.
+export function makeLineStatsRecord(pgn: string): Record<string, LineStats> {
+  const result: Record<string, LineStats> = {};
+  const sanLines = getLinesFromPGN(pgn);
+  const lanLines = sanLines.map((l) => convertSanLineToLanLine(l.split(/\s+/)));
+  lanLines.forEach((line) => {
+    result[line.join(' ')] = { isComplete: false };
+  });
+  return result;
 }
