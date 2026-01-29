@@ -88,8 +88,8 @@ export interface Props {
   // the color that you want the user to be able to control.
   limitMoveInputToColor?: PieceColor;
 
-  // A callback function that will run after the user has completed a move on the board.
-  afterUserMove?: (shortMove: ShortMove) => void;
+  // A function that will run after a user has made a move and currentMove has updated.
+  afterUserMove?: (move: Move) => void;
 
   // The sound that will play when a non-capture move is played.
   moveSound?: HTMLAudioElement;
@@ -153,6 +153,9 @@ const CmChessboard = ({
   // increment this value. Finally, in a useEffect that is listening to changes to this
   // value, `changeIsMoving(false)` will be run.
   const [boardPosChangeNum, setBoardPosChangeNum] = useState(0);
+
+  // This value is used to trigger the afterUserMove function
+  const [expectedUserMove, setExpectedUserMove] = useState<ShortMove | null>(null);
 
   if (animate == undefined) animate = true;
 
@@ -245,8 +248,10 @@ const CmChessboard = ({
   const performMove = useCallback((shortMove: ShortMove) => {
     const chessjsMove = chessjs.current.move(shortMove);
     if (!chessjsMove) throw new Error(`Unable to play move ${shortMove}`);
-    changeBoardPosition(chessjs.current.fen(), chessjsMove.san, false)
-      .then(() => afterUserMove(shortMove));
+    changeBoardPosition(chessjs.current.fen(), chessjsMove.san, false);
+
+    // setExpectedUserMove so that the afterUserMove callback will run after currentMove updates
+    setExpectedUserMove(shortMove);
 
     if (playMove != undefined) playMove(shortMove);
   }, [afterUserMove, playMove, changeBoardPosition]);
@@ -456,6 +461,18 @@ const CmChessboard = ({
       }
     }
   }, [arrows]);
+
+  // This useEffect runs the afterUserMove callback when expectedUserMove is defined and
+  // it matches the newly updated currentMove.
+  useEffect(() => {
+    if (expectedUserMove && currentMove &&
+        currentMove.to === expectedUserMove.to &&
+        currentMove.from === expectedUserMove.from
+    ) {
+      setExpectedUserMove(null);
+      afterUserMove(currentMove);
+    }
+  }, [currentMove, expectedUserMove]);
 
   const containerStyles = ['relative'];
 
