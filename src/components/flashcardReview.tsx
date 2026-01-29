@@ -3,15 +3,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
+import BlinkOverlay from '@/components/blinkOverlay';
 import Button, { ButtonStyle } from '@/components/button';
 import { reviewFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
-import { loadPgnIntoCmChess } from '@/utils/cmchess';
+import { areCmMovesEqual, loadPgnIntoCmChess } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
 import { judgeLines } from '@/utils/chess';
+import { LineStats } from '@/types/lesson';
+import { makeLineStatsRecord, getRelevantLessonLines } from '@/utils/lesson';
+import usePrevious from '@/hooks/usePrevious';
 
 interface Props {
   flashcards: Flashcard[];
@@ -31,8 +35,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
   const [opponentMove, setOpponentMove] = useState<Move | undefined | null>(null);
   const [lineJudgements, setLineJudgements] = useState<MoveJudgement[]>([]);
+  const [lines, setLines] = useState<Record<string, LineStats>>({});
+  const [recentlyCompletedLine, setRecentlyCompletedLine] = useState<string | null>(null);
+  const [wrongAnswerBlinkTrigger, setWrongAnswerBlinkTrigger] = useState(0);
+  const [wrongAnswerCount, setWrongAnswerCount] = useState(0)
 
   const timeoutRef = useRef<number>(0);
+  const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
+  const undoMoveTimeoutRef = useRef<number>(0);
 
   const currentFlashcard = flashcards[currentIndex];
 
@@ -47,13 +57,24 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const {
     cmchess,
-    history,
     setHistory,
     currentMove,
     setCurrentMove,
     playMove,
     reset,
+    undoLastMove,
   } = useChessboardEngine();
+
+  const previousMove = usePrevious(currentMove);
+
+  const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
+    // By default, indicate that the move was wrong.
+    if (options === undefined || options.indicateThatTheMoveWasWrong) {
+      setWrongAnswerCount((blinkCount) => blinkCount + 1);
+    } else {
+      if (currentMove) undoLastMove();
+    }
+  }, [currentMove, undoLastMove]);
 
   const isUsersTurn = useCallback(() => {
     const fc = flashcards[currentIndex];
@@ -81,12 +102,15 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       // the target position.
       setCurrentMove(cmhistory.find((m) => m.ply === fc.positionIdx - 1));
       setOpponentMove(cmhistory.find((m) => m.ply === fc.positionIdx));
+      setLines(makeLineStatsRecord(fc.pgn))
     } else {
       setLineJudgements([]);
       setOpponentMove(null);
+      setLines({});
     }
   }, [currentIndex]);
 
+  // Play the opponent move after a slight delay
   useEffect(() => {
     if (opponentMove) {
       timeoutRef.current = window.setTimeout(() => {
@@ -103,6 +127,53 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       }
     };
   }, [opponentMove]);
+
+
+  useEffect(() => {
+    // If currentMove is undefined, do nothing
+    if (currentMove == undefined) return;
+
+    // If currentMove hasn't actually changed, do nothing
+    if (areCmMovesEqual(currentMove, previousMove)) return;
+
+    // If the user has already completed a line, stop here.
+    if (recentlyCompletedLine != null) return;
+
+    // If there are no relevant lines, the user has made a mistake.
+    // Perform wrong answer actions and do nothing else.
+    const relevantLines = getRelevantLessonLines(lines, currentMove);
+    if (relevantLines.length < 1) {
+      performWrongAnswerActions();
+      return;
+    }
+  }, [lines, currentMove]);
+
+  useEffect(() => {
+    // This prevents undoLastMove() from running on the initial render
+    if (wrongAnswerCount < 1) return;
+
+    wrongAnswerBlinkTimeoutRef.current = window.setTimeout(() => {
+      const audio = new Audio('/assets/sound/incorrectWren.mp3');
+      audio.play().catch(err => console.error('Error playing sound:', err));
+      setWrongAnswerBlinkTrigger((v) => v + 1);
+    }, 300);
+
+    undoMoveTimeoutRef.current = window.setTimeout(() => {
+      undoLastMove();
+    }, 1300);
+
+    // Cleanup: clear timeouts if effect re-runs or component unmounts
+    return () => {
+      if (wrongAnswerBlinkTimeoutRef.current !== 0) {
+        window.clearTimeout(wrongAnswerBlinkTimeoutRef.current);
+        wrongAnswerBlinkTimeoutRef.current = 0;
+      }
+      if (undoMoveTimeoutRef.current !== 0) {
+        window.clearTimeout(undoMoveTimeoutRef.current);
+        undoMoveTimeoutRef.current = 0;
+      }
+    };
+  }, [wrongAnswerCount]);
 
   const handleReveal = () => {
     setShowAnswer(true);
@@ -135,9 +206,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     }
   };
 
-  const handleUserMove = (move: ShortMove) => {
+  const handleUserMove = useCallback((move: ShortMove) => {
     setUserAttemptedMove(move);
-  };
+  }, [lines, currentMove]);
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -147,7 +218,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       </div>
 
       {/* Chessboard */}
-      <div className="w-full max-w-xl">
+      <div className="relative">
+      <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
         <Chessboard
           currentMove={currentMove}
           boardSize={600}
