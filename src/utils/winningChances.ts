@@ -1,4 +1,5 @@
-import { Evaluation, PieceColor } from '@/types/chess';
+import { PieceColor } from '@/types/chess';
+import { Score } from '@/utils/stockfish';
 
 function toPov(color: PieceColor, diff: number): number {
   return color === PieceColor.WHITE ? diff : -diff;
@@ -18,21 +19,21 @@ function mateWinningChances(mate: number): number {
   return rawWinningChances(signed);
 }
 
-function evalWinningChances(ev: Evaluation): number {
-  if (ev.mate != undefined) return mateWinningChances(ev.mate);
-  return cpWinningChances(ev.cp);
+function evalWinningChances(score: Score): number {
+  if (score.key === 'mate') return mateWinningChances(score.value);
+  return cpWinningChances(score.value);
 }
 
 // winning chances for a color
 // 1  infinitely winning
 // -1 infinitely losing
-export function povChances(color: PieceColor, ev: Evaluation): number {
-  return toPov(color, evalWinningChances(ev));
+export function povChances(color: PieceColor, score: Score): number {
+  return toPov(color, evalWinningChances(score));
 }
 
 // computes the difference, in winning chances, between two evaluations
 // 1  = e1 is infinitely better than e2
 // -1 = e1 is infinitely worse  than e2
-export function povDiff(color: PieceColor, e1: Evaluation, e2: Evaluation): number {
-  return (povChances(color, e1) - povChances(color, e2)) / 2;
+export function povDiff(color: PieceColor, s1: Score, s2: Score): number {
+  return (povChances(color, s1) - povChances(color, s2)) / 2;
 }
