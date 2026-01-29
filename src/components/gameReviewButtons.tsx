@@ -44,7 +44,10 @@ const GameReviewButtons = ({
     }
   }, [currentMove, game])
 
+  const bestLines = getBestLines();
+
   const shouldDisableFlashcardBtn = useCallback(() => {
+    if (bestLines == undefined) return true;
     if (currentMove == undefined) return true;
     if (isInVariation(currentMove)) return true;
     return game.userColor === getColor(currentMove);
@@ -62,12 +65,12 @@ const GameReviewButtons = ({
         </Button>
       </div>
 
-      {currentMove && (
+      {currentMove && bestLines && (
         <CreateFlashcardModal
           show={showCreateFlashcardModal}
           game={game}
           currentMove={currentMove}
-          bestLines={getBestLines()}
+          bestLines={bestLines}
           onClose={() => setShowCreateFlashcardModal(false)}
         />
       )}
