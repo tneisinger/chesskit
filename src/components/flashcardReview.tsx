@@ -11,7 +11,7 @@ import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
-import { colorToMove, getLineFromCmMove, loadPgnIntoCmChess } from '@/utils/cmchess';
+import { areCmMovesEqual, colorToMove, getLineFromCmMove, loadPgnIntoCmChess } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
 import { areLinesEqual, convertLanLineToShortMoves, judgeLines } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
@@ -20,6 +20,7 @@ import { useCountdown } from '@/hooks/useCountdown';
 import CountdownClock from '@/components/countdownClock';
 import useWindowSize from '@/hooks/useWindowSize';
 import { getRandom } from '@/utils';
+import usePrevious from '@/hooks/usePrevious';
 
 const MOVE_INCREMENT_SECONDS = 5;
 
@@ -91,6 +92,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     reset: resetChessboardEngine,
     undoLastMove,
   } = useChessboardEngine();
+
+  const previousMove = usePrevious(currentMove);
 
   const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
     // By default, indicate that the move was wrong.
@@ -368,6 +371,25 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   useEffect(() => {
     isUsersTurn() ? unpauseClock() : pauseClock();
   }, [isUsersTurn]);
+
+
+  // This useEffect handles the situation where a line ends with an opponent move.
+  // It should mark the line complete.
+  useEffect(() => {
+    // If currentMove hasn't changed, do nothing
+    if (areCmMovesEqual(currentMove, previousMove)) return;
+
+    // If it is not the user's turn, do nothing.
+    if (colorToMove(currentMove) !== flashcards[flashcardIndex].userColor) return;
+
+    // If there are nextMoves, then there are still moves to be played.
+    // In that case, do nothing.
+    const nextMoves = getNextMoves(lines, currentMove, {incompleteLinesOnly: true});
+    if (nextMoves.length > 0) return;
+
+    // If we have reached this point, then a line has been completed.
+    markCurrentLineComplete();
+  }, [lines, currentMove, flashcards, flashcardIndex])
 
 
   // Determine the board size
