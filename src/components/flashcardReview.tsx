@@ -253,6 +253,19 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [currentMode]);
 
 
+  const isCurrentMoveAtEndOfALine = useCallback((): boolean => {
+    const relevantLines = getRelevantLessonLines(lines, currentMove);
+    const currentLine = getLineFromCmMove(currentMove);
+    const matchingLine = relevantLines.find((line) => {
+      const relevantLine = convertLanLineToShortMoves(line.split(' '));
+      return areLinesEqual(relevantLine, currentLine);
+    });
+    if (matchingLine == undefined) return false;
+    if (lines[matchingLine] == undefined) return false;
+    return true;
+  }, [lines, currentMove]);
+
+
   // Whenever lines changes, update the numIncompleteLines and totalLines state values
   useEffect(() => {
     if (Object.keys(lines).length < 1) {
@@ -288,8 +301,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     if (numIncompleteLines === 0) {
       console.log('complete!');
+      pauseClock();
     }
-  }, [numIncompleteLines, totalLines, setupResetBoardTimeouts]);
+  }, [numIncompleteLines, totalLines, setupResetBoardTimeouts, pauseClock]);
 
 
   useEffect(() => {
@@ -377,6 +391,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [wrongAnswerCount]);
 
   useEffect(() => {
+    // If currentMove hasn't changed, do nothing
+    if (areCmMovesEqual(currentMove, previousMove)) return;
+
+    // If this is the end of a line, do nothing
+    if (isCurrentMoveAtEndOfALine()) return;
+
+    // Toggle the pause state of the clock based on if it is the user's turn or not
     isUsersTurn() ? unpauseClock() : pauseClock();
   }, [isUsersTurn]);
 
