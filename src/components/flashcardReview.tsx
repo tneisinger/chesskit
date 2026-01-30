@@ -45,9 +45,18 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [wrongAnswerCount, setWrongAnswerCount] = useState(0)
   const [currentMode, setCurrentMode] = useState<Mode>(Mode.Practice);
 
-  const timeoutRef = useRef<number>(0);
+  const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
   const undoMoveTimeoutRef = useRef<number>(0);
+  const resetBoardTimeoutRef = useRef<number>(0);
+
+  // Put all the timeouts into an array for easy cleanup
+  const timeoutRefs = [
+    opponentMoveTimeoutRef,
+    wrongAnswerBlinkTimeoutRef,
+    undoMoveTimeoutRef,
+    resetBoardTimeoutRef,
+  ]
 
   const currentFlashcard = flashcards[flashcardIndex];
 
@@ -147,28 +156,30 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   // Play the opponent move after a slight delay
   useEffect(() => {
     if (opponentFirstMove) {
-      timeoutRef.current = window.setTimeout(() => {
+      opponentMoveTimeoutRef.current = window.setTimeout(() => {
         setCurrentMove(opponentFirstMove);
         setOpponentFirstMove(null);
       }, 1000);
     }
 
-    // Cleanup: clear timeouts
+    // Cleanup: clear the timeout
     return () => {
-      if (timeoutRef.current !== 0) {
-        window.clearTimeout(timeoutRef.current);
-        timeoutRef.current = 0;
+      if (opponentMoveTimeoutRef.current !== 0) {
+        window.clearTimeout(opponentMoveTimeoutRef.current);
+        opponentMoveTimeoutRef.current = 0;
       }
     };
   }, [opponentFirstMove]);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
-      if (timeoutRef.current !== 0) {
-        window.clearTimeout(timeoutRef.current);
-        timeoutRef.current = 0;
-      }
+      timeoutRefs.forEach((timeoutRef) => {
+        if (timeoutRef.current !== 0) {
+          window.clearTimeout(timeoutRef.current);
+          timeoutRef.current = 0;
+        }
+      })
     }
   }, []);
 
@@ -268,7 +279,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     }
 
     // If we have reached this point, then a line has been completed.
-    console.log('line complete!!!');
+    handleLineComplete();
   }, [lines, currentMove, remainingTime]);
 
   const setupOpponentMoveTimeout = useCallback((nextMoves: ShortMove[]) => {
@@ -280,10 +291,33 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     // Pick a random next move (which should be an opponent move) and set up a timeout
     // that will play the move after a short delay.
     const nextMove = getRandom(nextMoves);
-    timeoutRef.current = window.setTimeout(() => {
+    opponentMoveTimeoutRef.current = window.setTimeout(() => {
       playMove(nextMove!);
     }, 800);
   }, [playMove, currentMove]);
+
+  const handleLineComplete = useCallback(() => {
+    // TODO: Check if there are more lines to be completed.
+    setupResetBoardTimeouts();
+  }, []);
+
+  // Setup timeouts that will reset the board and play the opponent move
+  // that will put the board back into the target position of the current
+  // flashcard
+  const setupResetBoardTimeouts = useCallback(() => {
+    const fc = flashcards[flashcardIndex];
+    const cmhistory = cmchess.current.history();
+    const newCurrentMove = cmhistory.find((m) => m.ply === fc.positionIdx - 1);
+    const opponentMove = cmhistory.find((m) => m.ply === fc.positionIdx);
+
+    resetBoardTimeoutRef.current = window.setTimeout(() => {
+      setCurrentMove(newCurrentMove);
+    }, 800);
+
+    opponentMoveTimeoutRef.current = window.setTimeout(() => {
+      setOpponentFirstMove(opponentMove);
+    }, 1000);
+  }, [flashcardIndex, flashcards, cmchess.current]);
 
   const handleEditBtnClick = useCallback(() => {
     if (currentMode === Mode.Edit) {
