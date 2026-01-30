@@ -11,9 +11,9 @@ import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
-import { colorToMove, loadPgnIntoCmChess } from '@/utils/cmchess';
+import { colorToMove, getLineFromCmMove, loadPgnIntoCmChess } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
-import { judgeLines } from '@/utils/chess';
+import { areLinesEqual, convertLanLineToShortMoves, judgeLines } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
 import { useCountdown } from '@/hooks/useCountdown';
@@ -244,25 +244,23 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setIsSubmitting(false);
     }
   };
-
-  const handleUserMove = useCallback(() => {
-    // setUserAttemptedMove(move); - TODO: This is claude code
-
-    const relevantLines = getRelevantLessonLines(lines, currentMove);
-
-    // If there are no relevant lines, the user's move was incorrect
-    if (relevantLines.length < 1) {
-      handleIncorrectUserMove();
-      return;
-    }
-
-    // If there are relevant lines, then a correct move has been played.
-    handleCorrectUserMove();
-  }, [lines, currentMove, remainingTime]);
-
   const handleIncorrectUserMove = useCallback(() => {
     performWrongAnswerActions();
   }, []);
+
+  const setupOpponentMoveTimeout = useCallback((nextMoves: ShortMove[]) => {
+    if (nextMoves.length < 1) throw new Error('nextMoves cannot be empty');
+    if (colorToMove(currentMove) === flashcards[flashcardIndex].userColor) {
+      throw new Error("Cannot setup opponent move timeout if it is not the opponent's turn");
+    }
+
+    // Pick a random next move (which should be an opponent move) and set up a timeout
+    // that will play the move after a short delay.
+    const nextMove = getRandom(nextMoves);
+    opponentMoveTimeoutRef.current = window.setTimeout(() => {
+      playMove(nextMove!);
+    }, 800);
+  }, [playMove, currentMove, flashcards, flashcardIndex]);
 
   const handleCorrectUserMove = useCallback(() => {
     // TODO: Handle alternative moves here
@@ -280,26 +278,42 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     // If we have reached this point, then a line has been completed.
     handleLineComplete();
-  }, [lines, currentMove, remainingTime]);
+  }, [lines, currentMove, remainingTime, setupOpponentMoveTimeout]);
 
-  const setupOpponentMoveTimeout = useCallback((nextMoves: ShortMove[]) => {
-    if (nextMoves.length < 1) throw new Error('nextMoves cannot be empty');
-    if (colorToMove(currentMove) === flashcards[flashcardIndex].userColor) {
-      throw new Error("Cannot setup opponent move timeout if it is not the opponent's turn");
+
+  const handleUserMove = useCallback(() => {
+    // setUserAttemptedMove(move); - TODO: This is claude code
+
+    const relevantLines = getRelevantLessonLines(lines, currentMove);
+
+    // If there are no relevant lines, the user's move was incorrect
+    if (relevantLines.length < 1) {
+      handleIncorrectUserMove();
+      return;
     }
-    // if (currentMove) console.log(currentMove);
-    // Pick a random next move (which should be an opponent move) and set up a timeout
-    // that will play the move after a short delay.
-    const nextMove = getRandom(nextMoves);
-    opponentMoveTimeoutRef.current = window.setTimeout(() => {
-      playMove(nextMove!);
-    }, 800);
-  }, [playMove, currentMove]);
 
-  const handleLineComplete = useCallback(() => {
-    // TODO: Check if there are more lines to be completed.
-    setupResetBoardTimeouts();
-  }, []);
+    // If there are relevant lines, then a correct move has been played.
+    handleCorrectUserMove();
+  }, [lines, currentMove, handleIncorrectUserMove, handleCorrectUserMove]);
+
+
+  const markCurrentLineComplete = useCallback(() => {
+    const relevantLines = getRelevantLessonLines(lines, currentMove, { incompleteLinesOnly: true })
+    const currentLine = getLineFromCmMove(currentMove);
+    const matchingLine = relevantLines.find((line) => {
+      const relevantLine = convertLanLineToShortMoves(line.split(' '));
+      return areLinesEqual(relevantLine, currentLine);
+    });
+    if (matchingLine == undefined) {
+      console.warn('matchingLine was undefined');
+      return;
+    }
+    if (lines[matchingLine] == undefined) throw new Error('Line not found');
+    if (lines[matchingLine].isComplete) return;
+    const newLines = { ...lines };
+    newLines[matchingLine].isComplete = true;
+    setLines(newLines);
+  }, [lines, currentMove]);
 
   // Setup timeouts that will reset the board and play the opponent move
   // that will put the board back into the target position of the current
@@ -318,6 +332,15 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setOpponentFirstMove(opponentMove);
     }, 1000);
   }, [flashcardIndex, flashcards, cmchess.current]);
+
+  const handleLineComplete = useCallback(() => {
+    markCurrentLineComplete();
+
+    // TODO: Check if there are more lines to be completed.
+    // const relevantLines = getRelevantLessonLines(lines, currentMove, { incompleteLinesOnly: true })
+
+    setupResetBoardTimeouts();
+  }, [markCurrentLineComplete, setupResetBoardTimeouts]);
 
   const handleEditBtnClick = useCallback(() => {
     if (currentMode === Mode.Edit) {
