@@ -82,6 +82,11 @@ export function getColor(move: Move): PieceColor {
   return move.color === 'w' ? PieceColor.WHITE : PieceColor.BLACK;
 }
 
+export function colorToMove(move: Move | undefined): PieceColor {
+  if (move === undefined) return PieceColor.WHITE;
+  return getColor(move) === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
+}
+
 export function getLineFromCmMove(move: Move | undefined): Move[] {
   const result: Move[] = [];
   let currentObject = move;
