@@ -21,6 +21,8 @@ import CountdownClock from '@/components/countdownClock';
 import useWindowSize from '@/hooks/useWindowSize';
 import { getRandom } from '@/utils';
 
+const MOVE_INCREMENT_SECONDS = 5;
+
 interface Props {
   flashcards: Flashcard[];
   stats: {
@@ -33,6 +35,7 @@ interface Props {
 
 const FlashcardReview = ({ flashcards, stats }: Props) => {
   const router = useRouter();
+
   const [flashcardIndex, setFlashcardIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,10 +43,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [opponentFirstMove, setOpponentFirstMove] = useState<Move | undefined | null>(null);
   const [lineJudgements, setLineJudgements] = useState<MoveJudgement[]>([]);
   const [lines, setLines] = useState<Record<string, LineStats>>({});
-  const [recentlyCompletedLine, setRecentlyCompletedLine] = useState<string | null>(null);
   const [wrongAnswerBlinkTrigger, setWrongAnswerBlinkTrigger] = useState(0);
   const [wrongAnswerCount, setWrongAnswerCount] = useState(0)
   const [currentMode, setCurrentMode] = useState<Mode>(Mode.Practice);
+  const [numIncompleteLines, setNumIncompleteLines] = useState<number | null>(null);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -74,28 +77,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     remainingTime,
     pause: pauseClock,
     unpause: unpauseClock,
-    reset: resetClock,
     isPaused,
     addTime: addTimeToClock,
   } = useCountdown(15);
-
-  // Determine the board size
-  const maxBoardSize = 600;
-  const windowSize = useWindowSize();
-  let boardSize: number;
-  if (windowSize.width && windowSize.width < maxBoardSize) {
-    boardSize = windowSize.width;
-  } else {
-    if (windowSize.width == undefined || windowSize.height == undefined) {
-      boardSize = maxBoardSize;
-    } else {
-      // These values are based on the current layout and will need to updated if the
-      // layout changes.
-      const maxBoardWidth = Math.min(maxBoardSize, windowSize.width - 625);
-      const maxBoardHeight = Math.min(maxBoardSize, windowSize.height - 175);
-      boardSize = Math.min(maxBoardWidth, maxBoardHeight);
-    }
-  }
 
   const {
     cmchess,
@@ -117,6 +101,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     }
   }, [currentMove, undoLastMove]);
 
+
   const isUsersTurn = useCallback(() => {
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) return false;
@@ -127,6 +112,174 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       return fc.userColor == PieceColor.BLACK;
     }
   }, [flashcardIndex, currentMove]);
+
+
+  const handleReveal = () => {
+    setShowAnswer(true);
+  };
+
+
+  const handleRate = async (quality: ReviewQuality) => {
+    setIsSubmitting(true);
+    try {
+      const result = await reviewFlashcard(currentFlashcard.id, quality);
+
+      if (result.success) {
+        // Move to next flashcard or finish
+        if (flashcardIndex < flashcards.length - 1) {
+          setFlashcardIndex(flashcardIndex + 1);
+          setShowAnswer(false);
+          setUserAttemptedMove(null);
+        } else {
+          // All done - refresh to show updated stats
+          router.refresh();
+        }
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      alert('An error occurred while submitting review');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+  const handleIncorrectUserMove = useCallback(() => {
+    performWrongAnswerActions();
+  }, []);
+
+
+  const setupOpponentMoveTimeout = useCallback((nextMoves: ShortMove[]) => {
+    if (nextMoves.length < 1) throw new Error('nextMoves cannot be empty');
+    if (colorToMove(currentMove) === flashcards[flashcardIndex].userColor) {
+      throw new Error("Cannot setup opponent move timeout if it is not the opponent's turn");
+    }
+
+    // Pick a random next move (which should be an opponent move) and set up a timeout
+    // that will play the move after a short delay.
+    const nextMove = getRandom(nextMoves);
+    opponentMoveTimeoutRef.current = window.setTimeout(() => {
+      playMove(nextMove!);
+    }, 800);
+  }, [playMove, currentMove, flashcards, flashcardIndex]);
+
+
+  const markCurrentLineComplete = useCallback(() => {
+    const relevantLines = getRelevantLessonLines(lines, currentMove, { incompleteLinesOnly: true })
+    const currentLine = getLineFromCmMove(currentMove);
+    const matchingLine = relevantLines.find((line) => {
+      const relevantLine = convertLanLineToShortMoves(line.split(' '));
+      return areLinesEqual(relevantLine, currentLine);
+    });
+    if (matchingLine == undefined) {
+      console.warn('matchingLine was undefined');
+      return;
+    }
+    if (lines[matchingLine] == undefined) throw new Error('Line not found');
+    if (lines[matchingLine].isComplete) return;
+    const newLines = { ...lines };
+    newLines[matchingLine].isComplete = true;
+    setLines(newLines);
+  }, [lines, currentMove]);
+
+
+  const handleCorrectUserMove = useCallback(() => {
+    // TODO: Handle alternative moves here
+
+    const nextMoves = getNextMoves(lines, currentMove, {incompleteLinesOnly: true});
+
+    // If there are nextMoves, then there are still moves to be played.
+    if (nextMoves.length > 0) {
+      // At this point, the user has played a correct move but there are more moves to play.
+      // If time hasn't expired, add 5 seconds to the countdown clock.
+      if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
+      setupOpponentMoveTimeout(nextMoves);
+      return;
+    }
+
+    // If we have reached this point, then a line has been completed.
+    markCurrentLineComplete();
+  }, [lines, currentMove, remainingTime, setupOpponentMoveTimeout, markCurrentLineComplete]);
+
+
+  const handleUserMove = useCallback(() => {
+    // setUserAttemptedMove(move); - TODO: This is claude code
+
+    const relevantLines = getRelevantLessonLines(lines, currentMove);
+
+    // If there are no relevant lines, the user's move was incorrect
+    if (relevantLines.length < 1) {
+      handleIncorrectUserMove();
+      return;
+    }
+
+    // If there are relevant lines, then a correct move has been played.
+    handleCorrectUserMove();
+  }, [lines, currentMove, handleIncorrectUserMove, handleCorrectUserMove]);
+
+
+  // Setup timeouts that will reset the board and play the opponent move
+  // that will put the board back into the target position of the current
+  // flashcard
+  const setupResetBoardTimeouts = useCallback(() => {
+    const fc = flashcards[flashcardIndex];
+    const cmhistory = cmchess.current.history();
+    const newCurrentMove = cmhistory.find((m) => m.ply === fc.positionIdx - 1);
+    const opponentMove = cmhistory.find((m) => m.ply === fc.positionIdx);
+
+    resetBoardTimeoutRef.current = window.setTimeout(() => {
+      setCurrentMove(newCurrentMove);
+    }, 800);
+
+    opponentMoveTimeoutRef.current = window.setTimeout(() => {
+      setOpponentFirstMove(opponentMove);
+    }, 1000);
+  }, [flashcardIndex, flashcards, cmchess.current]);
+
+
+  const handleEditBtnClick = useCallback(() => {
+    if (currentMode === Mode.Edit) {
+      setCurrentMode(Mode.Practice);
+    }
+    if (currentMode === Mode.Practice) {
+      setCurrentMode(Mode.Edit);
+    }
+  }, [currentMode]);
+
+
+  // Whenever lines changes, update the numIncompleteLines state value
+  useEffect(() => {
+    if (Object.keys(lines).length < 1) {
+      setNumIncompleteLines(null);
+      return;
+    }
+
+    let numIncomplete = 0;
+    Object.values(lines).forEach((v) => {
+      if (!v.isComplete) numIncomplete++;
+    });
+    setNumIncompleteLines(numIncomplete);
+  }, [lines]);
+
+
+  // When numIncompleteLines changes...
+  useEffect(() => {
+    if (numIncompleteLines === null) return;
+
+    // If there are still incomplete lines, then the user isn't done solving.
+    // Add time to the clock and reset the board.
+    if (numIncompleteLines > 0) {
+      if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
+      setupResetBoardTimeouts();
+    }
+
+    if (numIncompleteLines === 0) {
+      console.log('complete!');
+    }
+  }, [numIncompleteLines, setupResetBoardTimeouts]);
+
 
   useEffect(() => {
     resetChessboardEngine();
@@ -148,10 +301,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setLineJudgements([]);
       setOpponentFirstMove(null);
       setLines({});
-      setRecentlyCompletedLine(null);
       setWrongAnswerCount(0);
     }
   }, [flashcardIndex]);
+
 
   // Play the opponent move after a slight delay
   useEffect(() => {
@@ -171,6 +324,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     };
   }, [opponentFirstMove]);
 
+
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
@@ -182,6 +336,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       })
     }
   }, []);
+
 
   useEffect(() => {
     // This prevents undoLastMove() from running on the initial render
@@ -214,142 +369,24 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     isUsersTurn() ? unpauseClock() : pauseClock();
   }, [isUsersTurn]);
 
-  const handleReveal = () => {
-    setShowAnswer(true);
-  };
 
-  const handleRate = async (quality: ReviewQuality) => {
-    setIsSubmitting(true);
-
-    try {
-      const result = await reviewFlashcard(currentFlashcard.id, quality);
-
-      if (result.success) {
-        // Move to next flashcard or finish
-        if (flashcardIndex < flashcards.length - 1) {
-          setFlashcardIndex(flashcardIndex + 1);
-          setShowAnswer(false);
-          setUserAttemptedMove(null);
-        } else {
-          // All done - refresh to show updated stats
-          router.refresh();
-        }
-      } else {
-        alert(`Error: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('Error submitting review:', error);
-      alert('An error occurred while submitting review');
-    } finally {
-      setIsSubmitting(false);
+  // Determine the board size
+  const maxBoardSize = 600;
+  const windowSize = useWindowSize();
+  let boardSize: number;
+  if (windowSize.width && windowSize.width < maxBoardSize) {
+    boardSize = windowSize.width;
+  } else {
+    if (windowSize.width == undefined || windowSize.height == undefined) {
+      boardSize = maxBoardSize;
+    } else {
+      // These values are based on the current layout and will need to updated if the
+      // layout changes.
+      const maxBoardWidth = Math.min(maxBoardSize, windowSize.width - 625);
+      const maxBoardHeight = Math.min(maxBoardSize, windowSize.height - 175);
+      boardSize = Math.min(maxBoardWidth, maxBoardHeight);
     }
-  };
-  const handleIncorrectUserMove = useCallback(() => {
-    performWrongAnswerActions();
-  }, []);
-
-  const setupOpponentMoveTimeout = useCallback((nextMoves: ShortMove[]) => {
-    if (nextMoves.length < 1) throw new Error('nextMoves cannot be empty');
-    if (colorToMove(currentMove) === flashcards[flashcardIndex].userColor) {
-      throw new Error("Cannot setup opponent move timeout if it is not the opponent's turn");
-    }
-
-    // Pick a random next move (which should be an opponent move) and set up a timeout
-    // that will play the move after a short delay.
-    const nextMove = getRandom(nextMoves);
-    opponentMoveTimeoutRef.current = window.setTimeout(() => {
-      playMove(nextMove!);
-    }, 800);
-  }, [playMove, currentMove, flashcards, flashcardIndex]);
-
-  const handleCorrectUserMove = useCallback(() => {
-    // TODO: Handle alternative moves here
-
-    const nextMoves = getNextMoves(lines, currentMove, {incompleteLinesOnly: true});
-
-    // If there are nextMoves, then there are still moves to be played.
-    if (nextMoves.length > 0) {
-      // At this point, the user has played a correct move but there are more moves to play.
-      // If time hasn't expired, add 5 seconds to the countdown clock.
-      if (remainingTime > 0) addTimeToClock(5);
-      setupOpponentMoveTimeout(nextMoves);
-      return;
-    }
-
-    // If we have reached this point, then a line has been completed.
-    handleLineComplete();
-  }, [lines, currentMove, remainingTime, setupOpponentMoveTimeout]);
-
-
-  const handleUserMove = useCallback(() => {
-    // setUserAttemptedMove(move); - TODO: This is claude code
-
-    const relevantLines = getRelevantLessonLines(lines, currentMove);
-
-    // If there are no relevant lines, the user's move was incorrect
-    if (relevantLines.length < 1) {
-      handleIncorrectUserMove();
-      return;
-    }
-
-    // If there are relevant lines, then a correct move has been played.
-    handleCorrectUserMove();
-  }, [lines, currentMove, handleIncorrectUserMove, handleCorrectUserMove]);
-
-
-  const markCurrentLineComplete = useCallback(() => {
-    const relevantLines = getRelevantLessonLines(lines, currentMove, { incompleteLinesOnly: true })
-    const currentLine = getLineFromCmMove(currentMove);
-    const matchingLine = relevantLines.find((line) => {
-      const relevantLine = convertLanLineToShortMoves(line.split(' '));
-      return areLinesEqual(relevantLine, currentLine);
-    });
-    if (matchingLine == undefined) {
-      console.warn('matchingLine was undefined');
-      return;
-    }
-    if (lines[matchingLine] == undefined) throw new Error('Line not found');
-    if (lines[matchingLine].isComplete) return;
-    const newLines = { ...lines };
-    newLines[matchingLine].isComplete = true;
-    setLines(newLines);
-  }, [lines, currentMove]);
-
-  // Setup timeouts that will reset the board and play the opponent move
-  // that will put the board back into the target position of the current
-  // flashcard
-  const setupResetBoardTimeouts = useCallback(() => {
-    const fc = flashcards[flashcardIndex];
-    const cmhistory = cmchess.current.history();
-    const newCurrentMove = cmhistory.find((m) => m.ply === fc.positionIdx - 1);
-    const opponentMove = cmhistory.find((m) => m.ply === fc.positionIdx);
-
-    resetBoardTimeoutRef.current = window.setTimeout(() => {
-      setCurrentMove(newCurrentMove);
-    }, 800);
-
-    opponentMoveTimeoutRef.current = window.setTimeout(() => {
-      setOpponentFirstMove(opponentMove);
-    }, 1000);
-  }, [flashcardIndex, flashcards, cmchess.current]);
-
-  const handleLineComplete = useCallback(() => {
-    markCurrentLineComplete();
-
-    // TODO: Check if there are more lines to be completed.
-    // const relevantLines = getRelevantLessonLines(lines, currentMove, { incompleteLinesOnly: true })
-
-    setupResetBoardTimeouts();
-  }, [markCurrentLineComplete, setupResetBoardTimeouts]);
-
-  const handleEditBtnClick = useCallback(() => {
-    if (currentMode === Mode.Edit) {
-      setCurrentMode(Mode.Practice);
-    }
-    if (currentMode === Mode.Practice) {
-      setCurrentMode(Mode.Edit);
-    }
-  }, [currentMode]);
+  }
 
   const movesDisplay = (
     <MovesDisplay
@@ -357,7 +394,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
       useMobileLayout={false}
-      showVariations={false}
+      showVariations={true}
     />
   );
 
