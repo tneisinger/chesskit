@@ -48,6 +48,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [wrongAnswerCount, setWrongAnswerCount] = useState(0)
   const [currentMode, setCurrentMode] = useState<Mode>(Mode.Practice);
   const [numIncompleteLines, setNumIncompleteLines] = useState<number | null>(null);
+  const [totalLines, setTotalLines] = useState<number | null>(null);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -114,7 +115,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     } else {
       return fc.userColor == PieceColor.BLACK;
     }
-  }, [flashcardIndex, currentMove]);
+  }, [flashcardIndex, currentMove, flashcards]);
 
 
   const handleReveal = () => {
@@ -252,28 +253,35 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [currentMode]);
 
 
-  // Whenever lines changes, update the numIncompleteLines state value
+  // Whenever lines changes, update the numIncompleteLines and totalLines state values
   useEffect(() => {
     if (Object.keys(lines).length < 1) {
       setNumIncompleteLines(null);
+      setTotalLines(null);
       return;
     }
 
     let numIncomplete = 0;
+    let numLines = 0;
     Object.values(lines).forEach((v) => {
+      numLines++;
       if (!v.isComplete) numIncomplete++;
     });
     setNumIncompleteLines(numIncomplete);
+    setTotalLines(numLines);
   }, [lines]);
 
 
-  // When numIncompleteLines changes...
+  // When numIncompleteLines or totalLines changes...
   useEffect(() => {
     if (numIncompleteLines === null) return;
+    if (totalLines === null) return;
 
-    // If there are still incomplete lines, then the user isn't done solving.
-    // Add time to the clock and reset the board.
-    if (numIncompleteLines > 0) {
+    // If there are incomplete lines and numIncompleteLines < totalLines,
+    // that means that the user just solved a line but there are more lines
+    // left to be solved.
+    if (numIncompleteLines > 0 && numIncompleteLines < totalLines) {
+      // Add time to the clock if time hasn't run out
       if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
       setupResetBoardTimeouts();
     }
@@ -281,7 +289,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (numIncompleteLines === 0) {
       console.log('complete!');
     }
-  }, [numIncompleteLines, setupResetBoardTimeouts]);
+  }, [numIncompleteLines, totalLines, setupResetBoardTimeouts]);
 
 
   useEffect(() => {
