@@ -53,11 +53,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [totalLines, setTotalLines] = useState<number | null>(null);
   const [showAltMoveModal, setShowAltMoveModal] = useState(false);
   const [showFlashcardCompleteModal, setShowFlashcardCompleteModal] = useState(false);
+  const [isReplay, setIsReplay] = useState(false);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
   const undoMoveTimeoutRef = useRef<number>(0);
   const resetBoardTimeoutRef = useRef<number>(0);
+  const showFlashcardCompleteModalTimeoutRef = useRef<number>(0);
 
   // Put all the timeouts into an array for easy cleanup
   const timeoutRefs = [
@@ -65,6 +67,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     wrongAnswerBlinkTimeoutRef,
     undoMoveTimeoutRef,
     resetBoardTimeoutRef,
+    showFlashcardCompleteModalTimeoutRef,
   ]
 
   const currentFlashcard = flashcards[flashcardIndex];
@@ -85,6 +88,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     unpause: unpauseClock,
     isPaused,
     addTime: addTimeToClock,
+    reset: resetClock,
   } = useCountdown(15);
 
   const {
@@ -240,7 +244,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   // Setup timeouts that will reset the board and play the opponent move
   // that will put the board back into the target position of the current
   // flashcard
-  const setupResetBoardTimeouts = useCallback(() => {
+  const setupResetBoardTimeouts = useCallback((delay = 800) => {
     const fc = flashcards[flashcardIndex];
     const cmhistory = cmchess.current.history();
     const newCurrentMove = cmhistory.find((m) => m.ply === fc.positionIdx - 1);
@@ -248,11 +252,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     resetBoardTimeoutRef.current = window.setTimeout(() => {
       setCurrentMove(newCurrentMove);
-    }, 800);
+    }, delay);
 
     opponentMoveTimeoutRef.current = window.setTimeout(() => {
       setOpponentFirstMove(opponentMove);
-    }, 1000);
+    }, delay + 200);
   }, [flashcardIndex, flashcards, cmchess.current]);
 
 
@@ -277,6 +281,16 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (lines[matchingLine] == undefined) return false;
     return true;
   }, [lines, currentMove]);
+
+
+  const handleReplayFlashcardBtnClick = useCallback(() => {
+    const fc = flashcards[flashcardIndex];
+    setLines(makeLineStatsRecord(fc.pgn));
+    setWrongAnswerCount(0);
+    setIsReplay(true);
+    setupResetBoardTimeouts(500); // 500 is a half-second delay
+    resetClock();
+  }, [flashcards, flashcardIndex, setupResetBoardTimeouts, resetClock]);
 
 
   // Whenever lines changes, update the numIncompleteLines and totalLines state values
@@ -312,16 +326,22 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setupResetBoardTimeouts();
     }
 
+    // If there are no incomplete lines, then the flashcard is complete.
+    // Pause the clock and show the FlashcardCompleteModal after a delay.
     if (numIncompleteLines === 0) {
-      console.log('complete!');
       pauseClock();
-      setShowFlashcardCompleteModal(true);
+      showFlashcardCompleteModalTimeoutRef.current = window.setTimeout(() => {
+        setShowFlashcardCompleteModal(true);
+      }, 600);
     }
   }, [numIncompleteLines, totalLines, setupResetBoardTimeouts, pauseClock]);
 
 
   useEffect(() => {
     resetChessboardEngine();
+    setIsReplay(false);
+    setWrongAnswerCount(0);
+
     const fc = flashcards[flashcardIndex];
     if (fc) {
       if (fc.bestLines) {
@@ -340,7 +360,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setLineJudgements([]);
       setOpponentFirstMove(null);
       setLines({});
-      setWrongAnswerCount(0);
     }
   }, [flashcardIndex]);
 
@@ -492,7 +511,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
           <FlashcardCompleteModal
             show={showFlashcardCompleteModal}
             onClose={() => setShowFlashcardCompleteModal(false)}
-            onReplayFlashcardBtnClick={() => console.log('replay flashcard')}
+            onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
             onNextFlashcardBtnClick={() => console.log('next flashcard')}
           />
           <Chessboard
