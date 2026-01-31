@@ -513,6 +513,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             onClose={() => setShowFlashcardCompleteModal(false)}
             onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
             onNextFlashcardBtnClick={() => console.log('next flashcard')}
+            numWrongAnswers={wrongAnswerCount}
           />
           <Chessboard
             currentMove={currentMove}
