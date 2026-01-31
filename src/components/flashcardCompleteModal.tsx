@@ -1,5 +1,5 @@
 import Modal from '@/components/modal';
-import Button, { ButtonSize } from "@/components/button";
+import Button, { ButtonSize, ButtonStyle } from "@/components/button";
 
 interface Props {
   show: boolean;
@@ -19,8 +19,16 @@ const FlashcardCompleteModal = ({
 
   return (
     <Modal show={show}>
-      <div className='bg-background-page/97 px-4 py-4 rounded-md'>
-        <h3 className='text-center mb-2 text-2xl font-bold text-nowrap'>
+      <div className='bg-background-page/97 px-9 pb-4 pt-2 rounded-md'>
+        <div className='fixed w-full flex justify-end pr-11'>
+          <span
+            className="bg-stone-600 hover:bg-stone-500 pt-0.5 px-1.5 rounded-xl font-bold text-sm cursor-pointer"
+            onClick={() => onClose()}
+          >
+            X
+          </span>
+        </div>
+        <h3 className='text-center mt-3 mb-2 text-2xl font-bold text-nowrap'>
           Flashcard Complete!
         </h3>
         <p className="mb-3 text-center">
@@ -29,6 +37,7 @@ const FlashcardCompleteModal = ({
         <div className='flex flex-row gap-4 justify-center'>
           <Button
             buttonSize={ButtonSize.Small}
+            buttonStyle={ButtonStyle.Primary}
             onClick={() => {
               onNextFlashcardBtnClick();
               onClose();
@@ -44,12 +53,6 @@ const FlashcardCompleteModal = ({
             }}
           >
             Replay Flashcard
-          </Button>
-          <Button
-            buttonSize={ButtonSize.Small}
-            onClick={onClose}
-          >
-            Close
           </Button>
         </div>
       </div>
