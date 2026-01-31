@@ -261,13 +261,19 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const handleEditBtnClick = useCallback(() => {
+    // Switching to Practice mode
     if (currentMode === Mode.Edit) {
       setCurrentMode(Mode.Practice);
+      resetClock();
+      setupResetBoardTimeouts(250);
     }
+
+    // Switching to Edit mode
     if (currentMode === Mode.Practice) {
+      pauseClock();
       setCurrentMode(Mode.Edit);
     }
-  }, [currentMode]);
+  }, [currentMode, pauseClock, setupResetBoardTimeouts, resetClock]);
 
 
   const isCurrentMoveAtEndOfALine = useCallback((): boolean => {
@@ -430,9 +436,12 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     // If this is the end of a line, do nothing
     if (isCurrentMoveAtEndOfALine()) return;
 
+    // Do nothing if not in Practice mode
+    if (currentMode !== Mode.Practice) return;
+
     // Toggle the pause state of the clock based on if it is the user's turn or not
     isUsersTurn() ? unpauseClock() : pauseClock();
-  }, [isUsersTurn]);
+  }, [isUsersTurn, currentMode]);
 
 
   // This useEffect handles the situation where a line ends with an opponent move.
@@ -548,7 +557,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
           <div className="flex justify-center">
             <div className="flex flex-1 justify-between">
               <Button onClick={handleEditBtnClick} >
-                {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Stop Editing')}
+                {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Play Flashcard')}
               </Button>
             </div>
             <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
