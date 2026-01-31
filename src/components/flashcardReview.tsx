@@ -6,6 +6,7 @@ import Chessboard from '@/components/Chessboard';
 import BlinkOverlay from '@/components/blinkOverlay';
 import Button, { ButtonStyle } from '@/components/button';
 import MovesDisplay from '@/components/movesDisplay';
+import AltMoveModal from '@/components/altMoveModal';
 import { reviewFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
@@ -49,6 +50,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [currentMode, setCurrentMode] = useState<Mode>(Mode.Practice);
   const [numIncompleteLines, setNumIncompleteLines] = useState<number | null>(null);
   const [totalLines, setTotalLines] = useState<number | null>(null);
+  const [showAltMoveModal, setShowAltMoveModal] = useState(false);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -189,8 +191,16 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [lines, currentMove]);
 
 
-  const handleCorrectUserMove = useCallback(() => {
-    // TODO: Handle alternative moves here
+  const handleCorrectUserMove = useCallback((relevantLines: string[]) => {
+    // Handle alternative user moves:
+    // If the pgn has alternative moves for the user, the user could play a
+    // move that is only in lines that have already been completed.
+    // In that case, tell the user to play an alternative move instead.
+    if (relevantLines.every((rLine => lines[rLine].isComplete))) {
+      if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
+      setShowAltMoveModal(true);
+      return;
+    }
 
     const nextMoves = getNextMoves(lines, currentMove, {incompleteLinesOnly: true});
 
@@ -205,7 +215,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     // If we have reached this point, then a line has been completed.
     markCurrentLineComplete();
-  }, [lines, currentMove, remainingTime, setupOpponentMoveTimeout, markCurrentLineComplete]);
+  }, [lines, currentMove, remainingTime, addTimeToClock, setupOpponentMoveTimeout,
+      markCurrentLineComplete]);
 
 
   const handleUserMove = useCallback(() => {
@@ -220,7 +231,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     }
 
     // If there are relevant lines, then a correct move has been played.
-    handleCorrectUserMove();
+    handleCorrectUserMove(relevantLines);
   }, [lines, currentMove, handleIncorrectUserMove, handleCorrectUserMove]);
 
 
@@ -468,6 +479,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         {/* Center Column - Chessboard */}
         <div className="relative" style={{ width: boardSize }}>
           <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
+          <AltMoveModal
+            show={showAltMoveModal}
+            onClose={() => {
+              setShowAltMoveModal(false);
+              performWrongAnswerActions({ indicateThatTheMoveWasWrong: false });
+            }}
+          />
           <Chessboard
             currentMove={currentMove}
             boardSize={boardSize}
