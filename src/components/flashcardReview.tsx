@@ -7,6 +7,7 @@ import BlinkOverlay from '@/components/blinkOverlay';
 import Button, { ButtonStyle } from '@/components/button';
 import MovesDisplay from '@/components/movesDisplay';
 import AltMoveModal from '@/components/altMoveModal';
+import FlashcardCompleteModal from './flashcardCompleteModal';
 import { reviewFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
@@ -51,6 +52,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [numIncompleteLines, setNumIncompleteLines] = useState<number | null>(null);
   const [totalLines, setTotalLines] = useState<number | null>(null);
   const [showAltMoveModal, setShowAltMoveModal] = useState(false);
+  const [showFlashcardCompleteModal, setShowFlashcardCompleteModal] = useState(false);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -313,6 +315,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (numIncompleteLines === 0) {
       console.log('complete!');
       pauseClock();
+      setShowFlashcardCompleteModal(true);
     }
   }, [numIncompleteLines, totalLines, setupResetBoardTimeouts, pauseClock]);
 
@@ -485,6 +488,12 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
               setShowAltMoveModal(false);
               performWrongAnswerActions({ indicateThatTheMoveWasWrong: false });
             }}
+          />
+          <FlashcardCompleteModal
+            show={showFlashcardCompleteModal}
+            onClose={() => setShowFlashcardCompleteModal(false)}
+            onReplayFlashcardBtnClick={() => console.log('replay flashcard')}
+            onNextFlashcardBtnClick={() => console.log('next flashcard')}
           />
           <Chessboard
             currentMove={currentMove}
