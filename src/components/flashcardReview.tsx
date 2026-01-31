@@ -6,6 +6,7 @@ import Chessboard from '@/components/Chessboard';
 import BlinkOverlay from '@/components/blinkOverlay';
 import Button, { ButtonStyle } from '@/components/button';
 import MovesDisplay from '@/components/movesDisplay';
+import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
 import FlashcardCompleteModal from './flashcardCompleteModal';
 import { reviewFlashcard } from '@/app/flashcards/actions';
@@ -133,28 +134,30 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const handleRate = async (quality: ReviewQuality) => {
     setIsSubmitting(true);
-    try {
-      const result = await reviewFlashcard(currentFlashcard.id, quality);
+    console.log('quality', quality);
+    setIsSubmitting(false);
+    // try {
+    //   const result = await reviewFlashcard(currentFlashcard.id, quality);
 
-      if (result.success) {
-        // Move to next flashcard or finish
-        if (flashcardIndex < flashcards.length - 1) {
-          setFlashcardIndex(flashcardIndex + 1);
-          setShowAnswer(false);
-          setUserAttemptedMove(null);
-        } else {
-          // All done - refresh to show updated stats
-          router.refresh();
-        }
-      } else {
-        alert(`Error: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('Error submitting review:', error);
-      alert('An error occurred while submitting review');
-    } finally {
-      setIsSubmitting(false);
-    }
+    //   if (result.success) {
+    //     // Move to next flashcard or finish
+    //     if (flashcardIndex < flashcards.length - 1) {
+    //       setFlashcardIndex(flashcardIndex + 1);
+    //       setShowAnswer(false);
+    //       setUserAttemptedMove(null);
+    //     } else {
+    //       // All done - refresh to show updated stats
+    //       router.refresh();
+    //     }
+    //   } else {
+    //     alert(`Error: ${result.error}`);
+    //   }
+    // } catch (error) {
+    //   console.error('Error submitting review:', error);
+    //   alert('An error occurred while submitting review');
+    // } finally {
+    //   setIsSubmitting(false);
+    // }
   };
 
 
@@ -226,7 +229,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const handleUserMove = useCallback(() => {
-    // setUserAttemptedMove(move); - TODO: This is claude code
+    // TODO: Change this claude code
+    // Easy - No mistakes and remainingTime >= starting time
+    // Good - No mistakes and remainingTime > 0
+    // Hard - No mistakes but remainingTime === 0
+    // Again - 1 or more mistakes
+    if (currentMove == undefined) throw new Error('currentMove was undefined');
+    const move: ShortMove = { from: currentMove.from, to: currentMove.to };
+    setUserAttemptedMove(move);
 
     const relevantLines = getRelevantLessonLines(lines, currentMove);
 
@@ -491,6 +501,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     />
   );
 
+  const arrowButtons = (
+    <ArrowButtons
+      history={history}
+      currentMove={currentMove}
+      changeCurrentMove={setCurrentMove}
+    />
+  );
+
   return (
     <div className="flex flex-col items-center gap-3" style={{ width: boardSize + 500 }}>
 
@@ -538,9 +556,12 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         {/* Right column */}
         <div className="flex flex-col items-center flex-1">
           {currentMode === Mode.Edit && (
-            <div className="my-1 rounded-md p-1 w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
-              {movesDisplay}
-            </div>
+            <>
+              <div className="my-1 rounded-md p-1 w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
+                {movesDisplay}
+              </div>
+              {arrowButtons}
+            </>
           )}
         </div>
       </div>
