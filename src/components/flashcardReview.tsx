@@ -101,6 +101,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     playMove,
     reset: resetChessboardEngine,
     undoLastMove,
+    deleteMove,
   } = useChessboardEngine();
 
   const previousMove = usePrevious(currentMove);
@@ -309,6 +310,12 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [flashcards, flashcardIndex, setupResetBoardTimeouts, resetClock]);
 
 
+  const deleteMoves = useCallback((move: Move) => {
+    if (currentMode !== Mode.Edit) return;
+    deleteMove(move, true);
+  }, [deleteMove, currentMode]);
+
+
   // Whenever lines changes, update the numIncompleteLines and totalLines state values
   useEffect(() => {
     if (Object.keys(lines).length < 1) {
@@ -506,6 +513,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       contextMenu={{
         'Log move': (move) => console.log(move.san),
         'Log fen': (move) => console.log(move.fen),
+        'Delete move': (move) => deleteMoves(move),
       }}
     />
   );
