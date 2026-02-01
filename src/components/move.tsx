@@ -51,6 +51,8 @@ const Move = ({
     contentClasses.push('cursor-pointer');
     if (currentMove && areMovesEqual(move, currentMove)) {
       contentClasses.push('bg-[#3692e7]');
+    } else {
+      contentClasses.push('hover:bg-gray-700 dark:hover:bg-gray-600');
     }
   }
 
@@ -59,7 +61,7 @@ const Move = ({
   const containerClasses = ['flex-[0_0_38%] dark:text-gray-200'];
   if (inVariation) {
     contentClasses.push('p-0');
-    containerClasses.push('inline-block pr-2 last:p-0');
+    containerClasses.push('inline-block pr-1 last:pr-0');
   }
 
   const moveContent = (
