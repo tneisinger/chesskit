@@ -5,7 +5,7 @@ import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import BlinkOverlay from '@/components/blinkOverlay';
 import Button, { ButtonStyle } from '@/components/button';
-import MovesDisplay from '@/components/movesDisplay';
+import NewMovesDisplay from '@/components/newMovesDisplay';
 import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
 import FlashcardCompleteModal from './flashcardCompleteModal';
@@ -353,6 +353,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [numIncompleteLines, totalLines, setupResetBoardTimeouts, pauseClock]);
 
 
+  // When the flashcardIndex changes...
   useEffect(() => {
     resetChessboardEngine();
     setIsReplay(false);
@@ -412,6 +413,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, []);
 
 
+  // When wrongAnswerCount changes...
   useEffect(() => {
     // This prevents undoLastMove() from running on the initial render
     if (wrongAnswerCount < 1) return;
@@ -460,6 +462,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     // If currentMove hasn't changed, do nothing
     if (areCmMovesEqual(currentMove, previousMove)) return;
 
+    // If not in practice mode, do nothing
+    if (currentMode !== Mode.Practice) return;
+
     // If it is not the user's turn, do nothing.
     if (colorToMove(currentMove) !== flashcards[flashcardIndex].userColor) return;
 
@@ -470,7 +475,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     // If we have reached this point, then a line has been completed.
     markCurrentLineComplete();
-  }, [lines, currentMove, flashcards, flashcardIndex])
+  }, [lines, currentMove, flashcards, flashcardIndex, currentMode])
 
 
   // Determine the board size
@@ -492,7 +497,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }
 
   const movesDisplay = (
-    <MovesDisplay
+    <NewMovesDisplay
       history={history}
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
@@ -513,20 +518,26 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     />
   );
 
+  const outerColumnsWidth = 250;
+  const boardXMargin = 8;
+  const mainDivWidth = boardSize + (outerColumnsWidth * 2) + (boardXMargin * 2);
+
   return (
-    <div className="flex flex-col items-center gap-3" style={{ width: boardSize + 500 }}>
+    <div className="flex flex-col items-center gap-3" style={{ width: mainDivWidth }}>
 
       {/* First row - Board is center column  */}
-      <div className="flex flex-row w-full max-w-[1400px] gap-3">
+      <div className="flex flex-row w-full max-w-[1400px]">
 
         {/* Left Column */}
-        <div className="flex flex-col items-center flex-1">
-          {currentMode === Mode.Edit && (
-            <div className="text-sm text-gray-400 w-full bg-background-page">
-              <p>Card Details</p>
-              <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
-            </div>
-          )}
+        <div className="flex justify-start" style={{width: outerColumnsWidth + boardXMargin}}>
+          <div style={{width: outerColumnsWidth}}>
+            {currentMode === Mode.Edit && (
+              <div className="text-sm text-gray-400 w-full bg-background-page">
+                <p>Card Details</p>
+                <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Center Column - Chessboard */}
@@ -558,23 +569,27 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         </div>
 
         {/* Right column */}
-        <div className="flex flex-col items-center flex-1">
-          {currentMode === Mode.Edit && (
-            <>
-              <div className="my-1 rounded-md p-1 w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page">
-                {movesDisplay}
-              </div>
-              {arrowButtons}
-            </>
-          )}
+        <div className="flex justify-end" style={{width: outerColumnsWidth + boardXMargin}}>
+          <div className="flex" style={{width: outerColumnsWidth}}>
+            <div className="flex flex-col items-center w-full flex-1">
+              {currentMode === Mode.Edit && (
+                <>
+                  <div className="flex flex-col w-full flex-1 min-h-0">
+                    {movesDisplay}
+                  </div>
+                  {arrowButtons}
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Second Row  */}
-      <div className="flex flex-row w-full max-w-[1400px] gap-3">
+      <div className="flex flex-row w-full max-w-[1400px]">
 
         {/* Left Column */}
-        <div className="flex flex-col items-center flex-1">
+        <div className="flex justify-start" style={{width: outerColumnsWidth + boardXMargin}}>
         </div>
 
         {/* Center Column */}
@@ -590,7 +605,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         </div>
 
         {/* Right column */}
-        <div className="flex flex-col items-center flex-1">
+        <div className="flex justify-end" style={{width: outerColumnsWidth + boardXMargin}}>
         </div>
 
       </div>
