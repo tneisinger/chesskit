@@ -47,3 +47,6 @@ sqlite.db
 
 # helpful bash scripts
 /scripts
+
+# A directory containing screenshots
+/screenshots
