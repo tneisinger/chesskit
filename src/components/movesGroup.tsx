@@ -13,6 +13,7 @@ export interface Props {
   changeCurrentMove: (newCurrentMove?: Move) => void;
   useMobileLayout?: boolean;
   showVariations: boolean;
+  contextMenu?: Record<string, (move: Move) => void>;
 }
 
 const hasVariations = (move: Move | undefined): boolean => {
@@ -62,6 +63,7 @@ const MovesGroup = (props: Props) => {
           isVariation: true,
           useMobileLayout: props.useMobileLayout,
           showVariations: props.showVariations,
+          contextMenu: props.contextMenu,
         })}
       </div>
     );
@@ -70,7 +72,7 @@ const MovesGroup = (props: Props) => {
   if (!hasVariations(whiteMove) || !props.showVariations) {
     return (
       <React.Fragment>
-        <MovePair {...props} />
+        <MovePair {...props} contextMenu={props.contextMenu} />
         {blackMove && hasVariations(blackMove) && props.showVariations && (
           makeVariationsHtml(blackMove)
         )}
@@ -89,6 +91,7 @@ const MovesGroup = (props: Props) => {
           keyMoves={props.keyMoves}
           changeCurrentMove={props.changeCurrentMove}
           useMobileLayout={props.useMobileLayout}
+          contextMenu={props.contextMenu}
         />
         {makeVariationsHtml(whiteMove)}
         {blackMove && (
@@ -100,6 +103,7 @@ const MovesGroup = (props: Props) => {
             keyMoves={props.keyMoves}
             changeCurrentMove={props.changeCurrentMove}
             useMobileLayout={props.useMobileLayout}
+            contextMenu={props.contextMenu}
           />
         )}
         {blackMove && hasVariations(blackMove) && makeVariationsHtml(blackMove)}

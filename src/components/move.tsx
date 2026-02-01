@@ -1,6 +1,12 @@
 import React, { useRef, useEffect } from 'react';
 import { Move as MoveType } from 'cm-chess/src/Chess';
 import { areMovesEqual } from '../utils/cmchess';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from './ui/context-menu';
 
 export interface Props {
   move?: MoveType;
@@ -10,6 +16,7 @@ export interface Props {
   inVariation?: boolean;
   isKeyMove?: boolean;
   changeCurrentMove: (newCurrentMove?: MoveType) => void;
+  contextMenu?: Record<string, (move: MoveType) => void>;
 }
 
 const Move = ({
@@ -20,6 +27,7 @@ const Move = ({
   inVariation,
   isKeyMove,
   changeCurrentMove,
+  contextMenu,
 }: Props) => {
 
   const containerRef = useRef<HTMLSpanElement>(null);
@@ -54,7 +62,7 @@ const Move = ({
     containerClasses.push('inline-block pr-2 last:p-0');
   }
 
-  return (
+  const moveContent = (
     <span ref={containerRef} className={containerClasses.join(' ')}>
       <span
         className={contentClasses.join(' ')}
@@ -65,6 +73,25 @@ const Move = ({
         {content}
       </span>
     </span>
+  );
+
+  if (!contextMenu || !move) {
+    return moveContent;
+  }
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        {moveContent}
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        {Object.entries(contextMenu).map(([text, handler]) => (
+          <ContextMenuItem key={text} onSelect={() => handler(move)}>
+            {text}
+          </ContextMenuItem>
+        ))}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };
 

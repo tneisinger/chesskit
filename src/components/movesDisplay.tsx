@@ -12,6 +12,9 @@ interface Props {
 
   useMobileLayout?: boolean,
   showVariations?: boolean,
+
+  // If defined, a context menu will be shown when clicking on moves
+  contextMenu?: Record<string, (move: Move) => void>;
 }
 
 const MovesDisplay = ({
@@ -22,6 +25,7 @@ const MovesDisplay = ({
   // gamePuzzles,
   useMobileLayout = false,
   showVariations = true,
+  contextMenu,
 }: Props) => {
 
   const topOfDisplay = useRef<HTMLDivElement>(null);
@@ -48,6 +52,7 @@ const MovesDisplay = ({
         // gamePuzzles,
         useMobileLayout,
         showVariations,
+        contextMenu,
       })}
     </div>
   );
