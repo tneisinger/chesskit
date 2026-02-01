@@ -33,25 +33,19 @@ const MovesGroup = (props: Props) => {
 
     if (inVariation) return variations;
 
-    const classes = ['bg-gray-500 px-1'];
-    if (props.useMobileLayout) classes.push('rounded mr-1 pb-0');
-
     return (
-      <div className={classes.join(' ')}>
+      <span className="inline">
         {variations}
-      </div>
+      </span>
     );
   }
 
   const makeVariationHtml = (variation: Move[]) => {
-    const classes = ['text-sm py-1 before:content-["("] after:content-[")"] [&_.inVariation]:inline [&_.inVariation]:pr-1'];
+    const classes = ['inline text-sm before:content-["("] after:content-[")"] [&_.inVariation]:inline [&_.inVariation]:pr-0.5'];
     if (inVariation) classes.push('inVariation');
-    if (props.useMobileLayout) {
-      classes.push('inline-block');
-    }
 
     return (
-      <div
+      <span
         className={classes.join(' ')}
         key={`variation_${variation[0].san}`}
       >
@@ -65,7 +59,7 @@ const MovesGroup = (props: Props) => {
           showVariations: props.showVariations,
           contextMenu: props.contextMenu,
         })}
-      </div>
+      </span>
     );
   }
 
