@@ -498,6 +498,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       changeCurrentMove={setCurrentMove}
       useMobileLayout={false}
       showVariations={true}
+      contextMenu={{
+        'Log move': (move) => console.log(move.san),
+        'Log fen': (move) => console.log(move.fen),
+      }}
     />
   );
 

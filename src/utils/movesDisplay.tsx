@@ -9,6 +9,7 @@ interface Args {
   isVariation?: boolean;
   useMobileLayout?: boolean;
   showVariations: boolean;
+  contextMenu?: Record<string, (move: Move) => void>;
 }
 
 export function makeMoveHistoryHtml(args: Args) {
@@ -60,6 +61,7 @@ export function makeMoveHistoryHtml(args: Args) {
         key={`movesGroup_${firstMove.fen}`}
         useMobileLayout={args.useMobileLayout}
         showVariations={args.showVariations}
+        contextMenu={args.contextMenu}
       />
     );
   } else {
@@ -87,6 +89,7 @@ export function makeMoveHistoryHtml(args: Args) {
         key={key}
         useMobileLayout={args.useMobileLayout}
         showVariations={args.showVariations}
+        contextMenu={args.contextMenu}
       />
     );
   }

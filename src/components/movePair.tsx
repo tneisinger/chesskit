@@ -13,6 +13,7 @@ export interface Props {
   keyMoves?: MoveData[];
   changeCurrentMove: (newCurrentMove?: MoveData) => void;
   useMobileLayout?: boolean;
+  contextMenu?: Record<string, (move: MoveData) => void>;
 }
 
 const MovePair = (props: Props) => {
@@ -36,12 +37,14 @@ const MovePair = (props: Props) => {
         move={props.whiteMove}
         isKeyMove={isKeyMove(props.whiteMove)}
         color='w' {...props}
+        contextMenu={props.contextMenu}
       />
       {(!props.isLast || props.blackMove) && (
         <Move
           move={props.blackMove}
           isKeyMove={isKeyMove(props.blackMove)}
           color='b' {...props}
+          contextMenu={props.contextMenu}
         />
       )}
     </React.Fragment>
