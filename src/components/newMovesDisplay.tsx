@@ -68,7 +68,10 @@ const MoveDisplay: React.FC<MoveDisplayProps> = ({
 
   if (!isInVariation) {
     content = (
-      <span className={['flex-[0_0_41%] py-1 pl-3 cursor-pointer', ...classes].join(' ')}>
+      <span
+        className={['flex-[0_0_41%] py-1 pl-3 cursor-pointer', ...classes].join(' ')}
+        onClick={() => changeCurrentMove(move)}
+      >
         {content}
       </span>
     );
@@ -122,14 +125,15 @@ const NewMovesDisplay: React.FC<Props> = ({
     if (variation.length === 0) return null;
 
     // Create indent spacing using depth
-    const indentStyle = depth > 0 ? { paddingLeft: `${depth * 1}rem` } : {};
+    const indentStyle = depth > 0 ? { paddingLeft: `${depth * 0.5}rem` } : {};
     const moves: React.ReactNode[] = [];
 
     let i = 0;
     while (i < variation.length) {
       const move = variation[i];
-      const moveNumber = Math.floor(move.ply / 2) + 1;
+      let moveNumber = Math.floor(move.ply / 2) + 1;
       const isWhiteMove = move.color === 'w';
+      if (i === 0 && !isWhiteMove) moveNumber = moveNumber - 1;
 
       // Wrap move number and move together in an inline-block container
       // This keeps them together when wrapping occurs
@@ -220,7 +224,7 @@ const NewMovesDisplay: React.FC<Props> = ({
         // Render variations
         whiteMove.variations.forEach((variation, idx) => {
           elements.push(
-            <div key={`${whiteMove.fen}-var-${idx}`} className="pl-4 py-1 bg-neutral-700 max-w-full border-y-1 border-neutral-600">
+            <div key={`${whiteMove.fen}-var-${idx}`} className="pl-2 py-1 bg-neutral-700 max-w-full border-y-1 border-neutral-600">
               {renderVariation(variation, 0)}
             </div>
           );
