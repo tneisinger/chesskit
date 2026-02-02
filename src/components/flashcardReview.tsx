@@ -10,7 +10,7 @@ import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
 import FlashcardCompleteModal from './flashcardCompleteModal';
 import FlashcardEditButtons from './flashcardEditButtons';
-import { reviewFlashcard } from '@/app/flashcards/actions';
+import { reviewFlashcard, updateFlashcardPgn } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
@@ -23,7 +23,8 @@ import {
   getLastMoveOfLine,
   getLineFromCmMove,
   isInVariation,
-  loadPgnIntoCmChess
+  loadPgnIntoCmChess,
+  renderPgn,
 } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
 import { areLinesEqual, convertLanLineToShortMoves, judgeLines } from '@/utils/chess';
@@ -361,6 +362,27 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [history, flashcards, flashcardIndex, currentMove]);
 
 
+  const saveFlashcardPgnChanges = useCallback(async () => {
+    if (!doUnsavedFlashcardChangesExist()) return;
+    const pgn = renderPgn(cmchess.current);
+
+    try {
+      const result = await updateFlashcardPgn(currentFlashcard.id, pgn);
+
+      if (result.success) {
+        // Refresh the page data to reflect the saved changes
+        router.refresh();
+      } else {
+        console.error('Error saving flashcard:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error saving flashcard PGN:', error);
+      alert('An error occurred while saving changes');
+    }
+  }, [doUnsavedFlashcardChangesExist, currentFlashcard, router]);
+
+
   // Whenever lines changes, update the numIncompleteLines and totalLines state values
   useEffect(() => {
     if (Object.keys(lines).length < 1) {
@@ -643,7 +665,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                   </div>
                   <FlashcardEditButtons
                     onDiscardChangesBtnClick={discardUnsavedChanges}
-                    onSaveChangesBtnClick={() => console.log('save changes')}
+                    onSaveChangesBtnClick={saveFlashcardPgnChanges}
                     onDeleteFlashcardBtnClick={() => console.log('delete flashcard')}
                     doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
                   />
