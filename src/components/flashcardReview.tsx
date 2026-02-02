@@ -243,6 +243,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const handleUserMove = useCallback(() => {
+    // If in edit mode, we don't need to do anything.
+    if (currentMode === Mode.Edit) return;
     // TODO: Change this claude code
     // Easy - No mistakes and remainingTime >= starting time
     // Good - No mistakes and remainingTime > 0
@@ -262,7 +264,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     // If there are relevant lines, then a correct move has been played.
     handleCorrectUserMove(relevantLines);
-  }, [lines, currentMove, handleIncorrectUserMove, handleCorrectUserMove]);
+  }, [lines, currentMove, handleIncorrectUserMove, handleCorrectUserMove, currentMode]);
 
 
   // Setup timeouts that will reset the board and play the opponent move
@@ -647,7 +649,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             currentMove={currentMove}
             boardSize={boardSize}
             orientation={currentFlashcard.userColor}
-            allowInteraction={isUsersTurn()}
+            allowInteraction={currentMode === Mode.Edit ? true : isUsersTurn()}
             playMove={playMove}
             afterUserMove={handleUserMove}
             animate={true}
