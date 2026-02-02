@@ -488,3 +488,26 @@ export function promoteLine(cmchess: CmChess, move: Move): { cmchess: CmChess, m
 
   return { cmchess: newCmChess, move: newMove };
 }
+
+export function doHistoriesMatch(history1: Move[], history2: Move[]): boolean {
+  if (history1.length !== history2.length) return false;
+
+  for (let i = 0; i < history1.length; i++) {
+    const move1 = history1[i];
+    const move2 = history2[i];
+
+    // Compare the moves themselves
+    if (!areMovesEqual(move1, move2)) return false;
+
+    // Compare variations
+    if (move1.variations.length !== move2.variations.length) return false;
+
+    for (let j = 0; j < move1.variations.length; j++) {
+      if (!doHistoriesMatch(move1.variations[j], move2.variations[j])) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
