@@ -9,6 +9,7 @@ import NewMovesDisplay, { ContextMenuItems } from '@/components/newMovesDisplay'
 import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
 import FlashcardCompleteModal from './flashcardCompleteModal';
+import FlashcardEditButtons from './flashcardEditButtons';
 import { reviewFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
@@ -17,6 +18,9 @@ import useChessboardEngine from '@/hooks/useChessboardEngine';
 import {
   areCmMovesEqual,
   colorToMove,
+  doHistoriesMatch,
+  getLanLineFromCmMove,
+  getLastMoveOfLine,
   getLineFromCmMove,
   isInVariation,
   loadPgnIntoCmChess
@@ -329,10 +333,32 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     promoteVariationToMainLine(move);
   }, [promoteVariationToMainLine, currentMode]);
 
+
   const promoteMoveVariation = useCallback((move: Move) => {
     if (currentMode !== Mode.Edit) return;
     promoteVariation(move);
   }, [promoteVariation, currentMode]);
+
+
+  const doUnsavedFlashcardChangesExist = useCallback((): boolean => {
+    const fc = flashcards[flashcardIndex];
+    if (fc == undefined) return false;
+    const originalHistory = loadPgnIntoCmChess(fc.pgn).history();
+    return !doHistoriesMatch(originalHistory, history);
+  }, [history, flashcards, flashcardIndex]);
+
+
+  const discardUnsavedChanges = useCallback(() => {
+    if (!doUnsavedFlashcardChangesExist()) return;
+    const fc = flashcards[flashcardIndex];
+    if (fc == undefined) return;
+    const currentMoveLine = getLanLineFromCmMove(currentMove);
+    cmchess.current.loadPgn(fc.pgn);
+    const newHistory = cmchess.current.history();
+    const lastCommonMove = getLastMoveOfLine(currentMoveLine, newHistory);
+    setHistory(newHistory);
+    setCurrentMove(lastCommonMove);
+  }, [history, flashcards, flashcardIndex, currentMove]);
 
 
   // Whenever lines changes, update the numIncompleteLines and totalLines state values
@@ -609,12 +635,18 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         {/* Right column */}
         <div className="flex justify-end" style={{width: outerColumnsWidth + boardXMargin}}>
           <div className="flex" style={{width: outerColumnsWidth}}>
-            <div className="flex flex-col items-center w-full flex-1">
+            <div className="flex flex-col items-center w-full flex-1 gap-2">
               {currentMode === Mode.Edit && (
                 <>
                   <div className="flex flex-col w-full flex-1 min-h-0">
                     {movesDisplay}
                   </div>
+                  <FlashcardEditButtons
+                    onDiscardChangesBtnClick={discardUnsavedChanges}
+                    onSaveChangesBtnClick={() => console.log('save changes')}
+                    onDeleteFlashcardBtnClick={() => console.log('delete flashcard')}
+                    doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
+                  />
                   {arrowButtons}
                 </>
               )}
