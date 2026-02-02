@@ -5,7 +5,7 @@ import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import BlinkOverlay from '@/components/blinkOverlay';
 import Button, { ButtonStyle } from '@/components/button';
-import NewMovesDisplay from '@/components/newMovesDisplay';
+import NewMovesDisplay, { ContextMenuItems } from '@/components/newMovesDisplay';
 import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
 import FlashcardCompleteModal from './flashcardCompleteModal';
@@ -14,7 +14,13 @@ import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
-import { areCmMovesEqual, colorToMove, getLineFromCmMove, loadPgnIntoCmChess } from '@/utils/cmchess';
+import {
+  areCmMovesEqual,
+  colorToMove,
+  getLineFromCmMove,
+  isInVariation,
+  loadPgnIntoCmChess
+} from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
 import { areLinesEqual, convertLanLineToShortMoves, judgeLines } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
@@ -516,6 +522,21 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     }
   }
 
+  const contextMenu: ContextMenuItems = {
+    'Delete from here forward': {
+      isDisabled: (move: Move) => move.ply <= currentFlashcard.positionIdx,
+      handler: (move: Move) => deleteMoves(move),
+    },
+    'Promote to main line': {
+      isDisabled: (move: Move) => !isInVariation(move),
+      handler: (move: Move) => promoteToMainLine(move),
+    },
+    'Promote line': {
+      isDisabled: (move: Move) => !isInVariation(move),
+      handler: (move: Move) => promoteMoveVariation(move)
+    },
+  }
+
   const movesDisplay = (
     <NewMovesDisplay
       history={history}
@@ -523,11 +544,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       changeCurrentMove={setCurrentMove}
       useMobileLayout={false}
       showVariations={true}
-      contextMenu={{
-        'Delete here forward': (move) => deleteMoves(move),
-        'Promote to main line': (move) => promoteToMainLine(move),
-        'Promote line': (move) => promoteMoveVariation(move),
-      }}
+      contextMenu={contextMenu}
     />
   );
 
