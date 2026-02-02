@@ -196,32 +196,23 @@ const NewMovesDisplay: React.FC<Props> = ({
 
       // Check if white move has variations
       if (showVariations && whiteMove.variations.length > 0) {
-        // Render the main move pair first
+        // Render the white move only (with "..." placeholder for black)
         elements.push(
           <div key={`pair-${whiteMove.fen}`} className="flex">
-            <span className="flex-[0_0_18%] text-gray-400  text-center bg-neutral-700 py-0.5 border-r-1 border-neutral-600">{moveNumber}</span>
-              <MoveDisplay
-                move={whiteMove}
-                currentMove={currentMove}
-                changeCurrentMove={changeCurrentMove}
-                isKeyMove={isKeyMove(whiteMove)}
-                isInVariation={false}
-                contextMenu={contextMenu}
-              />
-            {blackMove && (
-                <MoveDisplay
-                  move={blackMove}
-                  currentMove={currentMove}
-                  changeCurrentMove={changeCurrentMove}
-                  isKeyMove={isKeyMove(blackMove)}
-                  isInVariation={false}
-                  contextMenu={contextMenu}
-                />
-            )}
+            <span className="flex-[0_0_18%] text-gray-400 text-center bg-neutral-700 py-0.5 border-r-1 border-neutral-600">{moveNumber}</span>
+            <MoveDisplay
+              move={whiteMove}
+              currentMove={currentMove}
+              changeCurrentMove={changeCurrentMove}
+              isKeyMove={isKeyMove(whiteMove)}
+              isInVariation={false}
+              contextMenu={contextMenu}
+            />
+            <span className="flex-[0_0_41%] py-0.5 pl-2 text-gray-400">...</span>
           </div>
         );
 
-        // Render variations
+        // Render white move variations
         whiteMove.variations.forEach((variation, idx) => {
           elements.push(
             <div key={`${whiteMove.fen}-var-${idx}`} className="pl-2 py-1 bg-neutral-700 max-w-full border-y-1 border-neutral-600">
@@ -230,15 +221,33 @@ const NewMovesDisplay: React.FC<Props> = ({
           );
         });
 
-        // Check if black move has variations
-        if (blackMove && showVariations && blackMove.variations.length > 0) {
-          blackMove.variations.forEach((variation, idx) => {
-            elements.push(
-              <div key={`${blackMove.fen}-var-${idx}`} className="ml-4 max-w-full">
-                {renderVariation(variation, 0)}
-              </div>
-            );
-          });
+        // Now render the black move in a separate row (if it exists)
+        if (blackMove) {
+          elements.push(
+            <div key={`pair-black-${blackMove.fen}`} className="flex">
+              <span className="flex-[0_0_18%] text-gray-400 text-center bg-neutral-700 py-0.5 border-r-1 border-neutral-600">{moveNumber}</span>
+              <span className="flex-[0_0_41%] py-0.5 pl-2 text-gray-400">...</span>
+              <MoveDisplay
+                move={blackMove}
+                currentMove={currentMove}
+                changeCurrentMove={changeCurrentMove}
+                isKeyMove={isKeyMove(blackMove)}
+                isInVariation={false}
+                contextMenu={contextMenu}
+              />
+            </div>
+          );
+
+          // Render black move variations
+          if (showVariations && blackMove.variations.length > 0) {
+            blackMove.variations.forEach((variation, idx) => {
+              elements.push(
+                <div key={`${blackMove.fen}-var-${idx}`} className="pl-2 py-1 bg-neutral-700 max-w-full border-y-1 border-neutral-600">
+                  {renderVariation(variation, 0)}
+                </div>
+              );
+            });
+          }
         }
 
         i += 2;
