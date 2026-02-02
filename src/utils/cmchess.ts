@@ -284,3 +284,50 @@ export function isInVariation(move: Move): boolean {
   }
   return false;
 }
+
+/**
+ * Promote a variation to the main line. Returns a new CmChess instance where
+ * the line containing the given move is the main line, and all other lines
+ * are variations.
+ */
+export function promoteToMainLine(cmchess: CmChess, move: Move): { cmchess: CmChess, move: Move } {
+  const movePly = move.ply;
+  // Get all variations from the current CmChess
+  const lines = getVariations(cmchess.history());
+
+  // Get the line from the move
+  const moveLineFromMove = getLineFromCmMove(move);
+
+  // Find the line that contains the move by comparing each line with the move's line
+  const targetLine = lines.find((line) => {
+    if (line.length < moveLineFromMove.length) return false;
+
+    // Check if the first moveLineFromMove.length moves match
+    for (let i = 0; i < moveLineFromMove.length; i++) {
+      if (!areShortMovesEqual(line[i], moveLineFromMove[i])) return false;
+    }
+    return true;
+  });
+
+  if (!targetLine) {
+    throw new Error('Move not found in any variation');
+  }
+
+  // Convert all lines to LAN format
+  const targetLanLine = targetLine.map(m => shortMoveToLan(m));
+  const otherLanLines = lines
+    .filter(line => line !== targetLine)
+    .map(line => line.map(m => shortMoveToLan(m)));
+
+  // Create new CmChess with target line as main line (add it first)
+  const newCmChess = new CmChess();
+  addLineToCmChess(newCmChess, targetLanLine);
+
+  // Add all other lines as variations
+  otherLanLines.forEach(line => addLineToCmChess(newCmChess, line));
+
+  const newMove = newCmChess.history()[movePly - 1];
+  if (newMove == undefined) throw new Error('newMove was undefined');
+
+  return { cmchess: newCmChess, move: newMove };
+}
