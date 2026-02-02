@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   promoteToMainLine,
+  promoteLine,
   loadPgnIntoCmChess,
   getVariations,
+  renderPgn,
 } from './cmchess';
 import { convertLanLineToSanLine } from './chess';
 
@@ -236,5 +238,135 @@ describe('promoteToMainLine', () => {
 
     // the newMove should be the third move in the new history
     expect(newMove).toBe(newHistory[2]);
+  });
+});
+
+describe('promoteLine', () => {
+  it('should promote the main line (no-op)', () => {
+    const pgn = '1. e4 e5 (1... c5) 2. Nf3 Nc6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    // Get a move from the main line
+    const mainLineMove = history[1]; // e5
+
+    // Promote the main line move
+    const { cmchess: newCmChess } = promoteLine(cmchess, mainLineMove);
+    const newHistory = newCmChess.history();
+
+    // The main line should remain the same
+    expect(newHistory[0].san).toBe('e4');
+    expect(newHistory[1].san).toBe('e5');
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('Nc6');
+  });
+
+  it('should promote a variation to main line', () => {
+    // Create a PGN with a main line and a variation
+    const pgn = '1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    // Get the first move of the variation (1... c5)
+    const firstMoveWithVariation = history.find((m) => (m.variations.length > 0));
+    if (firstMoveWithVariation == undefined) throw new Error('firstMoveWithVariation undefined');
+    const variationMove = firstMoveWithVariation.variations[0][0]; // c5
+
+    // Promote the variation to main line
+    const { cmchess: newCmChess, move: newMove } = promoteToMainLine(cmchess, variationMove);
+    const newHistory = newCmChess.history();
+
+    // The new main line should start with e4 c5
+    expect(newHistory[0].san).toBe('e4');
+    expect(newHistory[1].san).toBe('c5');
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('d6');
+
+    // The old main line should now be a variation
+    expect(newHistory[1].variations.length).toBeGreaterThan(0);
+    expect(newHistory[1].variations[0][0].san).toBe('e5');
+
+    // the newMove should be the second move in the new history
+    expect(newMove).toBe(newHistory[1]);
+  });
+
+  it('should promote a nested variation up one level', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Nc3 (3. d4)) 3. Bb5 a6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    // Navigate to the nested variation: 3. d4
+    const fourthMove = history[3]; // Nc6
+    const nc3Move = fourthMove.variations[0][1]; // Nc3
+    const d4Move = nc3Move.variations[0][0]; // d4
+
+    // Promote the nested variation
+    const { cmchess: newCmChess, move: newMove } = promoteLine(cmchess, d4Move);
+    const newHistory = newCmChess.history();
+
+    // The main line should still be: e4 e5 Nf3 Nf6 d4
+    expect(newHistory[0].san).toBe('e4');
+    expect(newHistory[1].san).toBe('e5');
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('Nc6');
+    expect(newHistory[4].san).toBe('Bb5');
+    expect(newHistory[5].san).toBe('a6');
+
+    expect(newHistory[3].variations[0][1].san).toBe('d4');
+    expect(newHistory[3].variations[0][1].variations[0][0].san).toBe('Nc3');
+    
+    // the newMove should be found at the expected location.
+    expect(newMove).toBe(newHistory[3].variations[0][1]);
+  });
+
+  it('should promote a more complex nested variation up one level', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 (2... d6 3. Bb5+ Bd7 4. Qe2 (4. Bxd7+ Nxd7 5. O-O (5. d4 exd4 6. Nxd4) 5... Qe7) 4... Nc6) 3. Bb5 a6';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    // Navigate to the nested variation: 3. d4
+    const fourthMove = history[3]; // Nc6
+    const qe2Move = fourthMove.variations[0][3]; // Qe2
+    const castleMove = qe2Move.variations[0][2]; // O-O
+    const exd4Move = castleMove.variations[0][1]; // exd4
+
+    // Promote the nested variation
+    const { cmchess: newCmChess, move: newMove } = promoteLine(cmchess, exd4Move);
+    const newHistory = newCmChess.history();
+
+    expect(newHistory[3].variations[0][3].variations[0][3].san).toBe('exd4');
+    expect(newHistory[3].variations[0][3].variations[0][4].san).toBe('Nxd4');
+    
+    // the newMove should be found at the expected location.
+    expect(newMove).toBe(newHistory[3].variations[0][3].variations[0][3]);
+  });
+
+  it('should promote a second child variation up one level', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 (2... d6 3. Bb5+ Bd7 (3... c6 4. Ba4 b5) (3... Ke7 4. d3) 4. Bxd7+) 3. Bb5';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    // Navigate to the nested variation: 3. d4
+    const fourthMove = history[3]; // Nc6
+    const Bd7Move = fourthMove.variations[0][2]; // Bd7
+    const ke7Move = Bd7Move.variations[1][0]; // Ke7
+
+    // Promote the nested variation
+    const { cmchess: newCmChess, move: newMove } = promoteLine(cmchess, ke7Move);
+    const newHistory = newCmChess.history();
+
+    // The main line should still be: e4 e5 Nf3 Nc6 Bb5
+    expect(newHistory[0].san).toBe('e4');
+    expect(newHistory[1].san).toBe('e5');
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('Nc6');
+    expect(newHistory[4].san).toBe('Bb5');
+
+    // expect(renderPgn(newCmChess).trim()).toBe('1. e4 e5 2. Nf3 Nc6 (2... d6 3. Bb5+ Ke7 (3... Bd7 4. Bxd7+) (3... c6 4. Ba4 b5) 4. d3) 3. Bb5');
+    expect(newHistory[3].variations[0][2].san).toBe('Ke7');
+    expect(newHistory[3].variations[0][3].san).toBe('d3');
+    
+    // the newMove should be found at the expected location.
+    expect(newMove).toBe(newHistory[3].variations[0][2]);
   });
 });
