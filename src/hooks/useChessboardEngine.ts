@@ -13,6 +13,7 @@ import {
   getLanLineFromCmMove,
   promoteToMainLine,
   isInVariation,
+  promoteLine,
 } from '../utils/cmchess';
 
 interface Options {
@@ -94,9 +95,17 @@ export default function useChessboardEngine(options = defaultOptions) {
     }
   }
 
-  const promoteMoveLineToMainLine = (move: Move) => {
+  const promoteVariationToMainLine = (move: Move) => {
     if (!isInVariation(move)) return;
     const { cmchess: newCmChess, move: newMove } = promoteToMainLine(cmchess.current, move);
+    cmchess.current = newCmChess;
+    setHistory(newCmChess.history());
+    setCurrentMove(newMove);
+  }
+
+  const promoteVariation = (move: Move) => {
+    if (!isInVariation(move)) return;
+    const { cmchess: newCmChess, move: newMove } = promoteLine(cmchess.current, move);
     cmchess.current = newCmChess;
     setHistory(newCmChess.history());
     setCurrentMove(newMove);
@@ -171,6 +180,7 @@ export default function useChessboardEngine(options = defaultOptions) {
     reset,
     undoLastMove,
     deleteMove,
-    promoteMoveLineToMainLine,
+    promoteVariationToMainLine,
+    promoteVariation,
   };
 }
