@@ -8,6 +8,11 @@ import {
   ContextMenuTrigger,
 } from './ui/context-menu';
 
+export type ContextMenuItems = Record<string, {
+  handler: (move: Move) => void,
+  isDisabled?: (move: Move) => boolean,
+}>
+
 interface Props {
   history: Move[];
   currentMove: Move | undefined;
@@ -15,7 +20,7 @@ interface Props {
   keyMoves?: Move[];
   useMobileLayout?: boolean;
   showVariations?: boolean;
-  contextMenu?: Record<string, (move: Move) => void>;
+  contextMenu?: ContextMenuItems;
 }
 
 interface MoveDisplayProps {
@@ -24,7 +29,7 @@ interface MoveDisplayProps {
   changeCurrentMove: (newCurrentMove?: Move) => void;
   isKeyMove: boolean;
   isInVariation: boolean;
-  contextMenu?: Record<string, (move: Move) => void>;
+  contextMenu?: ContextMenuItems;
 }
 
 const MoveDisplay: React.FC<MoveDisplayProps> = ({
@@ -87,8 +92,12 @@ const MoveDisplay: React.FC<MoveDisplayProps> = ({
         {content}
       </ContextMenuTrigger>
       <ContextMenuContent>
-        {Object.entries(contextMenu).map(([text, handler]) => (
-          <ContextMenuItem key={text} onSelect={() => handler(move)}>
+        {Object.entries(contextMenu).map(([text, {handler, isDisabled}]) => (
+          <ContextMenuItem
+            key={text}
+            onSelect={() => handler(move)}
+            disabled={isDisabled != undefined ? isDisabled(move) : false}
+          >
             {text}
           </ContextMenuItem>
         ))}
