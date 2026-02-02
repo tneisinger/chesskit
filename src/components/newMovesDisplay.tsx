@@ -69,7 +69,7 @@ const MoveDisplay: React.FC<MoveDisplayProps> = ({
   if (!isInVariation) {
     content = (
       <span
-        className={['flex-[0_0_41%] py-1 pl-3 cursor-pointer', ...classes].join(' ')}
+        className={['flex-[0_0_41%] py-0.5 pl-2 cursor-pointer', ...classes].join(' ')}
         onClick={() => changeCurrentMove(move)}
       >
         {content}
@@ -199,7 +199,7 @@ const NewMovesDisplay: React.FC<Props> = ({
         // Render the main move pair first
         elements.push(
           <div key={`pair-${whiteMove.fen}`} className="flex">
-            <span className="flex-[0_0_18%] text-gray-400  text-center bg-neutral-700 py-1 border-r-1 border-neutral-600">{moveNumber}</span>
+            <span className="flex-[0_0_18%] text-gray-400  text-center bg-neutral-700 py-0.5 border-r-1 border-neutral-600">{moveNumber}</span>
               <MoveDisplay
                 move={whiteMove}
                 currentMove={currentMove}
@@ -250,7 +250,7 @@ const NewMovesDisplay: React.FC<Props> = ({
         // Render the main move pair first
         elements.push(
           <div key={`pair-${whiteMove.fen}`} className="flex">
-            <span className="flex-[0_0_18%] text-gray-400  text-center bg-neutral-700 py-1 border-r-1 border-neutral-600">{moveNumber}</span>
+            <span className="flex-[0_0_18%] text-gray-400  text-center bg-neutral-700 py-0.5 border-r-1 border-neutral-600">{moveNumber}</span>
               <MoveDisplay
                 move={whiteMove}
                 currentMove={currentMove}
@@ -286,7 +286,7 @@ const NewMovesDisplay: React.FC<Props> = ({
       // No variations, render normally
       elements.push(
         <div key={`pair-${whiteMove.fen}`} className="flex">
-          <span className="flex-[0_0_18%] text-gray-400 text-center bg-neutral-700 py-1 border-r-1 border-neutral-600">{moveNumber}</span>
+          <span className="flex-[0_0_18%] text-gray-400 text-center bg-neutral-700 py-0.5 border-r-1 border-neutral-600">{moveNumber}</span>
             <MoveDisplay
               move={whiteMove}
               currentMove={currentMove}
@@ -305,7 +305,7 @@ const NewMovesDisplay: React.FC<Props> = ({
                 contextMenu={contextMenu}
               />
           ) : (
-            <span className="flex-[0_0_41%] py-1 pl-3 text-gray-400">...</span>
+            <span className="flex-[0_0_41%] py-0.5 pl-2 text-gray-400">...</span>
           )}
         </div>
       );
