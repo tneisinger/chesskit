@@ -305,7 +305,7 @@ const NewMovesDisplay: React.FC<Props> = ({
                 contextMenu={contextMenu}
               />
           ) : (
-            <span className="flex-[0_0_41%] text-gray-400">...</span>
+            <span className="flex-[0_0_41%] py-1 pl-3 text-gray-400">...</span>
           )}
         </div>
       );
