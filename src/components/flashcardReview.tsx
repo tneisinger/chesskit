@@ -9,8 +9,9 @@ import NewMovesDisplay, { ContextMenuItems } from '@/components/newMovesDisplay'
 import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
 import FlashcardCompleteModal from './flashcardCompleteModal';
+import DeleteFlashcardModal, { DeleteStatus } from './deleteFlashcardModal';
 import FlashcardEditButtons from './flashcardEditButtons';
-import { reviewFlashcard, updateFlashcardPgn } from '@/app/flashcards/actions';
+import { reviewFlashcard, updateFlashcardPgn, deleteFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
@@ -64,6 +65,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [numIncompleteLines, setNumIncompleteLines] = useState<number | null>(null);
   const [totalLines, setTotalLines] = useState<number | null>(null);
   const [showAltMoveModal, setShowAltMoveModal] = useState(false);
+  const [showDeleteFlashcardModal, setShowDeleteFlashcardModal] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>(DeleteStatus.NotStarted);
   const [showFlashcardCompleteModal, setShowFlashcardCompleteModal] = useState(false);
   const [isReplay, setIsReplay] = useState(false);
 
@@ -385,6 +388,25 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [doUnsavedFlashcardChangesExist, currentFlashcard, router]);
 
 
+  const handleConfirmedFlashcardDelete = useCallback(async () => {
+    setDeleteStatus(DeleteStatus.Deleting);
+
+    try {
+      const result = await deleteFlashcard(currentFlashcard.id);
+
+      if (result.success) {
+        setDeleteStatus(DeleteStatus.Success);
+      } else {
+        console.error('Error deleting flashcard:', result.error);
+        setDeleteStatus(DeleteStatus.Failed);
+      }
+    } catch (error) {
+      console.error('Error deleting flashcard:', error);
+      setDeleteStatus(DeleteStatus.Failed);
+    }
+  }, [currentFlashcard]);
+
+
   // Whenever lines changes, update the numIncompleteLines and totalLines state values
   useEffect(() => {
     if (Object.keys(lines).length < 1) {
@@ -645,6 +667,16 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             onNextFlashcardBtnClick={() => console.log('next flashcard')}
             numWrongAnswers={wrongAnswerCount}
           />
+          <DeleteFlashcardModal
+            show={showDeleteFlashcardModal}
+            onClose={() => {
+              setShowDeleteFlashcardModal(false);
+              setDeleteStatus(DeleteStatus.NotStarted);
+            }}
+            onNextFlashcardBtnClick={() => console.log('next flashcard')}
+            onConfirmedFlashcardDelete={handleConfirmedFlashcardDelete}
+            deleteStatus={deleteStatus}
+          />
           <Chessboard
             currentMove={currentMove}
             boardSize={boardSize}
@@ -668,7 +700,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                   <FlashcardEditButtons
                     onDiscardChangesBtnClick={discardUnsavedChanges}
                     onSaveChangesBtnClick={saveFlashcardPgnChanges}
-                    onDeleteFlashcardBtnClick={() => console.log('delete flashcard')}
+                    onDeleteFlashcardBtnClick={() => setShowDeleteFlashcardModal(true)}
                     doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
                   />
                   {arrowButtons}
@@ -701,7 +733,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         {/* Right column */}
         <div className="flex justify-end" style={{width: outerColumnsWidth + boardXMargin}}>
         </div>
-
       </div>
 
       <div>
