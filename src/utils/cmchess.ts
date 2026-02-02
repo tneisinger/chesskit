@@ -10,6 +10,7 @@ import {
   lanToShortMove,
   areMovesEqual as areShortMovesEqual,
   convertSanLineToLanLine,
+  convertLanLineToSanLine,
 } from '@/utils/chess';
 import { getLinesFromPGN } from './pgn';
 
@@ -286,11 +287,13 @@ export function isInVariation(move: Move): boolean {
 }
 
 /**
- * Promote a variation to the main line. Returns a new CmChess instance where
- * the line containing the given move is the main line, and all other lines
- * are variations.
+ * Promote a variation to the main line. Returns a new CmChess instance and a
+ * new Move. The new CmChess instance will have the line containing the given
+ * move is the main line, and all other lines are variations. The returned
+ * Move will be the equivalent of the input Move, but from the new CmChess.
  */
-export function promoteToMainLine(cmchess: CmChess, move: Move): { cmchess: CmChess, move: Move } {
+export function promoteToMainLine(cmchess: CmChess, move: Move): { cmchess:
+  CmChess, move: Move } {
   const movePly = move.ply;
   // Get all variations from the current CmChess
   const lines = getVariations(cmchess.history());
@@ -328,6 +331,160 @@ export function promoteToMainLine(cmchess: CmChess, move: Move): { cmchess: CmCh
 
   const newMove = newCmChess.history()[movePly - 1];
   if (newMove == undefined) throw new Error('newMove was undefined');
+
+  return { cmchess: newCmChess, move: newMove };
+}
+
+/**
+ * Helper function to find a move in the tree by following a LAN line.
+ * This is similar to getLastMoveOfLine but specifically for finding the exact move.
+ */
+function findMoveByLanLine(lanLine: string[], history: Move[]): Move | undefined {
+  if (lanLine.length === 0) return undefined;
+  if (history.length === 0) return undefined;
+
+  let nextMoves = [...history];
+  let currentMove: Move = nextMoves.shift()!;
+
+  for (let i = 0; i < lanLine.length; i++) {
+    const move = lanToShortMove(lanLine[i]);
+    if (areShortMovesEqual(move, currentMove)) {
+      if (i === lanLine.length - 1) return currentMove;
+      if (nextMoves.length === 0) return undefined;
+      currentMove = nextMoves.shift()!;
+    } else {
+      const v = currentMove.variations.find((v) => v.length > 0 && areShortMovesEqual(v[0], move));
+      if (v == undefined) return undefined;
+      if (i === lanLine.length - 1) return v[0];
+      if (v.length === 1) return undefined;
+      nextMoves = v.slice(1);
+      currentMove = nextMoves.shift()!;
+    }
+  }
+  return currentMove;
+}
+
+/**
+ * Promote a variation up one level in the hierarchy. Returns a new CmChess
+ * instance and a new Move. If the line is nested within another variation,
+ * it becomes a sibling of its parent variation. If it's already a top-level
+ * variation, it becomes the main line.
+ */
+export function promoteLine(cmchess: CmChess, move: Move): { cmchess: CmChess, move: Move } {
+  const movePly = move.ply;
+  const lines = getVariations(cmchess.history());
+  const moveLineFromMove = getLineFromCmMove(move);
+
+  // Find the target line containing the move
+  const targetLine = lines.find((line) => {
+    if (line.length < moveLineFromMove.length) return false;
+    for (let i = 0; i < moveLineFromMove.length; i++) {
+      if (!areShortMovesEqual(line[i], moveLineFromMove[i])) return false;
+    }
+    return true;
+  });
+
+  if (!targetLine) {
+    throw new Error('Move not found in any variation');
+  }
+
+  const mainLine = lines[0];
+
+  // Find where target line diverges from main line
+  let mainLineDivergence = 0;
+  while (
+    mainLineDivergence < mainLine.length &&
+    mainLineDivergence < targetLine.length &&
+    areShortMovesEqual(mainLine[mainLineDivergence], targetLine[mainLineDivergence])
+  ) {
+    mainLineDivergence++;
+  }
+
+  // Find the immediate parent line (line that shares the longest prefix with target)
+  let parentLine: ShortMove[] | undefined;
+  let parentDivergence = mainLineDivergence;
+
+  for (const line of lines) {
+    if (line === targetLine) continue;
+
+    let divergence = 0;
+    while (
+      divergence < line.length &&
+      divergence < targetLine.length &&
+      areShortMovesEqual(line[divergence], targetLine[divergence])
+    ) {
+      divergence++;
+    }
+
+    if (divergence > parentDivergence) {
+      parentLine = line;
+      parentDivergence = divergence;
+    }
+  }
+
+  // If there's no parent (or parent is main line), target is already top-level
+  // In this case, promote to main line
+  if (!parentLine || parentLine === mainLine) {
+    return promoteToMainLine(cmchess, move);
+  }
+
+  // Create promoted line: keep the common prefix with parent line,
+  // then add the divergent part of target line
+  const promotedLine = [
+    ...parentLine.slice(0, parentDivergence),
+    ...targetLine.slice(parentDivergence)
+  ];
+
+  // Find all sibling lines (lines that diverge at the same point as target)
+  const siblingLines: ShortMove[][] = [];
+  for (const line of lines) {
+    if (line === targetLine || line === parentLine) continue;
+
+    let divergence = 0;
+    while (
+      divergence < line.length &&
+      divergence < targetLine.length &&
+      areShortMovesEqual(line[divergence], targetLine[divergence])
+    ) {
+      divergence++;
+    }
+
+    if (divergence === parentDivergence) {
+      siblingLines.push(line);
+    }
+  }
+
+  // Rebuild all lines, removing parent, target, and all siblings, then adding them in new order
+  // The order matters: promoted line first, then parent and siblings (so they nest under promoted)
+  const newLanLines = lines
+    .filter(line => line !== targetLine && line !== parentLine && !siblingLines.includes(line))
+    .map(line => line.map(m => shortMoveToLan(m)));
+
+  // Add promoted line first (so parent and siblings will nest under it)
+  newLanLines.push(promotedLine.map(m => shortMoveToLan(m)));
+
+  // Add parent line second (will nest under promoted)
+  newLanLines.push(parentLine.map(m => shortMoveToLan(m)));
+
+  // Add all sibling lines (will also nest under promoted)
+  siblingLines.forEach(line => newLanLines.push(line.map(m => shortMoveToLan(m))));
+
+  // Create new CmChess - add main line first
+  const newCmChess = new CmChess();
+  const mainLanLine = newLanLines[0];
+  addLineToCmChess(newCmChess, mainLanLine);
+
+  // Add all other lines as variations
+  newLanLines.slice(1).forEach(line => addLineToCmChess(newCmChess, line));
+
+  // Find the move in the new tree by following the promoted line
+  const promotedLanLine = promotedLine.map(m => shortMoveToLan(m));
+  const newHistory = newCmChess.history();
+  const newMove = findMoveByLanLine(promotedLanLine.slice(0, movePly), newHistory);
+
+  if (newMove == undefined) {
+    throw new Error('newMove was undefined');
+  }
 
   return { cmchess: newCmChess, move: newMove };
 }
