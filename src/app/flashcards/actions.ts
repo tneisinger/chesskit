@@ -253,6 +253,49 @@ export async function updateFlashcard(
 }
 
 /**
+ * Update flashcard PGN
+ */
+export async function updateFlashcardPgn(
+  id: number,
+  pgn: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in" };
+    }
+
+    // Verify ownership
+    const flashcard = await db.query.flashcards.findFirst({
+      where: and(
+        eq(flashcards.id, id),
+        eq(flashcards.userId, Number(session.user.id))
+      ),
+    });
+
+    if (!flashcard) {
+      return {
+        success: false,
+        error: "Flashcard not found or access denied",
+      };
+    }
+
+    await db
+      .update(flashcards)
+      .set({
+        pgn,
+        updatedAt: new Date(),
+      })
+      .where(eq(flashcards.id, id));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating flashcard PGN:", error);
+    return { success: false, error: "Failed to update flashcard PGN" };
+  }
+}
+
+/**
  * Delete a flashcard
  */
 export async function deleteFlashcard(

@@ -33,7 +33,7 @@ const FlashcardEditButtons = ({
           disabled={!doUnsavedChangesExist}
           buttonSize={ButtonSize.Small}
         >
-          Discard Changes
+          Undo Changes
         </Button>
       </span>
       <span>
