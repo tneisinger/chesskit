@@ -5,6 +5,7 @@ import {
   loadPgnIntoCmChess,
   getVariations,
   renderPgn,
+  doHistoriesMatch,
 } from './cmchess';
 import { convertLanLineToSanLine } from './chess';
 
@@ -368,5 +369,115 @@ describe('promoteLine', () => {
     
     // the newMove should be found at the expected location.
     expect(newMove).toBe(newHistory[3].variations[0][2]);
+  });
+});
+
+describe('doHistoriesMatch', () => {
+  it('should return true for identical simple games', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn);
+    const cmchess2 = loadPgnIntoCmChess(pgn);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(true);
+  });
+
+  it('should return true for identical games with variations', () => {
+    const pgn = '1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn);
+    const cmchess2 = loadPgnIntoCmChess(pgn);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(true);
+  });
+
+  it('should return true for identical games with nested variations', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Nc3 (3. d4)) 3. Bb5 a6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn);
+    const cmchess2 = loadPgnIntoCmChess(pgn);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(true);
+  });
+
+  it('should return true for empty histories', () => {
+    const cmchess1 = loadPgnIntoCmChess('*');
+    const cmchess2 = loadPgnIntoCmChess('*');
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(true);
+  });
+
+  it('should return false for games with different moves', () => {
+    const pgn1 = '1. e4 e5 2. Nf3 Nc6 *';
+    const pgn2 = '1. e4 c5 2. Nf3 d6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn1);
+    const cmchess2 = loadPgnIntoCmChess(pgn2);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(false);
+  });
+
+  it('should return false for games with different lengths', () => {
+    const pgn1 = '1. e4 e5 2. Nf3 Nc6 3. Bb5 *';
+    const pgn2 = '1. e4 e5 2. Nf3 Nc6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn1);
+    const cmchess2 = loadPgnIntoCmChess(pgn2);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(false);
+  });
+
+  it('should return false when one has variations and the other does not', () => {
+    const pgn1 = '1. e4 e5 (1... c5) 2. Nf3 Nc6 *';
+    const pgn2 = '1. e4 e5 2. Nf3 Nc6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn1);
+    const cmchess2 = loadPgnIntoCmChess(pgn2);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(false);
+  });
+
+  it('should return false when variations differ', () => {
+    const pgn1 = '1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 *';
+    const pgn2 = '1. e4 e5 (1... c6 2. d4 d5) 2. Nf3 Nc6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn1);
+    const cmchess2 = loadPgnIntoCmChess(pgn2);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(false);
+  });
+
+  it('should return false when variation order differs', () => {
+    const pgn1 = '1. e4 e5 (1... c5) (1... c6) 2. Nf3 Nc6 *';
+    const pgn2 = '1. e4 e5 (1... c6) (1... c5) 2. Nf3 Nc6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn1);
+    const cmchess2 = loadPgnIntoCmChess(pgn2);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(false);
+  });
+
+  it('should return true for games with multiple variations in same order', () => {
+    const pgn = '1. e4 e5 (1... c5) (1... c6) 2. Nf3 Nc6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn);
+    const cmchess2 = loadPgnIntoCmChess(pgn);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(true);
+  });
+
+  it('should return true after promotion operations that result in same structure', () => {
+    const pgn = '1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 *';
+    const cmchess1 = loadPgnIntoCmChess(pgn);
+
+    // Promote c5 to main line
+    const c5Move = cmchess1.history()[1].variations[0][0];
+    const { cmchess: promoted } = promoteToMainLine(cmchess1, c5Move);
+
+    // Create a PGN that already has c5 as main line
+    const pgn2 = '1. e4 c5 (1... e5 2. Nf3 Nc6) 2. Nf3 d6 *';
+    const cmchess2 = loadPgnIntoCmChess(pgn2);
+
+    expect(doHistoriesMatch(promoted.history(), cmchess2.history())).toBe(true);
+  });
+
+  it('should return false when nested variation depth differs', () => {
+    const pgn1 = '1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Nc3 (3. d4)) *';
+    const pgn2 = '1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Nc3) *';
+    const cmchess1 = loadPgnIntoCmChess(pgn1);
+    const cmchess2 = loadPgnIntoCmChess(pgn2);
+
+    expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(false);
   });
 });
