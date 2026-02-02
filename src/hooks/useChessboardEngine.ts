@@ -11,6 +11,8 @@ import {
   deleteMoveFromCmChess,
   getLastMoveOfLine,
   getLanLineFromCmMove,
+  promoteToMainLine,
+  isInVariation,
 } from '../utils/cmchess';
 
 interface Options {
@@ -92,6 +94,14 @@ export default function useChessboardEngine(options = defaultOptions) {
     }
   }
 
+  const promoteMoveLineToMainLine = (move: Move) => {
+    if (!isInVariation(move)) return;
+    const { cmchess: newCmChess, move: newMove } = promoteToMainLine(cmchess.current, move);
+    cmchess.current = newCmChess;
+    setHistory(newCmChess.history());
+    setCurrentMove(newMove);
+  }
+
   const updateHistoryAndCurrentMove = (newMove: ShortMove) => {
     const history = cmchess.current.history();
 
@@ -161,5 +171,6 @@ export default function useChessboardEngine(options = defaultOptions) {
     reset,
     undoLastMove,
     deleteMove,
+    promoteMoveLineToMainLine,
   };
 }
