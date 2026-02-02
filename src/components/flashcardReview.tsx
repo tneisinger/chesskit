@@ -102,7 +102,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     reset: resetChessboardEngine,
     undoLastMove,
     deleteMove,
-    promoteMoveLineToMainLine,
+    promoteVariationToMainLine,
+    promoteVariation,
   } = useChessboardEngine();
 
   const previousMove = usePrevious(currentMove);
@@ -319,8 +320,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const promoteToMainLine = useCallback((move: Move) => {
     if (currentMode !== Mode.Edit) return;
-    promoteMoveLineToMainLine(move);
-  }, [promoteMoveLineToMainLine, currentMode]);
+    promoteVariationToMainLine(move);
+  }, [promoteVariationToMainLine, currentMode]);
+
+  const promoteMoveVariation = useCallback((move: Move) => {
+    if (currentMode !== Mode.Edit) return;
+    promoteVariation(move);
+  }, [promoteVariation, currentMode]);
 
 
   // Whenever lines changes, update the numIncompleteLines and totalLines state values
@@ -520,6 +526,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       contextMenu={{
         'Delete here forward': (move) => deleteMoves(move),
         'Promote to main line': (move) => promoteToMainLine(move),
+        'Promote line': (move) => promoteMoveVariation(move),
       }}
     />
   );
