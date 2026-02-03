@@ -289,22 +289,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [flashcardIndex, flashcards, cmchess.current]);
 
 
-  const handleEditBtnClick = useCallback(() => {
-    // Switching to Practice mode
-    if (currentMode === Mode.Edit) {
-      setCurrentMode(Mode.Practice);
-      resetClock();
-      setupResetBoardTimeouts(250);
-    }
-
-    // Switching to Edit mode
-    if (currentMode === Mode.Practice) {
-      pauseClock();
-      setCurrentMode(Mode.Edit);
-    }
-  }, [currentMode, pauseClock, setupResetBoardTimeouts, resetClock]);
-
-
   const isCurrentMoveAtEndOfALine = useCallback((): boolean => {
     const relevantLines = getRelevantLessonLines(lines, currentMove);
     const currentLine = getLineFromCmMove(currentMove);
@@ -405,6 +389,23 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setDeleteStatus(DeleteStatus.Failed);
     }
   }, [currentFlashcard]);
+
+
+  const handleModeBtnClick = useCallback(() => {
+    // Switching to Practice mode
+    if (currentMode === Mode.Edit) {
+      setCurrentMode(Mode.Practice);
+      resetClock();
+      setupResetBoardTimeouts(250);
+    }
+
+    // Switching to Edit mode
+    if (currentMode === Mode.Practice) {
+      pauseClock();
+      discardUnsavedChanges();
+      setCurrentMode(Mode.Edit);
+    }
+  }, [currentMode, pauseClock, setupResetBoardTimeouts, resetClock, discardUnsavedChanges]);
 
 
   // Whenever lines changes, update the numIncompleteLines and totalLines state values
@@ -722,7 +723,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         <div className="relative" style={{ width: boardSize }}>
           <div className="flex justify-center">
             <div className="flex flex-1 justify-between">
-              <Button onClick={handleEditBtnClick} >
+              <Button onClick={handleModeBtnClick} >
                 {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Play Flashcard')}
               </Button>
             </div>
