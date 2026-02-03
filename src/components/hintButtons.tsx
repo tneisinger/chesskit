@@ -10,6 +10,7 @@ export interface Props {
   disabled?: boolean;
   hintButtonText?: string;
   showButtonText?: string;
+  buttonSize?: ButtonSize;
 }
 
 const HintButtons = ({
@@ -19,6 +20,7 @@ const HintButtons = ({
   disabled = false,
   hintButtonText = 'Hint',
   showButtonText = 'Show',
+  buttonSize = ButtonSize.Small,
 }: Props) => {
   const timeoutRef = useRef<number>(0);
 
@@ -67,7 +69,7 @@ const HintButtons = ({
     <>
       {(hintedPosition === getFen(currentMove)) ? (
         <Button
-          buttonSize={ButtonSize.Small}
+          buttonSize={buttonSize}
           onClick={handleShowMoveBtnClick}
           disabled={shouldDisableShowBtn()}
         >
@@ -75,7 +77,7 @@ const HintButtons = ({
         </Button>
       ) : (
         <Button
-          buttonSize={ButtonSize.Small}
+          buttonSize={buttonSize}
           onClick={handleHintBtnClick}
           disabled={disableButtons}
         >
