@@ -11,6 +11,10 @@ import AltMoveModal from '@/components/altMoveModal';
 import FlashcardCompleteModal from './flashcardCompleteModal';
 import DeleteFlashcardModal, { DeleteStatus } from './deleteFlashcardModal';
 import FlashcardEditButtons from './flashcardEditButtons';
+import HintButtons from '@/components/hintButtons';
+import { Arrow } from '@/components/cmChessboard';
+import { MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers';
+import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
 import { reviewFlashcard, updateFlashcardPgn, deleteFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
@@ -26,6 +30,7 @@ import {
   isInVariation,
   loadPgnIntoCmChess,
   renderPgn,
+  Marker,
 } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
 import { areLinesEqual, convertLanLineToShortMoves, judgeLines } from '@/utils/chess';
@@ -69,6 +74,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>(DeleteStatus.NotStarted);
   const [showFlashcardCompleteModal, setShowFlashcardCompleteModal] = useState(false);
   const [isReplay, setIsReplay] = useState(false);
+  const [markers, setMarkers] = useState<Marker[]>([]);
+  const [arrows, setArrows] = useState<Arrow[]>([]);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -391,6 +398,29 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [currentFlashcard]);
 
 
+  const giveHint = useCallback(() => {
+    const nextMoves = getNextMoves(lines, currentMove);
+    if (nextMoves.length < 1) return;
+    const uniqueFromSquares = new Set(nextMoves.map((m) => m.from));
+    const newMarkers: Marker[] = [];
+    uniqueFromSquares.forEach((from) => {
+      newMarkers.push({ square: from, type: MARKER_TYPE.circle });
+    });
+    setMarkers(newMarkers);
+  }, [lines, currentMove]);
+
+
+  const showMoves = useCallback(() => {
+    const nextMoves = getNextMoves(lines, currentMove);
+    if (nextMoves.length < 1) return;
+    const newArrows = nextMoves.map(
+      (m) => ({ type: ARROW_TYPE.info, from: m.from, to: m.to })
+    );
+    setMarkers([]);
+    setArrows(newArrows);
+  }, [lines, currentMove]);
+
+
   const handleModeBtnClick = useCallback(() => {
     // Switching to Practice mode
     if (currentMode === Mode.Edit) {
@@ -686,6 +716,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             playMove={playMove}
             afterUserMove={handleUserMove}
             animate={true}
+            markers={markers}
+            arrows={arrows}
           />
         </div>
 
@@ -727,6 +759,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                 {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Play Flashcard')}
               </Button>
             </div>
+            <HintButtons
+              currentMove={currentMove}
+              giveHint={giveHint}
+              showMove={showMoves}
+            />
             <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
           </div>
         </div>
