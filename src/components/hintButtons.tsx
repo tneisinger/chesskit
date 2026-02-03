@@ -8,6 +8,8 @@ export interface Props {
   giveHint: () => void;
   showMove: () => void;
   disabled?: boolean;
+  hintButtonText?: string;
+  showButtonText?: string;
 }
 
 const HintButtons = ({
@@ -15,6 +17,8 @@ const HintButtons = ({
   giveHint,
   showMove,
   disabled = false,
+  hintButtonText = 'Hint',
+  showButtonText = 'Show',
 }: Props) => {
   const timeoutRef = useRef<number>(0);
 
@@ -67,7 +71,7 @@ const HintButtons = ({
           onClick={handleShowMoveBtnClick}
           disabled={shouldDisableShowBtn()}
         >
-          Show
+          {showButtonText}
         </Button>
       ) : (
         <Button
@@ -75,7 +79,7 @@ const HintButtons = ({
           onClick={handleHintBtnClick}
           disabled={disableButtons}
         >
-          Hint
+          {hintButtonText}
         </Button>
       )}
       {showDebugButtons && (
