@@ -1,11 +1,11 @@
 import Switch from 'react-switch';
-import { Move } from 'cm-chess/src/Chess';
+import { Move, FEN } from 'cm-chess/src/Chess';
 import { PositionEvaluation, GameEvaluation, MoveJudgement } from '@/types/chess';
 import { getFen, getMoveJudgementColor, makeMoveJudgement } from '@/utils/chess';
 import { makeScoreString, MultiPV } from '@/utils/stockfish';
 import { isBookPosition } from '@/utils/bookPositions';
 import EvalerLine from '@/components/evalerLine';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const showDevButtons = false;
 
@@ -13,8 +13,7 @@ export interface Props {
   isEngineOn: boolean;
   setIsEngineOn: (isOn: boolean) => void;
   currentMove: Move | undefined;
-  gameEvaluation: GameEvaluation;
-  variationEvaluations: GameEvaluation;
+  evaluations: GameEvaluation;
   numLines: number;
   isEvaluating: boolean;
   evalerMaxDepth?: number;
@@ -30,8 +29,7 @@ const EngineDisplay = ({
   isEngineOn,
   setIsEngineOn,
   currentMove,
-  gameEvaluation,
-  variationEvaluations,
+  evaluations,
   evalerMaxDepth,
   numLines,
   engineName = 'Engine loading...',
@@ -42,16 +40,9 @@ const EngineDisplay = ({
   switchDisabledMsg,
   showMoveJudgements = true,
 }: Props) => {
-  const handleSwitchChange = (checked: boolean) => {
-    setIsEngineOn(checked);
-  }
-  const getEvaluation = (): PositionEvaluation | undefined => {
-    const ev = gameEvaluation[getFen(currentMove)];
-    if (ev) return ev;
-    return variationEvaluations[getFen(currentMove)];
-  }
+  const [currentEvaluation, setCurrentEvaluation] = useState<PositionEvaluation | undefined>(undefined);
 
-  const makeMoveJudgementString = (mj?: MoveJudgement): string => {
+  const makeMoveJudgementString = useCallback((mj?: MoveJudgement): string => {
     if (!isEngineOn) return '';
 
     if (currentMove && isBookPosition(currentMove.fen)) {
@@ -65,42 +56,19 @@ const EngineDisplay = ({
     if (isEvaluating) return 'evaluating...';
 
     return '';
-  }
+  }, [isEngineOn, currentMove, isEvaluating]);
 
-  const moveJudgementColor = (mj?: MoveJudgement): string | undefined => {
+  const moveJudgementColor = useCallback((mj?: MoveJudgement): string | undefined => {
     const fen = currentMove ? currentMove.fen : undefined;
     return getMoveJudgementColor(mj, fen);
-  }
+  }, [currentMove]);
 
   const makeEvaluationString = (e: PositionEvaluation | undefined): string => {
     if (e == undefined) return '';
     return makeScoreString(e.score)
   }
 
-  const evaluation = getEvaluation();
-  let depthString: string | undefined = undefined;
-  if (isEngineOn && evaluation) {
-    depthString = `Depth ${evaluation.depth}`;
-    if (evalerMaxDepth && evalerMaxDepth >= evaluation.depth) {
-      depthString += `/${evalerMaxDepth}`;
-    }
-  }
-
-  const currentMoveLines: (MultiPV | undefined)[] = new Array(numLines).fill(undefined);
-  const posEval = getEvaluation();
-  if (isEngineOn && posEval && posEval.lines) {
-    posEval.lines.forEach((line, i) => {
-      currentMoveLines[i] = {
-        depth: posEval.depth,
-        multipv: i + 1,
-        score: line.score,
-        lanLine: line.lanLine.split(' '),
-      };
-    });
-  }
-
   const getMoveJudgement = useCallback((): (MoveJudgement | undefined) => {
-    const evaluations = { ...gameEvaluation, ...variationEvaluations };
     if (currentMove && currentMove.previous) {
       return makeMoveJudgement(
         currentMove.previous.fen,
@@ -108,10 +76,34 @@ const EngineDisplay = ({
         evaluations,
       )
     }
-  }, [currentMove, gameEvaluation, variationEvaluations]);
+  }, [currentMove, evaluations]);
 
   const debug = () => {
     console.log('debug');
+  }
+
+  useEffect(() => {
+    setCurrentEvaluation(evaluations[getFen(currentMove)]);
+  }, [evaluations, currentMove]);
+
+  let depthString: string | undefined = undefined;
+  if (isEngineOn && currentEvaluation) {
+    depthString = `Depth ${currentEvaluation.depth}`;
+    if (evalerMaxDepth && evalerMaxDepth >= currentEvaluation.depth) {
+      depthString += `/${evalerMaxDepth}`;
+    }
+  }
+
+  const currentMoveLines: (MultiPV | undefined)[] = new Array(numLines).fill(undefined);
+  if (isEngineOn && currentEvaluation && currentEvaluation.lines) {
+    currentEvaluation.lines.forEach((line, i) => {
+      currentMoveLines[i] = {
+        depth: currentEvaluation.depth,
+        multipv: i + 1,
+        score: line.score,
+        lanLine: line.lanLine.split(' '),
+      };
+    });
   }
 
   const mj = showMoveJudgements ? getMoveJudgement() : undefined;
@@ -121,7 +113,7 @@ const EngineDisplay = ({
       <div className="flex flex-col flex-1 justify-center bg-stone-700 rounded-sm">
         <div className="flex flex-row items-center justify-between min-h-10 px-2">
           <span className="text-xl w-12 text-right">
-            {isEngineOn && makeEvaluationString(evaluation)}
+            {isEngineOn && makeEvaluationString(currentEvaluation)}
           </span>
           <div className="text-center text-[12px]/4 h-8 flex flex-col justify-center items-center">
             <div>{engineName}</div>
@@ -132,7 +124,7 @@ const EngineDisplay = ({
           <div className="w-14 h-7">
             {includeOnOffSwitch && (
               <Switch
-                onChange={handleSwitchChange}
+                onChange={(checked) => setIsEngineOn(checked)}
                 checked={isEngineOn}
                 disabled={isSwitchDisabled}
               />
@@ -160,7 +152,7 @@ const EngineDisplay = ({
             return (
               <EvalerLine
                 key={key}
-                fen={getFen(currentMove)}
+                fen={currentEvaluation ? currentEvaluation.fen : FEN.start}
                 line={line}
                 maxLineLengthPx={maxLineLengthPx}
               />

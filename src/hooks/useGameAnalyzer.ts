@@ -20,13 +20,18 @@ import usePrevious from '@/hooks/usePrevious';
 
 const MAX_THREADS_USAGE = 0.5;
 
+export enum AnalysisStatus {
+  NotStarted = 'Not Started',
+  Analyzing = 'Analyzing',
+  Complete = 'Complete',
+}
+
 interface Output {
   analyzeGame: (game: GameData) => void;
-  variationEvaluations: GameEvaluation;
   latestEvaluation: PositionEvaluation | null;
   fenBeingAnalyzed: string | null;
   engineName: string | null;
-  isAnalyzingGame: boolean;
+  gameAnalysisStatus: AnalysisStatus;
   gameAnalysisProgress: number; // Percentage (0-100)
   currentPosition: number; // Current position being analyzed
   totalPositions: number; // Total positions to analyze
@@ -38,8 +43,8 @@ interface Options {
 }
 
 export default function useGameAnalyzer(
-  gameEvaluation: GameEvaluation,
-  setGameEvaluation: React.Dispatch<React.SetStateAction<GameEvaluation>>,
+  evaluations: GameEvaluation,
+  setEvaluations: React.Dispatch<React.SetStateAction<GameEvaluation>>,
   isPositionAnalysisOn: boolean,
   currentMove: Move | undefined,
   options?: Options
@@ -52,8 +57,8 @@ export default function useGameAnalyzer(
 
   const [fensToAnalyze, setFensToAnalyze] = useState<string[]>([]);
   const [currentPositionIndex, setCurrentPositionIndex] = useState<number>(0);
-  const [variationEvaluations, setVariationEvaluations] = useState<GameEvaluation>({});
   const [isAnalyzingGame, setIsAnalyzingGame] = useState(false);
+  const [gameAnalysisStatus, setGameAnalysisStatus] = useState(AnalysisStatus.NotStarted);
   const [positionQueue, setPositionQueue] = useState<string[]>([]);
   const [latestEvaluation, setLatestEvaluation] = useState<PositionEvaluation | null>(null);
   const [fenBeingAnalyzed, setFenBeingAnalyzed] = useState<string | null>(null);
@@ -156,9 +161,9 @@ export default function useGameAnalyzer(
 
     setFensToAnalyze(fens);
     setCurrentPositionIndex(0);
-    setGameEvaluation({});
     linesRef.current = {};
     setIsAnalyzingGame(true);
+    setGameAnalysisStatus(AnalysisStatus.Analyzing);
 
     if (stockfish) {
       stockfish.postMessage('ucinewgame');
@@ -166,12 +171,10 @@ export default function useGameAnalyzer(
   }, [generateFensFromGame, stockfish, cancelAllAnalysis]);
 
   const doWeAlreadyHaveEvaluationForFen = useCallback((fen: string): boolean => {
-    const gameEval = gameEvaluation[fen];
-    if (gameEval && gameEval.depth >= evalDepth && fen) return true;
-    const varEval = variationEvaluations[fen];
-    if (varEval && varEval.depth >= evalDepth && fen) return true;
+    const fenEval = evaluations[fen];
+    if (fenEval && fenEval.depth >= evalDepth && fen) return true;
     return false;
-  }, [gameEvaluation, variationEvaluations]);
+  }, [evaluations, options]);
 
   // Analyze a single position or variation
   const analyzePosition = useCallback((fen: string, prevFen?: string) => {
@@ -361,11 +364,7 @@ export default function useGameAnalyzer(
         }
       };
 
-      if (isAnalyzingGameRef.current) {
-        setGameEvaluation(updateEvaluation);
-      } else if (isAnalyzingPosition.current) {
-        setVariationEvaluations(updateEvaluation);
-      }
+      setEvaluations(updateEvaluation);
     };
 
     if (stockfish && !hasStockfishBeenSetup.current) {
@@ -397,6 +396,7 @@ export default function useGameAnalyzer(
     if (currentPositionIndex >= fensToAnalyze.length) {
       // Analysis complete
       setIsAnalyzingGame(false);
+      setGameAnalysisStatus(AnalysisStatus.Complete);
       changeFenBeingAnalyzed(null);
       return;
     }
@@ -404,7 +404,7 @@ export default function useGameAnalyzer(
     const nextFen = fensToAnalyze[currentPositionIndex];
 
     // Check if we already have this evaluation at the required depth
-    if (nextFen in gameEvaluation && gameEvaluation[nextFen].depth >= evalDepth && nextFen in linesRef.current) {
+    if (nextFen in evaluations && evaluations[nextFen].depth >= evalDepth && nextFen in linesRef.current) {
       // Skip this position, move to next
       setCurrentPositionIndex((prev) => prev + 1);
       return;
@@ -415,7 +415,7 @@ export default function useGameAnalyzer(
     changeFenBeingAnalyzed(nextFen);
     stockfish.postMessage(`position fen ${nextFen}`);
     stockfish.postMessage(`go depth ${evalDepth}`);
-  }, [isAnalyzingGame, currentPositionIndex, fensToAnalyze, stockfish, evalDepth, gameEvaluation,
+  }, [isAnalyzingGame, currentPositionIndex, fensToAnalyze, stockfish, evalDepth, evaluations,
       prevPositionIndex, prevIsAnalyzingGame]
   );
 
@@ -445,7 +445,7 @@ export default function useGameAnalyzer(
     changeFenBeingAnalyzed(nextFen);
     stockfish.postMessage(`position fen ${nextFen}`);
     stockfish.postMessage(`go depth ${evalDepth}`);
-  }, [positionQueue, prevPositionQueue, stockfish, evalDepth, variationEvaluations]);
+  }, [positionQueue, prevPositionQueue, stockfish, evalDepth, doWeAlreadyHaveEvaluationForFen]);
 
   // Automatically analyze position when isPositionAnalysisOn is true
   useEffect(() => {
@@ -482,11 +482,10 @@ export default function useGameAnalyzer(
 
   return {
     analyzeGame,
-    variationEvaluations,
     latestEvaluation,
     fenBeingAnalyzed,
     engineName,
-    isAnalyzingGame,
+    gameAnalysisStatus,
     gameAnalysisProgress,
     currentPosition: currentPositionIndex,
     totalPositions: fensToAnalyze.length,

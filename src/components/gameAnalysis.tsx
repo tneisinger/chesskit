@@ -2,6 +2,7 @@ import Button from '@/components/button';
 import Spinner from '@/components/spinner';
 import GameChart, { Props as GameChartProps } from '@/components/gameChart';
 import { GameData } from '@/types/chess';
+import { AnalysisStatus } from '@/hooks/useGameAnalyzer';
 
 interface Props extends GameChartProps {
   analyzeGame: (game: GameData) => void;
@@ -9,7 +10,7 @@ interface Props extends GameChartProps {
   changeDepth: (newDepth: number) => void;
   numLines: number;
   changeNumLines: (newNumLines: number) => void;
-  isAnalyzing: boolean;
+  gameAnalysisStatus: AnalysisStatus;
   gameAnalysisProgress: number;
 }
 
@@ -20,7 +21,7 @@ const GameAnalysis = ({
   changeDepth,
   numLines,
   changeNumLines,
-  isAnalyzing,
+  gameAnalysisStatus,
   gameAnalysisProgress,
   gameEvaluation,
   currentMove,
@@ -44,9 +45,9 @@ const GameAnalysis = ({
           width={width}
         />
       )}
-      {!isAnalyzing && gameAnalysisProgress === 0 && (
+      {gameAnalysisStatus == AnalysisStatus.NotStarted && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
-          <Button onClick={handleAnalyzeGame} disabled={isAnalyzing}>
+          <Button onClick={handleAnalyzeGame} disabled={gameAnalysisStatus !== AnalysisStatus.NotStarted}>
             Analyze Game
           </Button>
           <div className='flex flex-row gap-8'>
@@ -85,7 +86,7 @@ const GameAnalysis = ({
           </div>
         </div>
       )}
-      {isAnalyzing && (
+      {gameAnalysisStatus === AnalysisStatus.Analyzing && (
         <div className='flex flex-col h-full justify-center items-center gap-4'>
           <p>Analyzing game</p>
           <Spinner white />
@@ -96,7 +97,7 @@ const GameAnalysis = ({
           </div>
         </div>
       )}
-      {!isAnalyzing && gameAnalysisProgress >= 100 && (
+      {gameAnalysisStatus === AnalysisStatus.Complete && (
         <GameChart
           game={game}
           gameEvaluation={gameEvaluation}

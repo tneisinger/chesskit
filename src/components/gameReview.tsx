@@ -15,7 +15,7 @@ import EngineDisplay from '@/components/engineDisplay';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
-import useGameAnalyzer from '@/hooks/useGameAnalyzer';
+import useGameAnalyzer, { AnalysisStatus } from '@/hooks/useGameAnalyzer';
 import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
 import usePrevious from '@/hooks/usePrevious';
@@ -98,6 +98,7 @@ const GameReview = ({ game }: Props) => {
   const [s, dispatch] = useReducer(reducer, initialState);
 
   const [gameEvaluation, setGameEvaluation] = useState<GameEvaluation>({});
+  const [evaluations, setEvaluations] = useState<GameEvaluation>({});
 
   // Set up chessboard engine
   const {
@@ -112,29 +113,31 @@ const GameReview = ({ game }: Props) => {
   // Set up game analyzer
   const {
     analyzeGame,
-    variationEvaluations,
-    isAnalyzingGame,
+    gameAnalysisStatus,
     gameAnalysisProgress,
     engineName,
   } = useGameAnalyzer(
-    gameEvaluation,
-    setGameEvaluation,
+    evaluations,
+    setEvaluations,
     s.isPositionAnalysisOn,
     currentMove,
     { evalDepth: 20, numLines: 2 }
   );
 
-  const prevIsAnalyzingGame = usePrevious(isAnalyzingGame);
+  const prevGameAnalysisStatus = usePrevious(gameAnalysisStatus);
 
   // When game analysis completes, save the results to the db
   useEffect(() => {
-    if (prevIsAnalyzingGame &&
-        !isAnalyzingGame &&
-        gameAnalysisProgress >= 100 &&
-        Object.keys(gameEvaluation).length > 0) {
+    if (prevGameAnalysisStatus == AnalysisStatus.Analyzing &&
+        gameAnalysisStatus == AnalysisStatus.Complete &&
+        Object.keys(evaluations).length > 0
+    ) {
+      // Save a copy of evaluations that only contains evaluations of the game
+      setGameEvaluation({...evaluations});
+
       // Save analysis results to db
       if (game.id) {
-        updateGameAnalysis(game.id, gameEvaluation)
+        updateGameAnalysis(game.id, evaluations)
           .then((result:any) => {
             if (result.success) {
               console.log('Game analysis saved successfully');
@@ -147,13 +150,14 @@ const GameReview = ({ game }: Props) => {
           });
       }
     }
-  }, [isAnalyzingGame, prevIsAnalyzingGame, gameAnalysisProgress, game.id, gameEvaluation])
+  }, [gameAnalysisStatus, prevGameAnalysisStatus, game.id, evaluations])
 
   useEffect(() => {
     if (game) {
       loadPgnIntoCmChess(game.pgn, cmchess.current);
       setHistory(cmchess.current.history());
       if (game.engineAnalysis) {
+        setEvaluations(game.engineAnalysis);
         setGameEvaluation(game.engineAnalysis);
       }
     }
@@ -199,8 +203,7 @@ const GameReview = ({ game }: Props) => {
     <EngineDisplay
       isEngineOn={s.isPositionAnalysisOn}
       setIsEngineOn={(b) => dispatch({ type: 'setIsPositionAnalysisOn', value: b })}
-      gameEvaluation={game.engineAnalysis ? game.engineAnalysis : gameEvaluation}
-      variationEvaluations={variationEvaluations}
+      evaluations={evaluations}
       currentMove={currentMove}
       evalerMaxDepth={20}
       engineName={engineName ? engineName : undefined}
@@ -313,7 +316,7 @@ const GameReview = ({ game }: Props) => {
               changeDepth={setDepth}
               numLines={numLines}
               changeNumLines={setNumLines}
-              isAnalyzing={isAnalyzingGame}
+              gameAnalysisStatus={gameAnalysisStatus}
               gameAnalysisProgress={gameAnalysisProgress}
               gameEvaluation={gameEvaluation}
               currentMove={currentMove}
