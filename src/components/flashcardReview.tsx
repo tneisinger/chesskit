@@ -76,6 +76,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [isReplay, setIsReplay] = useState(false);
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [arrows, setArrows] = useState<Arrow[]>([]);
+  const [hasUserCompletedFlashcard, setHasUserCompletedFlashcard] = useState(false);
+  const [numHintsGiven, setNumHintsGiven] = useState(0);
+  const [numShowMovesGiven, setNumShowMovesGiven] = useState(0);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -312,10 +315,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const handleReplayFlashcardBtnClick = useCallback(() => {
     const fc = flashcards[flashcardIndex];
     setLines(makeLineStatsRecord(fc.pgn));
+    setHasUserCompletedFlashcard(false);
     setWrongAnswerCount(0);
     setIsReplay(true);
     setupResetBoardTimeouts(500); // 500 is a half-second delay
     resetClock();
+    setNumHintsGiven(0);
+    setNumShowMovesGiven(0);
   }, [flashcards, flashcardIndex, setupResetBoardTimeouts, resetClock]);
 
 
@@ -407,6 +413,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       newMarkers.push({ square: from, type: MARKER_TYPE.circle });
     });
     setMarkers(newMarkers);
+    setNumHintsGiven((n) => n + 1);
   }, [lines, currentMove]);
 
 
@@ -418,6 +425,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     );
     setMarkers([]);
     setArrows(newArrows);
+    setNumShowMovesGiven((n) => n + 1);
   }, [lines, currentMove]);
 
 
@@ -477,6 +485,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       pauseClock();
       showFlashcardCompleteModalTimeoutRef.current = window.setTimeout(() => {
         setShowFlashcardCompleteModal(true);
+        setHasUserCompletedFlashcard(true);
       }, 600);
     }
   }, [numIncompleteLines, totalLines, setupResetBoardTimeouts, pauseClock]);
@@ -487,6 +496,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     resetChessboardEngine();
     setIsReplay(false);
     setWrongAnswerCount(0);
+    setNumHintsGiven(0);
+    setNumShowMovesGiven(0);
 
     const fc = flashcards[flashcardIndex];
     if (fc) {
@@ -697,6 +708,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
             onNextFlashcardBtnClick={() => console.log('next flashcard')}
             numWrongAnswers={wrongAnswerCount}
+            numHintsGiven={numHintsGiven}
+            numShowMovesGiven={numShowMovesGiven}
           />
           <DeleteFlashcardModal
             show={showDeleteFlashcardModal}
@@ -755,15 +768,20 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         <div className="relative" style={{ width: boardSize }}>
           <div className="flex justify-center">
             <div className="flex flex-1 justify-between">
-              <Button onClick={handleModeBtnClick} >
-                {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Play Flashcard')}
-              </Button>
+              {hasUserCompletedFlashcard ? (
+                <Button onClick={handleModeBtnClick}>
+                  {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Play Flashcard')}
+                </Button>
+              ) : (
+                <HintButtons
+                  currentMove={currentMove}
+                  giveHint={giveHint}
+                  showMove={showMoves}
+                  hintButtonText="Show Hint"
+                  showButtonText="Show Move"
+                />
+              )}
             </div>
-            <HintButtons
-              currentMove={currentMove}
-              giveHint={giveHint}
-              showMove={showMoves}
-            />
             <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
           </div>
         </div>

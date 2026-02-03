@@ -7,6 +7,8 @@ interface Props {
   onReplayFlashcardBtnClick: () => void;
   onNextFlashcardBtnClick: () => void;
   numWrongAnswers: number;
+  numHintsGiven?: number;
+  numShowMovesGiven?: number;
 }
 
 const FlashcardCompleteModal = ({
@@ -15,6 +17,8 @@ const FlashcardCompleteModal = ({
   onReplayFlashcardBtnClick,
   onNextFlashcardBtnClick,
   numWrongAnswers,
+  numHintsGiven,
+  numShowMovesGiven,
 }: Props) => {
 
   return (
@@ -31,9 +35,21 @@ const FlashcardCompleteModal = ({
         <h3 className='text-center mt-3 mb-2 text-2xl font-bold text-nowrap'>
           Flashcard Complete!
         </h3>
-        <p className="mb-3 text-center">
-          You made {numWrongAnswers} {numWrongAnswers === 1 ? 'mistake' : 'mistakes'}
-        </p>
+        <div className="mb-5">
+          <p className="text-center">
+            You made {numWrongAnswers} {numWrongAnswers === 1 ? 'mistake' : 'mistakes'}
+          </p>
+          {Boolean(numHintsGiven) && (
+            <p className="text-center">
+              You used {numHintsGiven} {numHintsGiven === 1 ? 'hint' : 'hints'}
+            </p>
+          )}
+          {Boolean(numShowMovesGiven) && (
+            <p className="text-center">
+              You asked to see {numShowMovesGiven} {numShowMovesGiven === 1 ? 'move' : 'moves'}
+            </p>
+          )}
+        </div>
         <div className='flex flex-row gap-4 justify-center'>
           <Button
             buttonSize={ButtonSize.Small}
