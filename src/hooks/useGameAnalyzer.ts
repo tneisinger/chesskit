@@ -27,7 +27,7 @@ interface Output {
   fenBeingAnalyzed: string | null;
   engineName: string | null;
   isAnalyzingGame: boolean;
-  progress: number; // Percentage (0-100)
+  gameAnalysisProgress: number; // Percentage (0-100)
   currentPosition: number; // Current position being analyzed
   totalPositions: number; // Total positions to analyze
 }
@@ -476,7 +476,7 @@ export default function useGameAnalyzer(
     }
   }, [isPositionAnalysisOn, prevIsPositionAnalysisOn, cancelAllAnalysis, fenBeingAnalyzed, isAnalyzingGame]);
 
-  const progress = fensToAnalyze.length > 0
+  const gameAnalysisProgress = fensToAnalyze.length > 0
     ? Math.round((currentPositionIndex / fensToAnalyze.length) * 100)
     : 0;
 
@@ -487,7 +487,7 @@ export default function useGameAnalyzer(
     fenBeingAnalyzed,
     engineName,
     isAnalyzingGame,
-    progress,
+    gameAnalysisProgress,
     currentPosition: currentPositionIndex,
     totalPositions: fensToAnalyze.length,
   };

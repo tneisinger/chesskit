@@ -10,7 +10,7 @@ interface Props extends GameChartProps {
   numLines: number;
   changeNumLines: (newNumLines: number) => void;
   isAnalyzing: boolean;
-  progress: number;
+  gameAnalysisProgress: number;
 }
 
 const GameAnalysis = ({
@@ -21,7 +21,7 @@ const GameAnalysis = ({
   numLines,
   changeNumLines,
   isAnalyzing,
-  progress,
+  gameAnalysisProgress,
   gameEvaluation,
   currentMove,
   changeCurrentMove,
@@ -44,7 +44,7 @@ const GameAnalysis = ({
           width={width}
         />
       )}
-      {!isAnalyzing && progress === 0 && (
+      {!isAnalyzing && gameAnalysisProgress === 0 && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
           <Button onClick={handleAnalyzeGame} disabled={isAnalyzing}>
             Analyze Game
@@ -92,11 +92,11 @@ const GameAnalysis = ({
           <div className='flex flex-row gap-8 text-sm'>
             <span>depth: {depth}</span>
             <span>lines: {numLines}</span>
-            <span>progress: {progress}%</span>
+            <span>progress: {gameAnalysisProgress}%</span>
           </div>
         </div>
       )}
-      {!isAnalyzing && progress >= 100 && (
+      {!isAnalyzing && gameAnalysisProgress >= 100 && (
         <GameChart
           game={game}
           gameEvaluation={gameEvaluation}
