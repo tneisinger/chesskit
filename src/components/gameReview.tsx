@@ -8,7 +8,7 @@ import { Marker, loadPgnIntoCmChess } from '@/utils/cmchess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import GameDetails from '@/components/gameDetails';
 import Chessboard from '@/components/Chessboard';
-import MovesDisplay from '@/components/movesDisplay';
+import NewMovesDisplay from './newMovesDisplay';
 import ArrowButtons from '@/components/arrowButtons';
 import GameAnalysis from '@/components/gameAnalysis';
 import EngineDisplay from '@/components/engineDisplay';
@@ -216,7 +216,7 @@ const GameReview = ({ game }: Props) => {
   );
 
   const movesDisplay = (
-    <MovesDisplay
+    <NewMovesDisplay
       history={history}
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
@@ -298,7 +298,7 @@ const GameReview = ({ game }: Props) => {
                 {engineDisplay}
               </div>
               <div
-                className="my-1 rounded-md p-1 w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page"
+                className="my-1 rounded-md w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page"
               >
                 {movesDisplay}
               </div>
