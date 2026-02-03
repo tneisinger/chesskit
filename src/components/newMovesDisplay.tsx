@@ -147,9 +147,9 @@ const NewMovesDisplay: React.FC<Props> = ({
       // Wrap move number and move together in an inline-block container
       // This keeps them together when wrapping occurs
       moves.push(
-        <span key={move.fen} className="inline-block mr-2 whitespace-nowrap">
+        <span key={move.fen} className="inline-block whitespace-nowrap">
           {(isWhiteMove || i === 0) && (
-            <span className="text-gray-400 mr-1">
+            <span className="text-gray-400">
               {moveNumber}.{!isWhiteMove && '..'}
             </span>
           )}
@@ -223,8 +223,15 @@ const NewMovesDisplay: React.FC<Props> = ({
 
         // Render white move variations
         whiteMove.variations.forEach((variation, idx) => {
+          const classes = ["pl-2 bg-neutral-700 max-w-full border-neutral-600"];
+          if (idx === 0) {
+            classes.push("border-t-1 pt-1");
+          }
+          if (idx === whiteMove.variations.length - 1) {
+            classes.push("border-b-1 pb-1");
+          }
           elements.push(
-            <div key={`${whiteMove.fen}-var-${idx}`} className="pl-2 py-1 bg-neutral-700 max-w-full border-y-1 border-neutral-600">
+            <div key={`${whiteMove.fen}-var-${idx}`} className={classes.join(' ')}>
               {renderVariation(variation, 0)}
             </div>
           );
@@ -290,8 +297,15 @@ const NewMovesDisplay: React.FC<Props> = ({
 
         // Render black move variations
         blackMove.variations.forEach((variation, idx) => {
+          const classes = ["pl-2 bg-neutral-700 max-w-full border-neutral-600"];
+          if (idx === 0) {
+            classes.push("border-t-1 pt-1");
+          }
+          if (idx === blackMove.variations.length - 1) {
+            classes.push("border-b-1 pb-1");
+          }
           elements.push(
-            <div key={`${blackMove.fen}-var-${idx}`} className="ml-4 max-w-full">
+            <div key={`${blackMove.fen}-var-${idx}`} className={classes.join(' ')}>
               {renderVariation(variation, 0)}
             </div>
           );
