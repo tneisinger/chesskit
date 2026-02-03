@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useReducer } from 'react';
 import { ScrollLock } from '@/components/ScrollLock';
-import { GameData, GameEvaluation } from '@/types/chess';
+import { GameData, GameEvaluation, MoveJudgement } from '@/types/chess';
 import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
-import { Marker, loadPgnIntoCmChess } from '@/utils/cmchess';
+import { Marker, colorToMove, loadPgnIntoCmChess } from '@/utils/cmchess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import GameDetails from '@/components/gameDetails';
 import Chessboard from '@/components/Chessboard';
@@ -15,12 +15,14 @@ import EngineDisplay from '@/components/engineDisplay';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
+import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
 import useGameAnalyzer, { AnalysisStatus } from '@/hooks/useGameAnalyzer';
 import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
 import usePrevious from '@/hooks/usePrevious';
 import { updateGameAnalysis } from '@/app/game-review/actions';
 import GameReviewButtons from './gameReviewButtons';
+import { getFen, judgeLines, lanToShortMove } from '@/utils/chess';
 
 enum MobileTab {
   Moves = 'Moves',
@@ -162,6 +164,60 @@ const GameReview = ({ game }: Props) => {
       }
     }
   }, [game]);
+
+
+  // When the engine is on, draw arrows on the board representing the best moves.
+  useEffect(() => {
+    // If position analysis is not on, do nothing.
+    if (!s.isPositionAnalysisOn) return;
+
+    // If we don't have an evaluation for this position, do nothing.
+    const ev = evaluations[getFen(currentMove)];
+    if (ev == undefined) return;
+
+    const lineJudgements = judgeLines(colorToMove(currentMove), ev.lines);
+
+    const arrows: Arrow[] = [];
+
+    // Make an arrow for each line
+    for (let i = 0; i < ev.lines.length; i++ ) {
+      // If the move is not good enough, don't make an arrow for it.
+      if (lineJudgements[i] === MoveJudgement.Inaccurate) continue;
+      if (lineJudgements[i] === MoveJudgement.Mistake) continue;
+      if (lineJudgements[i] === MoveJudgement.Blunder) continue;
+
+      // Get the 'from' and 'to' squares from the first move of this line.
+      const { lanLine } = ev.lines[i];
+      const firstLanMove = lanLine.trim().split(' ')[0];
+      const { from, to } = lanToShortMove(firstLanMove);
+
+      // Determine which ARROW_TYPE to use, which defines the color of the arrow.
+      let arrowType;
+      switch (lineJudgements[i]) {
+        case MoveJudgement.Best:
+        case MoveJudgement.Excellent:
+          arrowType = ARROW_TYPE.info;
+          break;
+        case MoveJudgement.Good:
+          arrowType = ARROW_TYPE.default;
+          break;
+        case MoveJudgement.Inaccurate:
+          arrowType = ARROW_TYPE.warning;
+          break;
+        case MoveJudgement.Mistake:
+        case MoveJudgement.Blunder:
+          arrowType = ARROW_TYPE.danger;
+          break;
+      }
+
+      // Create an Arrow and add it to our array of arrows.
+      arrows.push({ type: arrowType, from, to });
+    }
+
+    // Update state, which will draw the arrows on board.
+    dispatch({ type: 'setArrows', arrows })
+  }, [s.isPositionAnalysisOn, evaluations, currentMove])
+
 
   // Calculate board size
   const useMobile = shouldUseMobileLayout(windowSize);
