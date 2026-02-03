@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import BlinkOverlay from '@/components/blinkOverlay';
-import Button, { ButtonStyle } from '@/components/button';
+import Button, { ButtonSize, ButtonStyle } from '@/components/button';
 import NewMovesDisplay, { ContextMenuItems } from '@/components/newMovesDisplay';
 import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
@@ -767,22 +767,26 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         {/* Center Column */}
         <div className="relative" style={{ width: boardSize }}>
           <div className="flex justify-center">
-            <div className="flex flex-1 justify-between">
-              {hasUserCompletedFlashcard ? (
-                <Button onClick={handleModeBtnClick}>
-                  {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Play Flashcard')}
-                </Button>
-              ) : (
+            <div className="flex flex-1 justify-between items-center">
+              <div className="basis-32">
                 <HintButtons
                   currentMove={currentMove}
                   giveHint={giveHint}
                   showMove={showMoves}
                   hintButtonText="Show Hint"
                   showButtonText="Show Move"
+                  buttonSize={ButtonSize.Normal}
                 />
-              )}
+              </div>
+              <div className="ml-auto mr-auto">
+                <Button onClick={handleModeBtnClick}>
+                  {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Play Flashcard')}
+                </Button>
+              </div>
+              <div className="flex justify-end basis-32">
+                <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
+              </div>
             </div>
-            <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
           </div>
         </div>
 
