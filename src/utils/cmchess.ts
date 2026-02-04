@@ -511,3 +511,20 @@ export function doHistoriesMatch(history1: Move[], history2: Move[]): boolean {
 
   return true;
 }
+
+// Get the move that is the main line parent move of the given move.
+// If the given move is not from a variation, this function will
+// return null.
+export function getMainLineParentOfVariation(move: Move): Move | null {
+  if (!isInVariation(move)) return null;
+  do {
+    if (move.previous == undefined) throw new Error('move.previous was undefined');
+    if (!isInVariation(move.previous)) {
+      if (move.previous.next == undefined) return move.previous;
+      if (move.previous.next !== move) return move.previous;
+    }
+    move = move.previous;
+  }
+  while (isInVariation(move));
+  return null;
+}

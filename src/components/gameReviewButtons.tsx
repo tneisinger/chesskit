@@ -3,7 +3,7 @@ import { GameData, GameEvaluation, MoveJudgement, PositionEvaluation } from "@/t
 import Button, { ButtonStyle } from "./button";
 import { Move } from 'cm-chess/src/Chess';
 import { makeMoveJudgements } from "@/utils/chess";
-import { getColor, isInVariation } from "@/utils/cmchess";
+import { getColor, getMainLineParentOfVariation, isInVariation } from "@/utils/cmchess";
 import CreateFlashcardModal from "./createFlashcardModal";
 
 interface Props {
@@ -33,62 +33,64 @@ const GameReviewButtons = ({
   }, [currentMove, gameEvaluation]);
 
 
-  const getLastMainLineMoveOfCurrentLine = useCallback((): Move | null => {
-    if (currentMove == undefined) return null;
-    if (!isInVariation(currentMove)) return currentMove;
-    let move = currentMove;
-
-    do {
-      if (!isInVariation(move)) return move;
-      if (move.previous == undefined) throw new Error('move.previous was undefined');
-      move = move.previous;
-    }
-    while (isInVariation(move));
-
-    return null;
-  }, [currentMove]);
-
-
   const shouldHighlightFlashcardBtn = useCallback((): boolean => {
     // Don't highlight the button if in the starting position.
     if (currentMove === undefined) return false;
 
-    // Don't highlight the button if we are in a variation.
-    if (isInVariation(currentMove)) return false;
-
-    // If it is the user's turn and there is a next move...
-    if (game.userColor !== getColor(currentMove) && currentMove.next) {
-      // Highlight the button if the judgement of the next move is bad enough
-      const highlightedJudgements: MoveJudgement[] = [
-        MoveJudgement.Blunder,
-        MoveJudgement.Mistake,
-      ]
-      const j = moveJudgements[currentMove.next.fen]
-      return highlightedJudgements.includes(j);
+    // If we are in a variation that derives from a flashcard recommended position,
+    // the flashcard button should be highlighted
+    if (isInVariation(currentMove)) {
+      const parent = getMainLineParentOfVariation(currentMove);
+      if (parent && isPositionFlashcardWorthy(parent, true)) return true;
     }
-    return false;
+
+    // Otherwise, just check the current move
+    return isPositionFlashcardWorthy(currentMove, true);
   }, [currentMove, game])
 
   const shouldDisableFlashcardBtn = useCallback((): boolean => {
+    // If in the starting position, the button should be disabled.
     if (currentMove == undefined) return true;
-    if (isInVariation(currentMove)) return true;
 
-    // If it is the users turn and there is a next move...
-    if (game.userColor !== getColor(currentMove) && currentMove.next) {
-      // If the judgement of the next move is bad enough, enable the
-      // 'Make Flashcard' button.
-      const btnEnabledJudgements = [
-        MoveJudgement.Blunder,
-        MoveJudgement.Mistake,
-        MoveJudgement.Inaccurate,
-      ];
-      const j = moveJudgements[currentMove.next.fen]
-      return !btnEnabledJudgements.includes(j);
+    // If we are in a variation that derives from a flashcard worthy position,
+    // the flashcard button should not be disabled.
+    if (isInVariation(currentMove)) {
+      const parent = getMainLineParentOfVariation(currentMove);
+      if (parent && isPositionFlashcardWorthy(parent)) return false;
     }
+
+    // If the current position is flashcard worthy, the button should
+    // not be disabled.
+    if (isPositionFlashcardWorthy(currentMove)) return false;
 
     // Otherwise, the button should be disabled.
     return true;
   }, [currentMove, game]);
+
+  // Returns true if the given move represents a position that is flashcard worthy.
+  // If 'isFlashcardRecommended' is true, this function will only return true if
+  // the move that was played in the position was bad enough that a flashcard is
+  // not just acceptable, but recommended.
+  const isPositionFlashcardWorthy = useCallback((
+    move: Move,
+    isFlashcardRecommended = false,
+  ) => {
+    // Return false if it is not the user's turn
+    if (game.userColor === getColor(move)) return false;
+
+    // If there is no next move, then there is no move to judge.
+    if (move.next == undefined) return false;
+
+    // If the judgement of the next move is bad enough, then this position
+    // is flashcard worthy
+    const js = [
+      MoveJudgement.Blunder,
+      MoveJudgement.Mistake,
+    ];
+    if (!isFlashcardRecommended) js.push(MoveJudgement.Inaccurate);
+    const j = moveJudgements[move.next.fen]
+    return js.includes(j);
+  }, [game, moveJudgements]);
 
 
   const lines = getEvaluationLines();
