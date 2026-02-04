@@ -9,15 +9,17 @@ const GameChartJudgementDots = (props: DotItemDotProps) => {
   const judgementsToShow = [
     MoveJudgement.Blunder,
     MoveJudgement.Mistake,
+    MoveJudgement.Inaccurate,
   ]
 
   let color: string = '';
-  if (payload.judgement === MoveJudgement.Blunder) color = ChessMoveColors.Blunder;
-  if (payload.judgement === MoveJudgement.Mistake) color = ChessMoveColors.Mistake;
-  if (payload.isUserMove && judgementsToShow.includes(payload.judgement)) {
+  if (payload.keyPosition === MoveJudgement.Blunder) color = ChessMoveColors.Blunder;
+  if (payload.keyPosition === MoveJudgement.Mistake) color = ChessMoveColors.Mistake;
+  if (payload.keyPosition === MoveJudgement.Inaccurate) color = ChessMoveColors.Inaccurate;
+  if (judgementsToShow.includes(payload.keyPosition)) {
     return (
       <svg x={cx} y={cy} overflow="visible">
-        <circle r="3" fill={color} />
+        <circle r="4" fill={color}/>
       </svg>
     );
   }

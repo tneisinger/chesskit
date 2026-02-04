@@ -26,6 +26,11 @@ interface ChartDataPointBaseType {
   chartCp: number;
   judgement: MoveJudgement | null;
   isUserMove: boolean;
+
+  // A key position is a position in a chess game where an inaccuracy,
+  // a mistake, or a blunder was played by the user on the next move.
+  // For positions where that is not the case, keyPosition will be null.
+  keyPosition: MoveJudgement | null;
 }
 
 interface ChartDataPointWithCP extends ChartDataPointBaseType {
@@ -76,6 +81,9 @@ function makeChartData(
       // Indicate if this move was played by the user
       // Use not equal because activeColor is the color to move
       isUserMove: activeColor !== userColor,
+
+      // Set all keyPositions to null for now. We will update this in another loop below.
+      keyPosition: null,
     };
 
     if (e.score.key === 'cp') {
@@ -95,6 +103,28 @@ function makeChartData(
   });
 
   result.sort(({ply: ply1}, {ply: ply2}) => ply1 - ply2);
+
+  // Now loop over the result and set the keyPosition values.
+  // Look ahead at the next data point to determine how to set keyPosition for
+  // the current data point.
+  for (let i = 0; i < result.length - 1; i++) {
+    // If no judgement on the next data point, continue
+    const judgement = result[i + 1].judgement;
+    if (judgement == null) continue;
+
+    // If the judgement is not for the user, continue.
+    if (!result[i + 1].isUserMove) continue;
+
+    // If the judgement is one of the keyPositionJudgements, set the keyPosition value
+    // for this data point.
+    const keyPositionJudgements = [
+      MoveJudgement.Blunder,
+      MoveJudgement.Mistake,
+      MoveJudgement.Inaccurate,
+    ];
+    if (keyPositionJudgements.includes(judgement)) result[i].keyPosition = judgement;
+  }
+
   return result;
 }
 
