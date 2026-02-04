@@ -33,6 +33,22 @@ const GameReviewButtons = ({
   }, [currentMove, gameEvaluation]);
 
 
+  const getLastMainLineMoveOfCurrentLine = useCallback((): Move | null => {
+    if (currentMove == undefined) return null;
+    if (!isInVariation(currentMove)) return currentMove;
+    let move = currentMove;
+
+    do {
+      if (!isInVariation(move)) return move;
+      if (move.previous == undefined) throw new Error('move.previous was undefined');
+      move = move.previous;
+    }
+    while (isInVariation(move));
+
+    return null;
+  }, [currentMove]);
+
+
   const shouldHighlightFlashcardBtn = useCallback((): boolean => {
     // Don't highlight the button if in the starting position.
     if (currentMove === undefined) return false;

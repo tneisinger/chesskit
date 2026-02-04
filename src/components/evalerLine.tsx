@@ -5,9 +5,13 @@ interface Props {
   fen: string;
   maxLineLengthPx: number;
   line?: MultiPV;
+
+  // A tailwindcss text color class ('text-blue-500' for example)
+  // If provided, the line score will be the given color.
+  scoreColor?: string; 
 }
 
-const EvalerLine = ({ fen, maxLineLengthPx, line, }: Props) => {
+const EvalerLine = ({ fen, maxLineLengthPx, line, scoreColor }: Props) => {
   if (line == undefined) return <div className="py-[3px] h-[1.6rem]" />;
 
   const sanLine = convertLanLineToSanLine(line.lanLine, fen);
@@ -24,9 +28,14 @@ const EvalerLine = ({ fen, maxLineLengthPx, line, }: Props) => {
     truncatedSanLine += move + " ";
   }
 
+  const scoreClasses = ["inline-block w-10 text-right"];
+  if (scoreColor) scoreClasses.push(scoreColor);
+
   return (
     <div className="text-md">
-      <span className="inline-block w-10 text-right">{makeScoreString(line.score)}</span>
+      <span className={scoreClasses.join(' ')}>
+        {makeScoreString(line.score)}
+      </span>
       <span className="inline-block w-[24px] text-center">{'->'}</span>
       <span className="inline-block text-center">
         {truncatedSanLine}

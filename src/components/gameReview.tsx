@@ -268,6 +268,7 @@ const GameReview = ({ game }: Props) => {
       numLines={numLines}
       isSwitchDisabled={false}
       showMoveJudgements={false}
+      colorLineScores={true}
     />
   );
 

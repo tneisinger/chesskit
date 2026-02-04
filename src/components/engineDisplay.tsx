@@ -1,11 +1,12 @@
 import Switch from 'react-switch';
 import { Move, FEN } from 'cm-chess/src/Chess';
 import { PositionEvaluation, GameEvaluation, MoveJudgement } from '@/types/chess';
-import { getFen, getMoveJudgementColor, makeMoveJudgement } from '@/utils/chess';
+import { getFen, getMoveJudgementColor, judgeLines, makeMoveJudgement } from '@/utils/chess';
 import { makeScoreString, MultiPV } from '@/utils/stockfish';
 import { isBookPosition } from '@/utils/bookPositions';
 import EvalerLine from '@/components/evalerLine';
 import { useCallback, useEffect, useState } from 'react';
+import { colorToMove } from '@/utils/cmchess';
 
 const showDevButtons = false;
 
@@ -23,6 +24,7 @@ export interface Props {
   includeOnOffSwitch?: boolean;
   switchDisabledMsg?: string;
   showMoveJudgements?: boolean;
+  colorLineScores?: boolean;
 }
 
 const EngineDisplay = ({
@@ -39,6 +41,7 @@ const EngineDisplay = ({
   includeOnOffSwitch = true,
   switchDisabledMsg,
   showMoveJudgements = true,
+  colorLineScores = false,
 }: Props) => {
   const [currentEvaluation, setCurrentEvaluation] = useState<PositionEvaluation | undefined>(undefined);
 
@@ -108,6 +111,26 @@ const EngineDisplay = ({
 
   const mj = showMoveJudgements ? getMoveJudgement() : undefined;
 
+  let lineColors: string[] = [];
+  if (colorLineScores && currentEvaluation) {
+    const lineJudgements = judgeLines(colorToMove(currentMove), currentEvaluation.lines);
+    lineColors = lineJudgements.map((j) => {
+      switch (j) {
+        case MoveJudgement.Best:
+        case MoveJudgement.Excellent:
+          return 'text-blue-500';
+        case MoveJudgement.Good:
+          return 'text-green-600';
+        case MoveJudgement.Inaccurate:
+          return 'text-yellow-300';
+        case MoveJudgement.Mistake:
+          return 'text-amber-500';
+        case MoveJudgement.Blunder:
+          return 'text-red-600';
+      }
+    })
+  }
+
   return (
     <div className="flex flex-1 flex-col py-0 px-0">
       <div className="flex flex-col flex-1 justify-center bg-stone-700 rounded-sm">
@@ -155,6 +178,7 @@ const EngineDisplay = ({
                 fen={currentEvaluation ? currentEvaluation.fen : FEN.start}
                 line={line}
                 maxLineLengthPx={maxLineLengthPx}
+                scoreColor={lineColors[i]}
               />
             );
           })}

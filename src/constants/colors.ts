@@ -1,4 +1,4 @@
-export enum ChessMoveColors {
+export enum ChessMoveColor {
   Book = '#a88865',
   Excellent = '#57a857',
   Good = '#96af8b',

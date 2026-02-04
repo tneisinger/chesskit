@@ -17,7 +17,7 @@ import { Chess as CmChess, Move, FEN  } from 'cm-chess/src/Chess';
 import { Move as ChessJsMove } from 'chess.js';
 import { assertUnreachable, average, pluralizeWord } from '.';
 import { povDiff } from '@/utils/winningChances';
-import { ChessMoveColors } from '@/constants/colors';
+import { ChessMoveColor } from '@/constants/colors';
 import { getBookPosition, isBookPosition } from '@/utils/bookPositions';
 import { parse } from 'pgn-parser'
 import { parseLanMove, Score } from './stockfish';
@@ -493,20 +493,20 @@ export function getMoveJudgement(
 // this function will just return the color of the MoveJudgement. If both `mj` and `fen` are
 // undefined, return undefined;
 export function getMoveJudgementColor(mj?: MoveJudgement, fen?: string): string | undefined {
-  if (fen && isBookPosition(fen)) return ChessMoveColors.Book;
+  if (fen && isBookPosition(fen)) return ChessMoveColor.Book;
   if (mj == undefined) return undefined;
   switch (mj) {
     case MoveJudgement.Best:
     case MoveJudgement.Excellent:
-      return ChessMoveColors.Excellent;
+      return ChessMoveColor.Excellent;
     case MoveJudgement.Good:
-      return ChessMoveColors.Good;
+      return ChessMoveColor.Good;
     case MoveJudgement.Inaccurate:
-      return ChessMoveColors.Inaccurate;
+      return ChessMoveColor.Inaccurate;
     case MoveJudgement.Mistake:
-      return ChessMoveColors.Mistake;
+      return ChessMoveColor.Mistake;
     case MoveJudgement.Blunder:
-      return ChessMoveColors.Blunder;
+      return ChessMoveColor.Blunder;
     default:
       assertUnreachable(mj);
   }
@@ -945,4 +945,14 @@ export function judgeLines(color: PieceColor, lines: PositionEvaluation['lines']
     result.push(judgeShift(povDiff(color, lines[0].score, line.score)))
   });
   return result;
+}
+
+export function getJudgementColor(moveJudgement: MoveJudgement): ChessMoveColor {
+  if (moveJudgement === MoveJudgement.Blunder) return ChessMoveColor.Blunder;
+  if (moveJudgement === MoveJudgement.Mistake) return ChessMoveColor.Mistake;
+  if (moveJudgement === MoveJudgement.Inaccurate) return ChessMoveColor.Inaccurate;
+  if (moveJudgement === MoveJudgement.Good) return ChessMoveColor.Good;
+  if (moveJudgement === MoveJudgement.Excellent) return ChessMoveColor.Excellent;
+  if (moveJudgement === MoveJudgement.Best) return ChessMoveColor.Excellent;
+  throw new Error(`Unknown MoveJudgement ${moveJudgement}`);
 }
