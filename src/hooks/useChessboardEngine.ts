@@ -66,6 +66,7 @@ export default function useChessboardEngine(options = defaultOptions) {
       setHistory(cmchess.current.history());
       setCurrentMove(newCurrentMove);
     }
+    if (isAltFirstMove(newMove)) return;
     updateHistoryAndCurrentMove(newMove);
   }
 
