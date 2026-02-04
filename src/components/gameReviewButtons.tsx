@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { GameData, GameEvaluation, MoveJudgement } from "@/types/chess";
+import { GameData, GameEvaluation, MoveJudgement, PositionEvaluation } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Move } from 'cm-chess/src/Chess';
 import { makeMoveJudgements } from "@/utils/chess";
@@ -24,10 +24,12 @@ const GameReviewButtons = ({
     setMoveJudgements(makeMoveJudgements(gameEvaluation));
   }, [gameEvaluation]);
 
-  const getBestLines = useCallback(() => {
+  const getEvaluationLines = useCallback((): PositionEvaluation['lines'] | undefined => {
     if (!currentMove) return undefined;
-    const posEval = gameEvaluation[currentMove.fen];
-    return posEval.lines;
+    const positionEvaluation = gameEvaluation[currentMove.fen];
+    if (positionEvaluation) {
+      return positionEvaluation.lines;
+    }
   }, [currentMove, gameEvaluation]);
 
 
@@ -73,7 +75,7 @@ const GameReviewButtons = ({
   }, [currentMove, game]);
 
 
-  const bestLines = getBestLines();
+  const lines = getEvaluationLines();
 
   return (
     <div className="p-2 flex flex-col justify-center items-center w-full bg-background-page rounded-md gap-3">
@@ -87,12 +89,12 @@ const GameReviewButtons = ({
         </Button>
       </div>
 
-      {currentMove && bestLines && (
+      {currentMove && lines && (
         <CreateFlashcardModal
           show={showCreateFlashcardModal}
           game={game}
           currentMove={currentMove}
-          bestLines={bestLines}
+          bestLines={lines}
           onClose={() => setShowCreateFlashcardModal(false)}
         />
       )}
