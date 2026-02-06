@@ -385,7 +385,7 @@ const GameReview = ({ game }: Props) => {
           <div style={{ width: rightColWidth }}>
             <GameReviewButtons
               game={game}
-              gameEvaluation={gameEvaluation}
+              evaluations={evaluations}
               currentMove={currentMove}
             />
           </div>

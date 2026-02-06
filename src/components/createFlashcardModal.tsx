@@ -4,43 +4,94 @@ import { useState, useEffect } from 'react';
 import Modal from '@/components/modal';
 import Button, { ButtonStyle } from "@/components/button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
-import { GameData } from '@/types/chess';
-import { createFlashcard } from '@/app/flashcards/actions';
-import type { Score } from '@/utils/stockfish';
-import { parse as parsePgn } from 'pgn-parser';
-import { lanToShortMove } from '@/utils/chess';
-import { renderPgn } from '@/utils/cmchess';
+import { GameData, GameEvaluation, MoveJudgement } from '@/types/chess';
+import { createFlashcard, CreateFlashcardInput } from '@/app/flashcards/actions';
+import { judgeLines, lanToShortMove } from '@/utils/chess';
+import {
+  colorToMove,
+  getLineFromCmMove,
+  getMainLineParentOfVariation,
+  isInVariation,
+  playForcingLineIntoCmChess,
+  renderPgn
+} from '@/utils/cmchess';
 
 interface Props {
   show: boolean;
   game: GameData;
   currentMove: Move;
-  bestLines: {score: Score, lanLine: string}[];
   onClose: () => void;
+  evaluations: GameEvaluation;
 }
 
-function createFlashcardPgn(
+function createFlashcardData(
   game: GameData,
-  ply: number,
-  bestLines: {score: Score, lanLine: string}[]
-): string {
-  // Create a new cmchess and play the game moves into it up to the current move.
-  const parsedPgn = parsePgn(game.pgn)[0];
-  const moves = parsedPgn.moves.slice(0, ply);
-  const cmchess = new CmChess();
-  moves.forEach((m) => {
-    cmchess.move(m.move);
-  })
+  move: Move,
+  evaluations: GameEvaluation,
+): CreateFlashcardInput {
+  // The flashcard move is the move that represents the starting position
+  // of the flashcard. If we are in a variation, the flashcard move should
+  // be the mainLine parent of the variation.
+  let flashcardMove = move;
+  if (isInVariation(move)) {
+    const parent = getMainLineParentOfVariation(move);
+    if (parent == null) throw new Error('parent was null');
+    flashcardMove = parent;
+  }
 
-  // Play the best move into cmchess
-  const bestMoveLan = bestLines[0].lanLine.trim().split(' ')[0];
-  cmchess.move(lanToShortMove(bestMoveLan));
+  if (colorToMove(flashcardMove) !== game.userColor) {
+    throw new Error("In the flashcardMove position, it is not the user's turn");
+  }
 
-  // Return a new pgn from cmchess
-  return renderPgn(cmchess);
+  // Create a new CmChess object and play moves into it up to and including
+  // the flashcardMove. Create the flashcardMoveOfCmChess variable, which will contain
+  // a move that is identical to flashcardMove, but it is important that it comes from
+  // our new instance of CmChess. We must use this new version of the flashcardMove in
+  // the 'playForcingLineIntoCmChess' function.
+  const cmChess = new CmChess();
+  const moves = getLineFromCmMove(flashcardMove);
+  let flashcardMoveOfCmChess: Move | undefined;
+  moves.forEach((m) => flashcardMoveOfCmChess = cmChess.move(m.san));
+  if (flashcardMoveOfCmChess == undefined) throw new Error('lastMove was undefined');
+  if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
+
+  // Try to get a forcing line. If there is a forcing line, set 'areLinesForcing' to true.
+  const forcingLine = playForcingLineIntoCmChess(cmChess, flashcardMoveOfCmChess, evaluations, game.userColor);
+  let areLinesForcing = false;
+  if (forcingLine.length > 0) {
+    areLinesForcing = true;
+  }
+
+  // When there are no forcing lines, add the good moves from evaluations to cmChess.
+  // TODO: Maybe change this? Maybe add the lines to CreateFlashcardInput.lines?
+  if (!areLinesForcing) {
+    const evaluation = evaluations[flashcardMove.fen];
+    if (evaluation == undefined) throw new Error('evaluation was undefined');
+    const lineJudgements = judgeLines(colorToMove(flashcardMove), evaluation.lines);
+    const lineMoves = evaluation.lines.map((line) => lanToShortMove(line.lanLine.trim().split(' ')[0]));
+
+    const goodJudgements = [MoveJudgement.Best, MoveJudgement.Excellent, MoveJudgement.Good];
+
+    for (let i = 0; i < lineMoves.length; i++) {
+      const judgement = lineJudgements[i];
+      const lineMove = lineMoves[i];
+      if (goodJudgements.includes(judgement)) {
+        const moveResult = cmChess.move(lineMove, flashcardMoveOfCmChess);
+        if (moveResult == undefined) throw new Error('moveResult was undefined');
+      }
+    }
+  }
+
+  return {
+    gameId: game.id,
+    pgn: renderPgn(cmChess).trim(),
+    positionIdx: flashcardMove.ply,
+    userColor: game.userColor,
+    areLinesForcing,
+  }
 }
 
-const CreateFlashcardModal = ({ show, game, currentMove, bestLines, onClose }: Props) => {
+const CreateFlashcardModal = ({ show, game, currentMove, evaluations, onClose }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,16 +106,12 @@ const CreateFlashcardModal = ({ show, game, currentMove, bestLines, onClose }: P
     setError(null);
     setIsSubmitting(true);
 
-    try {
-      const positionIdx = currentMove.ply ?? 0;
+    // TODO: Prevent creation of duplicate flashcards
+    const flashcardData = createFlashcardData(game, currentMove, evaluations);
+    console.log(flashcardData);
 
-      const result = await createFlashcard({
-        gameId: game.id,
-        pgn: createFlashcardPgn(game, currentMove.ply, bestLines),
-        positionIdx,
-        userColor: game.userColor,
-        bestLines,
-      });
+    try {
+      const result = await createFlashcard(flashcardData);
 
       if (result.success) {
         onClose();
@@ -90,9 +137,9 @@ const CreateFlashcardModal = ({ show, game, currentMove, bestLines, onClose }: P
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="text-gray-300">
-            <p>Create a flashcard from this position?</p>
+            <p>Create a flashcard for this mistake?</p>
           </div>
 
           <div className='flex flex-row justify-evenly gap-3'>

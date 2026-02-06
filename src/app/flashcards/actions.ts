@@ -20,7 +20,8 @@ export interface CreateFlashcardInput {
   pgn: string;
   positionIdx: number;
   userColor: PieceColor;
-  bestLines?: {score: Score, lanLine: string}[];
+  lines?: {score: Score, lanLine: string}[];
+  areLinesForcing: boolean;
 }
 
 /**
@@ -64,7 +65,8 @@ export async function createFlashcard(
       pgn: input.pgn,
       positionIdx: input.positionIdx,
       userColor: input.userColor,
-      bestLines: input.bestLines,
+      lines: input.lines,
+      areLinesForcing: input.areLinesForcing,
       repetitions: sm2.repetitions,
       easinessFactor: efToInt(sm2.easinessFactor),
       interval: sm2.interval,
@@ -210,11 +212,11 @@ export async function reviewFlashcard(
 }
 
 /**
- * Update flashcard content (bestLines)
+ * Update flashcard content (lines)
  */
 export async function updateFlashcard(
   id: number,
-  updates: { bestLines?: {score: Score, lanLine: string}[] }
+  updates: { lines?: {score: Score, lanLine: string}[]; areLinesForcing?: boolean }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await auth();

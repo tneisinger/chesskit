@@ -1,37 +1,23 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { GameData, GameEvaluation, MoveJudgement, PositionEvaluation } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Move } from 'cm-chess/src/Chess';
-import { makeMoveJudgements } from "@/utils/chess";
+import { makeMoveJudgement } from "@/utils/chess";
 import { getColor, getMainLineParentOfVariation, isInVariation } from "@/utils/cmchess";
 import CreateFlashcardModal from "./createFlashcardModal";
 
 interface Props {
   game: GameData;
-  gameEvaluation: GameEvaluation;
+  evaluations: GameEvaluation;
   currentMove: Move | undefined;
 }
 
 const GameReviewButtons = ({
   game,
-  gameEvaluation,
+  evaluations,
   currentMove,
 }: Props) => {
-  const [moveJudgements, setMoveJudgements] = useState<Record<string, MoveJudgement>>({});
   const [showCreateFlashcardModal, setShowCreateFlashcardModal] = useState(false);
-
-  useEffect(() => {
-    setMoveJudgements(makeMoveJudgements(gameEvaluation));
-  }, [gameEvaluation]);
-
-  const getEvaluationLines = useCallback((): PositionEvaluation['lines'] | undefined => {
-    if (!currentMove) return undefined;
-    const positionEvaluation = gameEvaluation[currentMove.fen];
-    if (positionEvaluation) {
-      return positionEvaluation.lines;
-    }
-  }, [currentMove, gameEvaluation]);
-
 
   const shouldHighlightFlashcardBtn = useCallback((): boolean => {
     // Don't highlight the button if in the starting position.
@@ -88,12 +74,11 @@ const GameReviewButtons = ({
       MoveJudgement.Mistake,
     ];
     if (!isFlashcardRecommended) js.push(MoveJudgement.Inaccurate);
-    const j = moveJudgements[move.next.fen]
+    const j = makeMoveJudgement(move.fen, move.next.fen, evaluations);
+    if (j == undefined) return false;
     return js.includes(j);
-  }, [game, moveJudgements]);
+  }, [game, evaluations]);
 
-
-  const lines = getEvaluationLines();
 
   return (
     <div className="p-2 flex flex-col justify-center items-center w-full bg-background-page rounded-md gap-3">
@@ -107,12 +92,12 @@ const GameReviewButtons = ({
         </Button>
       </div>
 
-      {currentMove && lines && (
+      {currentMove && (
         <CreateFlashcardModal
           show={showCreateFlashcardModal}
           game={game}
           currentMove={currentMove}
-          bestLines={lines}
+          evaluations={evaluations}
           onClose={() => setShowCreateFlashcardModal(false)}
         />
       )}

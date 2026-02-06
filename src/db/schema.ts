@@ -139,7 +139,8 @@ export const flashcards = sqliteTable("flashcards", {
     .$type<PieceColor>(),
 
 	// Flashcard content
-	bestLines: text("best_lines", { mode: "json" }).$type<{score: Score, lanLine: string}[]>(),
+	lines: text("lines", { mode: "json" }).$type<{score: Score, lanLine: string}[]>(),
+	areLinesForcing: integer("are_lines_forcing", { mode: "boolean" }).notNull(),
 
 	// SuperMemo-2 algorithm fields
 	repetitions: integer("repetitions").notNull().default(0),
