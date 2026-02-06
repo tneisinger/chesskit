@@ -17,7 +17,7 @@ export interface Props {
   evaluations: GameEvaluation;
   numLines: number;
   isEvaluating: boolean;
-  evalerMaxDepth?: number;
+  engineMaxDepth: number;
   engineName?: string;
   isSwitchDisabled?: boolean;
   maxLineLengthPx: number;
@@ -32,7 +32,7 @@ const EngineDisplay = ({
   setIsEngineOn,
   currentMove,
   evaluations,
-  evalerMaxDepth,
+  engineMaxDepth,
   numLines,
   engineName = 'Engine loading...',
   isSwitchDisabled = false,
@@ -81,6 +81,22 @@ const EngineDisplay = ({
     }
   }, [currentMove, evaluations]);
 
+  const makeDepthString = useCallback((): string => {
+    if (!isEngineOn) return '';
+    const renderString = (d: number) => `Depth ${d}/${engineMaxDepth}`;
+
+    if (currentEvaluation == undefined) return renderString(0);
+
+    // Sometimes stockfish will return an evaluation at depth 20 before it is done evaluating.
+    // We know it is done evaluating when it gives us a bestMove. Don't display a depth equal
+    // to the engineMaxDepth until we have a bestMove.
+    if (currentEvaluation.depth === engineMaxDepth && currentEvaluation.bestMove == undefined) {
+      return renderString(currentEvaluation.depth - 1);
+    }
+
+    return renderString(currentEvaluation.depth);
+  }, [isEngineOn, engineMaxDepth, currentEvaluation]);
+
   const debug = () => {
     console.log('debug');
   }
@@ -89,13 +105,6 @@ const EngineDisplay = ({
     setCurrentEvaluation(evaluations[getFen(currentMove)]);
   }, [evaluations, currentMove]);
 
-  let depthString: string | undefined = undefined;
-  if (isEngineOn && currentEvaluation) {
-    depthString = `Depth ${currentEvaluation.depth}`;
-    if (evalerMaxDepth && evalerMaxDepth >= currentEvaluation.depth) {
-      depthString += `/${evalerMaxDepth}`;
-    }
-  }
 
   const currentMoveLines: (MultiPV | undefined)[] = new Array(numLines).fill(undefined);
   if (isEngineOn && currentEvaluation && currentEvaluation.lines) {
@@ -140,9 +149,7 @@ const EngineDisplay = ({
           </span>
           <div className="text-center text-[12px]/4 h-8 flex flex-col justify-center items-center">
             <div>{engineName}</div>
-            {depthString && (
-              <div>{depthString}</div>
-            )}
+            <div>{makeDepthString()}</div>
           </div>
           <div className="w-14 h-7">
             {includeOnOffSwitch && (
