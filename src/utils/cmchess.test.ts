@@ -6,8 +6,11 @@ import {
   getVariations,
   renderPgn,
   doHistoriesMatch,
+  playForcingLineIntoCmChess,
 } from './cmchess';
 import { convertLanLineToSanLine } from './chess';
+import { GameEvaluation, PieceColor } from '@/types/chess';
+import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
 
 describe('promoteToMainLine', () => {
   it('should promote the main line (no-op)', () => {
@@ -479,5 +482,272 @@ describe('doHistoriesMatch', () => {
     const cmchess2 = loadPgnIntoCmChess(pgn2);
 
     expect(doHistoriesMatch(cmchess1.history(), cmchess2.history())).toBe(false);
+  });
+});
+
+describe('playForcingLineIntoCmChess', () => {
+  it('should return an empty array when position has more than one good move', () => {
+    const pgn = '1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Bc4 Nf6 5. f3 exf3 6. Nxf3 Bg4 7. Bxf7+ Kxf7 8. Ne5+ Ke8 9. Nxg4 *';
+    const evaluations: GameEvaluation = {
+      "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": {
+        depth: 20,
+        fen: "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        bestMove: {from: "d2", to: "d4"},
+        score: { key:"cp", value: 42}, lines: [
+          { score: { key: "cp", value: 42 }, lanLine:"d2d4 d7d5 e4e5"},
+          { score: { key: "cp", value: 34}, lanLine:"b1c3 d7d5 g1f3 "}
+        ],
+      }
+    };
+    const cmChess = loadPgnIntoCmChess(pgn);
+    const move = cmChess.history()[1];
+    const pgnBefore = renderPgn(cmChess);
+
+    const result = playForcingLineIntoCmChess(cmChess, move, evaluations, PieceColor.WHITE);
+    expect(result.length).toBe(0);
+    const pgnAfter = renderPgn(cmChess);
+    expect(pgnBefore).toBe(pgnAfter);
+  });
+
+
+  it('should return an array with 5 elements when forcing line is 5 moves long', () => {
+    const pgn = '1. e4 c5 2. d4 cxd4 3. c3 dxc3 4. Nxc3 Nc6 5. Nf3 d6 6. Bc4 h6 7. e5 Bg4 *';
+
+    const evaluations: GameEvaluation = {
+      "r2qkbnr/pp2ppp1/2np3p/4P3/2B3b1/2N2N2/PP3PPP/R1BQK2R w KQkq - 1 8": {
+        depth: 20,
+        fen: "r2qkbnr/pp2ppp1/2np3p/4p3/2b3b1/2n2n2/pp3ppp/r1bqk2r w kqkq - 1 8",
+        score: {
+          key: "cp",
+          value: 147
+        },
+        lines: [
+          {
+            score: {
+              key: "cp",
+              value: 147
+            },
+            lanLine: "d1b3 e7e6 b3b7 a8c8 c4b5 g4f3", 
+          },
+          {
+            score: {
+              key: "cp",
+              value: 31
+            },
+            lanLine: "e5d6 d8d6 d1b3 e8c8 c4f7 e7e5",
+          }
+        ],
+        bestMove: {
+          from: "d1",
+          to: "b3"
+        }
+      },
+      "r2qkbnr/pp2ppp1/2np3p/4P3/2B3b1/1QN2N2/PP3PPP/R1B1K2R b KQkq - 2 8": {
+        depth: 20,
+        fen: "r2qkbnr/pp2ppp1/2np3p/4P3/2B3b1/1QN2N2/PP3PPP/R1B1K2R b KQkq - 2 8",
+        score: {
+          key: "cp",
+          value: 147
+        },
+        lines: [
+          {
+            score: {
+              key: "cp",
+              value: 147
+            },
+            lanLine: "e7e6 b3b7 a8c8 c4b5 g4f3 g2f3 d8c7",
+          },
+          {
+            score: {
+              key: "cp",
+              value: 219
+            },
+            lanLine: "d6d5 c4d5 e7e6 b3b7 e6d5 b7c6 g4d7",
+          }
+        ],
+        bestMove: {
+          from: "e7",
+          to: "e6"
+        }
+      },
+      "r2qkbnr/pp3pp1/2npp2p/4P3/2B3b1/1QN2N2/PP3PPP/R1B1K2R w KQkq - 0 9": {
+        depth: 20,
+        fen: "r2qkbnr/pp3pp1/2npp2p/4P3/2B3b1/1QN2N2/PP3PPP/R1B1K2R w KQkq - 0 9",
+        score: {
+          key: "cp",
+          value: 158
+        },
+        lines: [
+          {
+            score: {
+              key: "cp",
+              value: 158
+            },
+            lanLine: "b3b7 a8c8 c4b5 g4f3 g2f3 d8c7",
+          },
+          {
+            score: {
+              key: "cp",
+              value: -17
+            },
+            lanLine: "c1f4 g4f3 g2f3 d6d5 b3b7 g8e7",
+          }
+        ],
+        bestMove: {
+          from: "b3",
+          to: "b7"
+        }
+      },
+      "r2qkbnr/pQ3pp1/2npp2p/4P3/2B3b1/2N2N2/PP3PPP/R1B1K2R b KQkq - 0 9": {
+        depth: 20,
+        fen: "r2qkbnr/pQ3pp1/2npp2p/4P3/2B3b1/2N2N2/PP3PPP/R1B1K2R b KQkq - 0 9",
+        score: {
+          key: "cp",
+          value: 143
+        },
+        lines: [
+          {
+            score: {
+                key: "cp",
+                value: 143
+            },
+            lanLine: "g4f3 g2f3 a8c8 c4b5 d8c7 b7c7 c8c7 b5a4"
+          },
+          {
+            score: {
+              key: "cp",
+              value: 169
+            },
+            lanLine: "a8c8 c4b5 g4f3 g2f3 d8c7 b7c7 c8c7 b5a4 a7a6 c1e3 d6e5 a1c1 f7f5 e3b6 c7c8 c3d5 e6d5 a4c6 e8e7 e1g1 g8f6 c6b7 c8c1 f1c1 e7e6 b7c8 e6f7 c1c7 f8e7 a2a4 a6a5 b6a5 d5d4"
+          }
+        ],
+        bestMove: {
+          from: "g4",
+          to: "f3"
+        }
+      },
+      "r2qkbnr/pQ3pp1/2npp2p/4P3/2B5/2N2b2/PP3PPP/R1B1K2R w KQkq - 0 10": {
+        depth: 20,
+        fen: "r2qkbnr/pQ3pp1/2npp2p/4P3/2B5/2N2b2/PP3PPP/R1B1K2R w KQkq - 0 10",
+        score: {
+          key: "cp",
+          value: 144
+        },
+        lines: [
+          {
+            score: {
+              key: "cp",
+              value: 144
+            },
+            lanLine: "g2f3 a8c8 c4b5 d8c7 b7c7 c8c7 b5a4 a7a6 c1e3 d6e5 a1c1 f7f5 c3d5 e6d5 a4c6 e8e7 e3b6 c7c8 e1g1 g8f6 c6b7 c8c1 f1c1 e7e6 c1c8 h8g8 b7a6 f8e7 c8c6 e7d6 a2a4 e6e7 a6c8 f6d7 a4a5 d7b6 a5b6 g8f8 b6b7 d6b8 c8e6 d5d4 c6c8 d4d3 g1f1 e5e4 e6f5 f8f5 c8b8 d3d2 f1e2"
+          },
+          {
+            score: {
+              key: "cp",
+              value: -26
+            },
+            lanLine: "c4b5 d8c8 b7c8 a8c8 g2f3 d6e5 c1e3 f8b4 a2a3 b4c3 b2c3 e8e7 a1b1 e7f6 b5c6 c8c6 b1b8 c6c3 a3a4 g7g5 h2h4 f6g7 h4g5 h6g5 h1h8 g7h8 b8b7 h8g7 b7a7 g7g6"
+          }
+        ],
+        bestMove: {
+          from: "g2",
+          to: "f3"
+        }
+      },
+      "r2qkbnr/pQ3pp1/2npp2p/4P3/2B5/2N2P2/PP3P1P/R1B1K2R b KQkq - 0 10": {
+        depth: 20,
+        fen: "r2qkbnr/pQ3pp1/2npp2p/4P3/2B5/2N2P2/PP3P1P/R1B1K2R b KQkq - 0 10",
+        score: {
+          key: "cp",
+          value: 144
+        },
+        lines: [
+          {
+            score: {
+              key: "cp",
+              value: 144
+            },
+            lanLine: "a8c8 c4b5 d8c7 b7c7 c8c7 b5a4 a7a6 c1e3 d6e5 a1c1 f7f5 e3b6 c7c8 c3d5 e6d5 a4c6 e8e7 e1g1 g8f6 f1d1"
+          },
+          {
+            score: {
+              key: "cp",
+              value: 291
+            },
+            lanLine: "c6d4 c1e3 d8c8 b7e4 d4c2 e1e2 c2e3 f2e3 f7f5 e5f6 g8f6 e4e6 c8e6 c4e6 f8e7 h1d1 a8b8 b2b3 g7g5 d1d4"
+          }
+        ],
+        bestMove: {
+          from: "a8",
+          to: "c8"
+        }
+      },
+      "2rqkbnr/pQ3pp1/2npp2p/4P3/2B5/2N2P2/PP3P1P/R1B1K2R w KQk - 1 11": {
+        depth: 20,
+        fen: "2rqkbnr/pQ3pp1/2npp2p/4P3/2B5/2N2P2/PP3P1P/R1B1K2R w KQk - 1 11",
+        score: {
+          key: "cp",
+          value: 161
+        },
+        lines: [
+          {
+            score: {
+                key: "cp",
+                value: 161
+            },
+            lanLine: "c4b5 d8c7 b7c7 c8c7 b5a4 a7a6 c1e3 d6e5 a1c1 f7f5 e3b6 c7c8 c3d5 e6d5 a4c6 e8e7 e1g1 g8f6 c6b7 c8c1 f1c1 e7e6 b7c8 e6f7 c1c7 f7g6 c8a6 f8b4 a2a3 b4d2 a3a4 h8a8 a6b5 d2b4 f3f4 e5e4 c7c6 b4d2 g1f1 g6f7 c6c2 d2b4"
+          },
+          {
+            score: {
+                key: "cp",
+                value: 117
+            },
+            lanLine: "c1e3 c6e5 c4b5 e5d7 c3e4 c8c7 b7a6 d8c8 a6d6 c8b7 a1d1 f8d6 e4d6 e8e7 d6b7 c7b7 b5d7 b7d7 d1d7 e7d7 h1g1 g7g5 e3d4 f7f6 e1e2 e6e5 d4a7 g8e7 a7c5 e7d5 e2d3 d7c6 d3c4 h8d8 a2a4 d5b6 c5b6 c6b6 b2b4 d8d4 c4c3 d4h4"
+          }
+        ],
+        bestMove: {
+          from: "c4",
+          to: "b5"
+        }
+      },
+      "2rqkbnr/pQ3pp1/2npp2p/1B2P3/8/2N2P2/PP3P1P/R1B1K2R b KQk - 2 11": {
+        depth: 20,
+        fen: "2rqkbnr/pQ3pp1/2npp2p/1B2P3/8/2N2P2/PP3P1P/R1B1K2R b KQk - 2 11",
+        score: {
+          key: "cp",
+          value: 169
+        },
+        lines: [
+          {
+            score: {
+              key: "cp",
+              value: 169
+            },
+            lanLine: "d8c7 b7c7 c8c7 b5a4 a7a6 c1e3 d6e5 a1c1 f7f5 c3d5 e6d5 a4c6 e8e7 e3b6 c7c8 e1g1 g8f6 c6b7 c8c1 f1c1 e7e6 c1c7 e5e4 c7c8 h8g8 b7a6 f8b4 a2a3 b4d2 c8c6 e6e7"
+          },
+          {
+            score: {
+              key: "cp",
+              value: 204
+            },
+            lanLine: "d8d7 b7a6 d6d5 e1g1 f8c5 f1d1 g8e7 c3e4 c5b4 c1d2 e8g8 d2b4 c6b4 b5d7 b4a6 d7c8 f8c8 e4d6 c8c2 d1c1"
+          }
+        ],
+        bestMove: {
+          from: "d8",
+          to: "c7"
+        }
+      }
+    }
+
+    const cmChess = loadPgnIntoCmChess(pgn);
+    const historyBefore = [...cmChess.history()];
+    const move = historyBefore[13];
+
+    const result = playForcingLineIntoCmChess(cmChess, move, evaluations, PieceColor.WHITE);
+    result.forEach((m) => console.log(m));
+    expect(result.length).toBe(5);
+    const historyAfter = [...cmChess.history()];
+    expect(historyAfter.length - historyBefore.length).toBe(5);
   });
 });

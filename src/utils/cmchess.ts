@@ -2,7 +2,7 @@ import { Chess as CmChess, COLOR, Move } from 'cm-chess/src/Chess';
 import { MarkerTypeConfig } from 'cm-chessboard/src/extensions/markers/Markers';
 import ChessJS from '@/chessjs';
 import { Square, Move as ChessJsMove } from 'chess.js';
-import { PieceColor, ShortMove } from '@/types/chess';
+import { GameEvaluation, PieceColor, ShortMove, MoveJudgement } from '@/types/chess';
 import {
   isSubline,
   performMove,
@@ -10,7 +10,7 @@ import {
   lanToShortMove,
   areMovesEqual as areShortMovesEqual,
   convertSanLineToLanLine,
-  convertLanLineToSanLine,
+  judgeLines,
 } from '@/utils/chess';
 import { getLinesFromPGN } from './pgn';
 
@@ -527,4 +527,140 @@ export function getMainLineParentOfVariation(move: Move): Move | null {
   }
   while (isInVariation(move));
   return null;
+}
+
+
+/**
+ * If there is only one good move in the position represented by the given Move,
+ * play that move into the cmChess instance and return the resulting Move object.
+ * Otherwise, return null.
+ */
+function playOnlyMove(
+  cmChess: CmChess,
+  move: Move,
+  evaluations: GameEvaluation,
+  minDepth = 18,
+): Move | null {
+  // Make sure that we have an evaluation of enough depth.
+  const evaluation = evaluations[move.fen];
+  if (evaluation == undefined) return null;
+  if (evaluation.depth < minDepth) return null;
+
+  // We can't tell if a move is forcing if there are fewer than two lines.
+  // In that case, return null.
+  if (evaluation.lines.length < 2) return null;
+
+  // Get the lineJudgements
+  const nextMoveColor = colorToMove(move);
+  const lineJudgements = judgeLines(nextMoveColor, evaluation.lines);
+
+  // The first element in lineJudgements should always be MoveJudgement.Excellent,
+  // and the next element should be the judgement for the second best move of the
+  // position. Therefore, if the second move is bad, we can be sure that there is
+  // only one good move in the position. If there is only one good move, play that
+  // move into cmChess and return the Move object that is returned from cmChess.move().
+  const badJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake];
+  if (badJudgements.includes(lineJudgements[1])) {
+    const firstMoveLan = evaluation.lines[0].lanLine.trim().split(' ')[0];
+    const m = cmChess.move(lanToShortMove(firstMoveLan), move);
+    if (m == undefined) throw new Error('m was undefined');
+    return m;
+  }
+  return null;
+}
+
+
+/**
+ * For each line in 'evaluations' that we have for the 'move' position, check if the first move of
+ * that line leads to a position that only has one good move. If so, play the first move of that line
+ * into 'cmChess' and return the resulting Move. The resulting Move will represent a position that
+ * has only one good move. Otherwise, return null.
+ */
+function playMoveThatLeadsToOnlyMove(
+  cmChess: CmChess,
+  move: Move,
+  evaluations: GameEvaluation,
+  minDepth = 18,
+): Move | null {
+  const evaluation = evaluations[move.fen];
+  if (evaluation == undefined) return null;
+  if (evaluation.depth < minDepth) return null;
+
+  const lineMoves = evaluation.lines.map((line) => lanToShortMove(line.lanLine.trim().split(' ')[0]));
+  for (let i = 0; i < lineMoves.length; i++) {
+    // This is the move that we will check in this loop.
+    const lineMove = lineMoves[i];
+
+    // Create a new cmChess with all the moves
+    const tempCmChess = new CmChess();
+    getLineFromCmMove(move).forEach((m) => {
+      const moveResult = tempCmChess.move(m.san)
+      if (moveResult == undefined) throw new Error('moveResult was undefined');
+    });
+
+    // Play the lineMove into tempCmChess
+    const moveResult = tempCmChess.move(lineMove);
+    if (moveResult == undefined) throw new Error('moveResult was undefined');
+
+    // get the evaluation for this new position. If no evaluation, continue.
+    const lineMoveEvaluation = evaluations[tempCmChess.fen()];
+    if (lineMoveEvaluation == undefined) continue;
+
+    // If the lineMoveEvaluation has too low of a depth, continue.
+    if (lineMoveEvaluation.depth < minDepth) continue;
+
+    // We can't tell if a move is forcing if we have fewer than two lines.
+    // In that case, continue.
+    if (lineMoveEvaluation.lines.length < 2) continue;
+
+    // Get the lineJudgements
+    const badJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake];
+    const nextMoveColor = colorToMove(moveResult);
+    const lineJudgements = judgeLines(nextMoveColor, lineMoveEvaluation.lines);
+
+    // The first element in lineJudgements should always be MoveJudgement.Excellent,
+    // and the next element should be the second best move of the position. Therefore,
+    // if the second move is bad, we can be sure that there is only one good move in the
+    // position. If there is only one good move in the new position, add the lineMove of
+    // this loop to the cmChess that we received as input.
+    if (badJudgements.includes(lineJudgements[1])) {
+      const result = cmChess.move(lineMove, move);
+      if (result == undefined) throw new Error('result of cmChess.move(lineMove) was undefined');
+      return result;
+    }
+  }
+  return null;
+}
+
+
+/**
+ * For the position represented by the input move, look for a forcing line for the user.
+ * When it is the user's turn, add a move to the output if that move is the only good move
+ * in the position. When it is not the user's turn, look for a move that will give the user
+ * a position that has only one good move. The only moves that will be checked are the ones at
+ * the start of each line in the 'evaluations' object. Return an empty array if there is not
+ * a forcing line.
+ */
+export function playForcingLineIntoCmChess(
+  cmChess: CmChess,
+  move: Move,
+  evaluations: GameEvaluation,
+  userColor: PieceColor,
+  minDepth = 18,
+): string[] {
+  const isUsersTurn = (m: Move) => userColor === colorToMove(m);
+  if (!isUsersTurn(move)) throw new Error("It was not the user's turn in the input move");
+
+  const result: string[] = [];
+  let mostRecentMove: Move | null = move;
+
+  while (mostRecentMove !== null) {
+    if (isUsersTurn(mostRecentMove)) {
+      mostRecentMove = playOnlyMove(cmChess, mostRecentMove, evaluations, minDepth);
+    } else {
+      mostRecentMove = playMoveThatLeadsToOnlyMove(cmChess, mostRecentMove, evaluations, minDepth);
+    }
+    if (mostRecentMove !== null) result.push(mostRecentMove.san);
+  }
+  return result;
 }
