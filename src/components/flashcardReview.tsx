@@ -41,6 +41,7 @@ import CountdownClock from '@/components/countdownClock';
 import useWindowSize from '@/hooks/useWindowSize';
 import { getRandom } from '@/utils';
 import usePrevious from '@/hooks/usePrevious';
+import { FEN } from 'cm-chess/src/Chess';
 
 const MOVE_INCREMENT_SECONDS = 5;
 
@@ -67,8 +68,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [wrongAnswerBlinkTrigger, setWrongAnswerBlinkTrigger] = useState(0);
   const [wrongAnswerCount, setWrongAnswerCount] = useState(0)
   const [currentMode, setCurrentMode] = useState<Mode>(Mode.Practice);
-  const [numIncompleteLines, setNumIncompleteLines] = useState<number | null>(null);
-  const [totalLines, setTotalLines] = useState<number | null>(null);
   const [showAltMoveModal, setShowAltMoveModal] = useState(false);
   const [showDeleteFlashcardModal, setShowDeleteFlashcardModal] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>(DeleteStatus.NotStarted);
@@ -79,6 +78,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [hasUserCompletedFlashcard, setHasUserCompletedFlashcard] = useState(false);
   const [numHintsGiven, setNumHintsGiven] = useState(0);
   const [numShowMovesGiven, setNumShowMovesGiven] = useState(0);
+  const [boardFenOverride, setBoardFenOverride] = useState<string | undefined>(undefined);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -94,6 +94,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     resetBoardTimeoutRef,
     showFlashcardCompleteModalTimeoutRef,
   ]
+
+  const numIncompleteLinesRef = useRef<number | null>(null);
+  const totalLinesRef = useRef<number | null>(null);
 
   const currentFlashcard = flashcards[flashcardIndex];
 
@@ -131,6 +134,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   } = useChessboardEngine();
 
   const previousMove = usePrevious(currentMove);
+  const previousLines = usePrevious(lines);
 
   const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
     // By default, indicate that the move was wrong.
@@ -446,11 +450,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [currentMode, pauseClock, setupResetBoardTimeouts, resetClock, discardUnsavedChanges]);
 
 
-  // Whenever lines changes, update the numIncompleteLines and totalLines state values
+  // Whenever lines changes, update the numIncompleteLines and totalLines refs
   useEffect(() => {
     if (Object.keys(lines).length < 1) {
-      setNumIncompleteLines(null);
-      setTotalLines(null);
+      numIncompleteLinesRef.current = null;
+      totalLinesRef.current = null;
       return;
     }
 
@@ -460,20 +464,21 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       numLines++;
       if (!v.isComplete) numIncomplete++;
     });
-    setNumIncompleteLines(numIncomplete);
-    setTotalLines(numLines);
+    numIncompleteLinesRef.current = numIncomplete;
+    totalLinesRef.current = numLines;
   }, [lines]);
 
 
-  // When numIncompleteLines or totalLines changes...
+  // When lines changes...
   useEffect(() => {
-    if (numIncompleteLines === null) return;
-    if (totalLines === null) return;
+    if (previousLines === lines) return;
+    if (numIncompleteLinesRef.current === null) return;
+    if (totalLinesRef.current === null) return;
 
     // If there are incomplete lines and numIncompleteLines < totalLines,
     // that means that the user just solved a line but there are more lines
     // left to be solved.
-    if (numIncompleteLines > 0 && numIncompleteLines < totalLines) {
+    if (numIncompleteLinesRef.current > 0 && numIncompleteLinesRef.current < totalLinesRef.current) {
       // Add time to the clock if time hasn't run out
       if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
       setupResetBoardTimeouts();
@@ -481,14 +486,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     // If there are no incomplete lines, then the flashcard is complete.
     // Pause the clock and show the FlashcardCompleteModal after a delay.
-    if (numIncompleteLines === 0) {
+    if (numIncompleteLinesRef.current === 0) {
       pauseClock();
       showFlashcardCompleteModalTimeoutRef.current = window.setTimeout(() => {
         setShowFlashcardCompleteModal(true);
         setHasUserCompletedFlashcard(true);
       }, 600);
     }
-  }, [numIncompleteLines, totalLines, setupResetBoardTimeouts, pauseClock]);
+  }, [lines, previousLines, setupResetBoardTimeouts, pauseClock]);
 
 
   // When the flashcardIndex changes...
@@ -498,12 +503,17 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     setWrongAnswerCount(0);
     setNumHintsGiven(0);
     setNumShowMovesGiven(0);
+    numIncompleteLinesRef.current = null;
+    totalLinesRef.current = null;
 
     const fc = flashcards[flashcardIndex];
-    if (fc) {
-      if (fc.bestLines) {
-        setLineJudgements(judgeLines(fc.userColor, fc.bestLines));
+    if (fc != undefined) {
+      if (fc.lines) {
+        setLineJudgements(judgeLines(fc.userColor, fc.lines));
       }
+
+      resetClock();
+
       loadPgnIntoCmChess(fc.pgn, cmchess.current);
       const cmhistory = cmchess.current.history();
       setHistory(cmhistory);
@@ -513,12 +523,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setCurrentMove(cmhistory.find((m) => m.ply === fc.positionIdx - 1));
       setOpponentFirstMove(cmhistory.find((m) => m.ply === fc.positionIdx));
       setLines(makeLineStatsRecord(fc.pgn))
+      setBoardFenOverride(undefined);
     } else {
       setLineJudgements([]);
       setOpponentFirstMove(null);
       setLines({});
     }
-  }, [flashcardIndex]);
+  }, [flashcardIndex, resetClock]);
 
 
   // Play the opponent move after a slight delay
@@ -706,7 +717,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             show={showFlashcardCompleteModal}
             onClose={() => setShowFlashcardCompleteModal(false)}
             onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
-            onNextFlashcardBtnClick={() => console.log('next flashcard')}
+            onNextFlashcardBtnClick={() => {
+              setBoardFenOverride(FEN.empty);
+              setFlashcardIndex((i) => i + 1);
+            }}
             numWrongAnswers={wrongAnswerCount}
             numHintsGiven={numHintsGiven}
             numShowMovesGiven={numShowMovesGiven}
@@ -730,6 +744,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             afterUserMove={handleUserMove}
             animate={true}
             markers={markers}
+            fenOverride={boardFenOverride}
             arrows={arrows}
           />
         </div>
@@ -811,11 +826,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
           {showAnswer ? (
             <>
-              {currentFlashcard.bestLines && currentFlashcard.bestLines.length > 0 && (
+              {currentFlashcard.lines && currentFlashcard.lines.length > 0 && (
                 <>
                   <h3 className="text-md font-semibold mb-2">Best Lines:</h3>
                   <div className="space-y-2 mb-4">
-                    {currentFlashcard.bestLines.map((line, idx) => (
+                    {currentFlashcard.lines.map((line, idx) => (
                       <div key={idx} className="p-2 bg-background rounded border border-gray-600">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs text-gray-400">Line {idx + 1}</span>
