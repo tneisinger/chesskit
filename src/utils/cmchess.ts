@@ -573,18 +573,21 @@ function playOnlyMove(
 /**
  * For each line in 'evaluations' that we have for the 'move' position, check if the first move of
  * that line leads to a position that only has one good move. If so, play the first move of that line
- * into 'cmChess' and return the resulting Move. The resulting Move will represent a position that
- * has only one good move. Otherwise, return null.
+ * into 'cmChess' and return the resulting Move. Repeat this process for each line in 'evaluations.'
+ * If more than one move leads to a forcing position, each move will be played into cmChess. Put each
+ * move that was played into cmChess into the output array.
  */
-function playMoveThatLeadsToOnlyMove(
+function playMovesThatLeadToOnlyMoves(
   cmChess: CmChess,
   move: Move,
   evaluations: GameEvaluation,
   minDepth = 18,
-): Move | null {
+): Move[] {
   const evaluation = evaluations[move.fen];
-  if (evaluation == undefined) return null;
-  if (evaluation.depth < minDepth) return null;
+  if (evaluation == undefined) return [];
+  if (evaluation.depth < minDepth) return [];
+
+  const result: Move[] = [];
 
   const lineMoves = evaluation.lines.map((line) => lanToShortMove(line.lanLine.trim().split(' ')[0]));
   for (let i = 0; i < lineMoves.length; i++) {
@@ -624,12 +627,12 @@ function playMoveThatLeadsToOnlyMove(
     // position. If there is only one good move in the new position, add the lineMove of
     // this loop to the cmChess that we received as input.
     if (badJudgements.includes(lineJudgements[1])) {
-      const result = cmChess.move(lineMove, move);
-      if (result == undefined) throw new Error('result of cmChess.move(lineMove) was undefined');
-      return result;
+      const playedMove = cmChess.move(lineMove, move);
+      if (playedMove == undefined) throw new Error('result of cmChess.move(lineMove) was undefined');
+      result.push(playedMove);
     }
   }
-  return null;
+  return result;
 }
 
 
@@ -658,9 +661,57 @@ export function playForcingLineIntoCmChess(
     if (isUsersTurn(mostRecentMove)) {
       mostRecentMove = playOnlyMove(cmChess, mostRecentMove, evaluations, minDepth);
     } else {
-      mostRecentMove = playMoveThatLeadsToOnlyMove(cmChess, mostRecentMove, evaluations, minDepth);
+      const moves = playMovesThatLeadToOnlyMoves(cmChess, mostRecentMove, evaluations, minDepth);
+      moves.length === 0 ? mostRecentMove = null : mostRecentMove = moves[0];
     }
     if (mostRecentMove !== null) result.push(mostRecentMove.san);
+  }
+  return result;
+}
+
+
+/**
+ * For the position represented by the input move, look for forcing lines for the user.
+ * When it is the user's turn, play a move into cmChess if that move is the only good move
+ * in the position. When it is not the user's turn, look for moves that will give the user
+ * a position that has only one good move. The only moves that will be checked are the ones at
+ * the start of each line in the 'evaluations' object. Return an empty array if there are no
+ * forcing lines. If there are forcing lines, return an array of fen strings. Each fen string
+ * represents a move that was added to cmChess by this function.
+ */
+export function playForcingLinesIntoCmChess(
+  cmChess: CmChess,
+  move: Move,
+  evaluations: GameEvaluation,
+  userColor: PieceColor,
+  minDepth = 18,
+): string[] {
+  const isUsersTurn = (m: Move) => userColor === colorToMove(m);
+  if (!isUsersTurn(move)) throw new Error("It was not the user's turn in the input move");
+
+  // An array of fen strings
+  const result: string[] = [];
+
+  let mostRecentMoves: Move[] = [move];
+
+  while (mostRecentMoves.length > 0) {
+    const currentMove = mostRecentMoves.pop();
+    if (currentMove == undefined) throw new Error('currentMove was undefined');
+
+    if (isUsersTurn(currentMove)) {
+      const onlyMove = playOnlyMove(cmChess, currentMove, evaluations, minDepth);
+      if (onlyMove == null) continue;
+      result.push(onlyMove.fen);
+      mostRecentMoves.push(onlyMove);
+    } else {
+      const moves = playMovesThatLeadToOnlyMoves(cmChess, currentMove, evaluations, minDepth);
+      if (moves.length === 0) {
+        continue;
+      } else {
+        moves.forEach((m) => result.push(m.fen));
+        mostRecentMoves.push(...moves);
+      }
+    }
   }
   return result;
 }

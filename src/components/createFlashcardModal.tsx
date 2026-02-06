@@ -12,7 +12,7 @@ import {
   getLineFromCmMove,
   getMainLineParentOfVariation,
   isInVariation,
-  playForcingLineIntoCmChess,
+  playForcingLinesIntoCmChess,
   renderPgn
 } from '@/utils/cmchess';
 
@@ -56,9 +56,9 @@ function createFlashcardData(
   if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
   // Try to get a forcing line. If there is a forcing line, set 'areLinesForcing' to true.
-  const forcingLine = playForcingLineIntoCmChess(cmChess, flashcardMoveOfCmChess, evaluations, game.userColor);
+  const fensOfAddedMoves = playForcingLinesIntoCmChess(cmChess, flashcardMoveOfCmChess, evaluations, game.userColor);
   let areLinesForcing = false;
-  if (forcingLine.length > 0) {
+  if (fensOfAddedMoves.length > 0) {
     areLinesForcing = true;
   }
 
@@ -108,7 +108,6 @@ const CreateFlashcardModal = ({ show, game, currentMove, evaluations, onClose }:
 
     // TODO: Prevent creation of duplicate flashcards
     const flashcardData = createFlashcardData(game, currentMove, evaluations);
-    console.log(flashcardData);
 
     try {
       const result = await createFlashcard(flashcardData);
@@ -139,6 +138,7 @@ const CreateFlashcardModal = ({ show, game, currentMove, evaluations, onClose }:
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="text-gray-300">
+            {/* TODO: make text more descriptive */}
             <p>Create a flashcard for this mistake?</p>
           </div>
 
