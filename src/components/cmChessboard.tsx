@@ -12,6 +12,7 @@ import {
 } from 'cm-chessboard/src/extensions/arrows/Arrows';
 import { MarkerTypeConfig, Markers } from 'cm-chessboard/src/extensions/markers/Markers';
 import { FEN, Move } from 'cm-chess/src/Chess';
+import { FEN as CmChessboardFEN } from 'cm-chessboard/src/Chessboard';
 import {
   Chessboard,
   Props as BoardProps,
@@ -418,6 +419,9 @@ const CmChessboard = ({
     // If fenOverride is defined, use that. Otherwise, get the fen from the currentMove
     const fen = fenOverride ? fenOverride : getFen(currentMove);
     if (fen !== FEN.empty) {
+      if (fen === CmChessboardFEN.empty) {
+        throw new Error('It looks like you tried to use FEN.empty from cmChessboard. Use the FEN.empty from cm-chess instead.')
+      }
       // chessjs will throw an error if it tries to load the empty fen.
       chessjs.current.load(fen);
     }
