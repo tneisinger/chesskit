@@ -1,4 +1,3 @@
-import React from 'react';
 import Modal from '@/components/modal';
 
 interface Props {
@@ -24,9 +23,9 @@ const PromoteModal = ({ show, color, pieceSize, ...props }: Props) => {
 
   return (
     <Modal show={show}>
-      <div className="bg-white dark:bg-gray-800 rounded p-2 opacity-92">
+      <div className="bg-white dark:bg-gray-800 rounded p-2 opacity-96">
         <h3
-          className="m-0 p-0 mb-1 text-center"
+          className="m-0 p-0 mb-1 text-center text-stone-700 font-bold"
           style={{ fontSize: `${pieceSize * 0.03}rem` }}
         >
           Promote
