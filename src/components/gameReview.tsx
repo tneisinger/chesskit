@@ -388,6 +388,10 @@ const GameReview = ({ game }: Props) => {
               game={game}
               evaluations={evaluations}
               currentMove={currentMove}
+              hasGameBeenAnalyzed={
+                gameAnalysisStatus === AnalysisStatus.Complete ||
+                game.engineAnalysis != undefined
+              }
             />
           </div>
         </div>

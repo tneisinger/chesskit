@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { GameData, GameEvaluation, MoveJudgement, PositionEvaluation } from "@/types/chess";
+import { GameData, GameEvaluation, MoveJudgement } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Move } from 'cm-chess/src/Chess';
 import { makeMoveJudgement } from "@/utils/chess";
@@ -10,12 +10,14 @@ interface Props {
   game: GameData;
   evaluations: GameEvaluation;
   currentMove: Move | undefined;
+  hasGameBeenAnalyzed: boolean;
 }
 
 const GameReviewButtons = ({
   game,
   evaluations,
   currentMove,
+  hasGameBeenAnalyzed,
 }: Props) => {
   const [showCreateFlashcardModal, setShowCreateFlashcardModal] = useState(false);
 
@@ -81,16 +83,24 @@ const GameReviewButtons = ({
 
 
   return (
-    <div className="p-2 flex flex-col justify-center items-center w-full bg-background-page rounded-md gap-3">
-      <div>
-        <Button
-          buttonStyle={shouldHighlightFlashcardBtn() ? ButtonStyle.Primary : ButtonStyle.Normal}
-          onClick={() => setShowCreateFlashcardModal(true)}
-          disabled={shouldDisableFlashcardBtn()}
-        >
-          Make Flashcard
-        </Button>
-      </div>
+    <div>
+      {hasGameBeenAnalyzed && (
+        <div className="w-full p-5 flex flex-col items-center gap-4 bg-background-page rounded-md">
+          <Button
+            buttonStyle={ButtonStyle.Primary}
+            onClick={() => console.log('Retry your mistakes')}
+          >
+            Retry Your Mistakes
+          </Button>
+          <Button
+            buttonStyle={shouldHighlightFlashcardBtn() ? ButtonStyle.Primary : ButtonStyle.Normal}
+            onClick={() => setShowCreateFlashcardModal(true)}
+            disabled={shouldDisableFlashcardBtn()}
+          >
+            Make Flashcard
+          </Button>
+        </div>
+      )}
 
       {currentMove && (
         <CreateFlashcardModal
