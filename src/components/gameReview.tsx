@@ -85,6 +85,7 @@ const GameReview = ({ game }: Props) => {
 
   const [depth, setDepth] = useState(20);
   const [numLines, setNumLines] = useState(2);
+  const [hasGameLoaded, setHasGameLoaded] = useState(false);
 
   const initialState: State = {
     isPositionAnalysisOn: false,
@@ -155,6 +156,7 @@ const GameReview = ({ game }: Props) => {
     }
   }, [gameAnalysisStatus, prevGameAnalysisStatus, game.id, evaluations])
 
+  // When we get the game...
   useEffect(() => {
     if (game) {
       loadPgnIntoCmChess(game.pgn, cmchess.current);
@@ -163,6 +165,9 @@ const GameReview = ({ game }: Props) => {
         setEvaluations(game.engineAnalysis);
         setGameEvaluation(game.engineAnalysis);
       }
+      setHasGameLoaded(true);
+    } else {
+      setHasGameLoaded(false);
     }
   }, [game]);
 
@@ -375,21 +380,23 @@ const GameReview = ({ game }: Props) => {
         <div className="flex-1 w-full flex flex-row gap-2 mb-4">
           <div className={`${leftColWidth}`} />
           <div style={{ width: boardSize }}>
-            <GameAnalysis
-              game={game}
-              analyzeGame={analyzeGame}
-              depth={depth}
-              changeDepth={setDepth}
-              numLines={numLines}
-              changeNumLines={setNumLines}
-              gameAnalysisStatus={gameAnalysisStatus}
-              gameAnalysisProgress={gameAnalysisProgress}
-              gameEvaluation={gameEvaluation}
-              currentMove={currentMove}
-              changeCurrentMove={setCurrentMove}
-              history={history}
-              width={boardSize}
-            />
+            {hasGameLoaded && (
+              <GameAnalysis
+                game={game}
+                analyzeGame={analyzeGame}
+                depth={depth}
+                changeDepth={setDepth}
+                numLines={numLines}
+                changeNumLines={setNumLines}
+                gameAnalysisStatus={gameAnalysisStatus}
+                gameAnalysisProgress={gameAnalysisProgress}
+                gameEvaluation={gameEvaluation}
+                currentMove={currentMove}
+                changeCurrentMove={setCurrentMove}
+                history={history}
+                width={boardSize}
+              />
+            )}
           </div>
           <div style={{ width: rightColWidth }}>
             <GameReviewButtons
