@@ -13,7 +13,7 @@ import { Move } from 'cm-chess/src/Chess';
 import { getPlyFromFen, makeMoveJudgements, getFenParts } from '@/utils/chess';
 import { FEN } from 'cm-chessboard/src/Chessboard';
 import GameChartToolTip from '@/components/gameChartToolTip';
-import GameChartJudgementDots from '@/components/gameChartJudgementDots';
+import KeyPositionDots from '@/components/keyPositionDots';
 import { isInVariation } from '@/utils/cmchess';
 
 const CHART_MAX_CP = 1000;
@@ -254,7 +254,7 @@ const GameChart = ({
           fillOpacity={1}
           fill="url(#colorCp)"
           activeDot={{ r: 3 }}
-          dot={includeKeyPositionDots ? GameChartJudgementDots : undefined}
+          dot={includeKeyPositionDots ? KeyPositionDots : undefined}
           isAnimationActive={false}
         />
       </AreaChart>

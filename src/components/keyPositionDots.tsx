@@ -2,7 +2,7 @@ import { DotItemDotProps } from 'recharts';
 import { MoveJudgement } from '@/types/chess';
 import { ChessMoveColor } from '@/constants/colors';
 
-const GameChartJudgementDots = (props: DotItemDotProps) => {
+const KeyPositionDots = (props: DotItemDotProps) => {
   const { cx, cy, payload } = props;
   if (!cx || !cy || !payload) return null
 
@@ -25,4 +25,4 @@ const GameChartJudgementDots = (props: DotItemDotProps) => {
   }
 };
 
-export default GameChartJudgementDots;
+export default KeyPositionDots;
