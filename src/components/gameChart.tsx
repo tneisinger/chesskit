@@ -57,7 +57,7 @@ function makeChartData(
 
   const moveJudgements = makeMoveJudgements(gameEvaluation);
 
-  Object.entries(gameEvaluation).forEach(([fen, e]) => {
+  Object.entries(gameEvaluation).forEach(([fen, posEvaluation]) => {
     // Skip starting position
     if (fen === FEN.start) return;
 
@@ -87,16 +87,16 @@ function makeChartData(
       keyPosition: null,
     };
 
-    if (e.score.key === 'cp') {
-      let chartCp = e.score.value;
+    if (posEvaluation.score.key === 'cp') {
+      let chartCp = posEvaluation.score.value;
       if (Math.abs(chartCp) > CHART_MAX_CP) {
         chartCp = chartCp > 0 ? CHART_MAX_CP : -CHART_MAX_CP
       }
-      result.push({ ...partial, chartCp, cp: e.score.value });
-    } else if (e.score.key === 'mate') {
+      result.push({ ...partial, chartCp, cp: posEvaluation.score.value });
+    } else if (posEvaluation.score.key === 'mate') {
       // Represent mate as CHART_MAX_CP with sign indicating who is mating
-      const sign = e.score.value > 0 ? 1 : -1;
-      result.push({ ...partial, chartCp: sign * CHART_MAX_CP, mate: e.score.value });
+      const sign = posEvaluation.score.value > 0 ? 1 : -1;
+      result.push({ ...partial, chartCp: sign * CHART_MAX_CP, mate: posEvaluation.score.value });
     } else {
       // No evaluation available so set cp to 0
       result.push({ ...partial, chartCp: 0, cp: 0 });
@@ -159,18 +159,43 @@ function fillChartDataWithEmptyPoints(
     const { activeColor } = getFenParts(move.fen);
     const isUserMove = activeColor !== userColor;
 
-    // Make a filler data point
-    const emptyPoint: ChartDataPoint = {
+    // Create a partial data point to avoid code repetition.
+    const partial = {
       ply: move.ply,
       move: move.san,
       color: move.color,
       moveNumber: Math.ceil(move.ply / 2),
-      cp: 0,
-      chartCp: 0,
       judgement: undefined,
       isUserMove,
       keyPosition: null,
     }
+
+    let emptyPoint: ChartDataPoint;
+
+    // If move.san endsWith '#' that means that this is a checkmate.
+    if (move.san.endsWith('#')) {
+      // The loser of the game will be the active color.
+      // Set the sign to negative if activeColor is white.
+      let sign = 1;
+      if (activeColor === PieceColor.WHITE) sign = -1;
+
+      // Create the emptyPoint
+      emptyPoint = {
+        ...partial,
+        mate: 0,
+        chartCp: CHART_MAX_CP * sign,
+      }
+
+    // If not checkmate, just make a normal emptyPoint
+    } else {
+      // Make a normal filler data point
+      emptyPoint = {
+        ...partial,
+        cp: 0,
+        chartCp: 0,
+      }
+    }
+
 
     result.push(emptyPoint);
   }
