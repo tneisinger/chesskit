@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useReducer } from 'react';
+import { useState, useEffect, useReducer, useCallback } from 'react';
 import { ScrollLock } from '@/components/ScrollLock';
 import { GameData, GameEvaluation, MoveJudgement } from '@/types/chess';
 import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
@@ -129,6 +129,12 @@ const GameReview = ({ game }: Props) => {
   );
 
   const prevGameAnalysisStatus = usePrevious(gameAnalysisStatus);
+
+  const hasGameBeenAnalyzed = useCallback((): boolean => {
+    if (gameAnalysisStatus === AnalysisStatus.Complete) return true;
+    if (game.engineAnalysis != undefined) return true;
+    return false;
+  }, [gameAnalysisStatus, game]);
 
   // When game analysis completes, save the results to the db
   useEffect(() => {
@@ -280,7 +286,7 @@ const GameReview = ({ game }: Props) => {
       isEvaluating={fenBeingAnalyzed != null}
       maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
       numLines={numLines}
-      isSwitchDisabled={false}
+      isSwitchDisabled={!hasGameBeenAnalyzed()}
       showMoveJudgements={false}
       colorLineScores={true}
     />
@@ -403,10 +409,7 @@ const GameReview = ({ game }: Props) => {
               game={game}
               evaluations={evaluations}
               currentMove={currentMove}
-              hasGameBeenAnalyzed={
-                gameAnalysisStatus === AnalysisStatus.Complete ||
-                game.engineAnalysis != undefined
-              }
+              hasGameBeenAnalyzed={hasGameBeenAnalyzed()}
             />
           </div>
         </div>
