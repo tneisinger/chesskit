@@ -220,6 +220,14 @@ const GameReview = ({ game }: Props) => {
   }, [s.isPositionAnalysisOn, evaluations, currentMove])
 
 
+  // While analyzing game, update gameEvaluations every time evaluations changes.
+  useEffect(() => {
+    if (gameAnalysisStatus === AnalysisStatus.Analyzing) {
+      setGameEvaluation(evaluations);
+    }
+  }, [evaluations, gameAnalysisStatus]);
+
+
   // Calculate board size
   const useMobile = shouldUseMobileLayout(windowSize);
   const boardSize = useMobile

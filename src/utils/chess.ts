@@ -893,8 +893,8 @@ export function makeGameEvaluationArray(gev: GameEvaluation): PositionEvaluation
 // to MoveJudgement for each move in the game.
 export function makeMoveJudgements(
   gev: GameEvaluation
-): Record<string, MoveJudgement> {
-  const result: Record<string, MoveJudgement> = {};
+): Record<string, MoveJudgement | undefined> {
+  const result: Record<string, MoveJudgement | undefined> = {};
   const gevArray = makeGameEvaluationArray(gev);
   if (gevArray.length < 1) return result;
 
@@ -923,13 +923,11 @@ export function makeMoveJudgements(
   }
 
   // Loop through each consecutive pair of fens and make a MoveJudgement for each move.
+  // If makeMoveJudgement returns undefined, add undefined to result.
   for (let i = 0; i < gevArray.length - 1; i++) {
     const fenBefore = gevArray[i].fen;
     const fenAfter = gevArray[i + 1].fen;
     const judgement = makeMoveJudgement(fenBefore, fenAfter, modifiedGev);
-    if (judgement == undefined) {
-      throw new Error(`Failed to make move judgement for fens ${fenBefore} -> ${fenAfter}`);
-    }
     result[fenAfter] = judgement;
   }
   return result;

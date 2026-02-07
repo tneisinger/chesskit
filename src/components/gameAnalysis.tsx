@@ -35,17 +35,7 @@ const GameAnalysis = ({
 
   return (
     <div className="bg-radial from-stone-600 to-stone-800 rounded-md" style={{ width, height: '100%' }}>
-      {game.engineAnalysis != undefined && (
-        <GameChart
-          game={game}
-          gameEvaluation={game.engineAnalysis}
-          currentMove={currentMove}
-          changeCurrentMove={changeCurrentMove}
-          history={history}
-          width={width}
-        />
-      )}
-      {gameAnalysisStatus == AnalysisStatus.NotStarted && (
+      {Object.keys(gameEvaluation).length < 1 && gameAnalysisStatus == AnalysisStatus.NotStarted && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
           <Button onClick={handleAnalyzeGame} disabled={gameAnalysisStatus !== AnalysisStatus.NotStarted}>
             Analyze Game
@@ -87,17 +77,30 @@ const GameAnalysis = ({
         </div>
       )}
       {gameAnalysisStatus === AnalysisStatus.Analyzing && (
-        <div className='flex flex-col h-full justify-center items-center gap-4'>
-          <p>Analyzing game</p>
-          <Spinner white />
-          <div className='flex flex-row gap-8 text-sm'>
-            <span>depth: {depth}</span>
-            <span>lines: {numLines}</span>
-            <span>progress: {gameAnalysisProgress}%</span>
+        <div className="relative h-full">
+          <div className='absolute z-2 flex flex-col h-full w-full justify-center items-center gap-4'>
+            <p className="text-lg font-bold">Analyzing Game</p>
+            <Spinner white />
+            <div className='flex flex-row gap-8 text-sm'>
+              <span className="text-lg">{gameAnalysisProgress}%</span>
+            </div>
+          </div>
+          <div className="absolute z-1 h-full w-full flex flex-col items-center justify-center">
+            <div className="h-full w-full opacity-15 grayscale">
+              <GameChart
+                game={game}
+                gameEvaluation={gameEvaluation}
+                currentMove={currentMove}
+                changeCurrentMove={changeCurrentMove}
+                history={history}
+                width={width}
+                includeKeyPositionDots={false}
+              />
+            </div>
           </div>
         </div>
       )}
-      {gameAnalysisStatus === AnalysisStatus.Complete && (
+      {(gameAnalysisStatus === AnalysisStatus.Complete || game.engineAnalysis != undefined) && (
         <GameChart
           game={game}
           gameEvaluation={gameEvaluation}

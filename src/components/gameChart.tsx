@@ -24,7 +24,7 @@ interface ChartDataPointBaseType {
   color: 'w' | 'b';
   moveNumber: number;
   chartCp: number;
-  judgement: MoveJudgement | null;
+  judgement: MoveJudgement | undefined;
   isUserMove: boolean;
 
   // A key position is a position in a chess game where an inaccuracy,
@@ -46,6 +46,7 @@ interface ChartDataPointWithMate extends ChartDataPointBaseType {
 // Union type for chart data points
 // A data point must have either cp or mate, but not both
 type ChartDataPoint = ChartDataPointWithCP | ChartDataPointWithMate;
+
 
 function makeChartData(
   history: Move[],
@@ -125,6 +126,55 @@ function makeChartData(
     if (keyPositionJudgements.includes(judgement)) result[i].keyPosition = judgement;
   }
 
+  return fillChartDataWithEmptyPoints(history, userColor, result);
+}
+
+
+// If chartData does not have a ChartDataPoint for every move in history, return a new array
+// where there is a ChartDataPoint for every move in history, using empty values.
+function fillChartDataWithEmptyPoints(
+  history: Move[],
+  userColor: PieceColor,
+  chartData: ChartDataPoint[]
+): ChartDataPoint[] {
+  // If chartData is as long as history, just return chartData.
+  if (chartData.length >= history.length) return chartData;
+
+  const result: ChartDataPoint[] = [];
+
+  for (let i = 0; i < history.length; i++) {
+    // If we have a datapoint at this index, push it into the result and continue.
+    if (chartData[i] != undefined) {
+      result.push(chartData[i]);
+      continue;
+    }
+    // Otherwise, we need to make a filler data point.
+
+    // Get the move from history
+    const move = history[i];
+    if (move == undefined) throw new Error('move was undefined');
+
+    // Indicate if this move was played by the user
+    // Use not equal because activeColor is the color to move
+    const { activeColor } = getFenParts(move.fen);
+    const isUserMove = activeColor !== userColor;
+
+    // Make a filler data point
+    const emptyPoint: ChartDataPoint = {
+      ply: move.ply,
+      move: move.san,
+      color: move.color,
+      moveNumber: Math.ceil(move.ply / 2),
+      cp: 0,
+      chartCp: 0,
+      judgement: undefined,
+      isUserMove,
+      keyPosition: null,
+    }
+
+    result.push(emptyPoint);
+  }
+
   return result;
 }
 
@@ -135,6 +185,7 @@ export interface Props {
   changeCurrentMove: (newCurrentMove?: Move) => void;
   history: Move[];
   width: number;
+  includeKeyPositionDots?: boolean;
 }
 
 const GameChart = ({
@@ -144,6 +195,7 @@ const GameChart = ({
   changeCurrentMove,
   history,
   width,
+  includeKeyPositionDots = true,
 }: Props) => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [offset, setOffset] = useState<number>(0);
@@ -202,7 +254,7 @@ const GameChart = ({
           fillOpacity={1}
           fill="url(#colorCp)"
           activeDot={{ r: 3 }}
-          dot={GameChartJudgementDots}
+          dot={includeKeyPositionDots ? GameChartJudgementDots : undefined}
           isAnimationActive={false}
         />
       </AreaChart>
