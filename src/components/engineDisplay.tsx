@@ -7,6 +7,7 @@ import { isBookPosition } from '@/utils/bookPositions';
 import EvalerLine from '@/components/evalerLine';
 import { useCallback, useEffect, useState } from 'react';
 import { colorToMove } from '@/utils/cmchess';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 const showDevButtons = false;
 
@@ -23,6 +24,7 @@ export interface Props {
   maxLineLengthPx: number;
   includeOnOffSwitch?: boolean;
   switchDisabledMsg?: string;
+  switchDisabledTooltip?: string;
   showMoveJudgements?: boolean;
   colorLineScores?: boolean;
 }
@@ -40,6 +42,7 @@ const EngineDisplay = ({
   isEvaluating,
   includeOnOffSwitch = true,
   switchDisabledMsg,
+  switchDisabledTooltip,
   showMoveJudgements = true,
   colorLineScores = false,
 }: Props) => {
@@ -97,6 +100,7 @@ const EngineDisplay = ({
     return renderString(currentEvaluation.depth);
   }, [isEngineOn, engineMaxDepth, currentEvaluation]);
 
+
   const debug = () => {
     console.log('debug');
   }
@@ -153,11 +157,37 @@ const EngineDisplay = ({
           </div>
           <div className="w-14 h-7">
             {includeOnOffSwitch && (
-              <Switch
-                onChange={(checked) => setIsEngineOn(checked)}
-                checked={isEngineOn}
-                disabled={isSwitchDisabled}
-              />
+              isSwitchDisabled && switchDisabledTooltip ? (
+                <Tooltip.Provider>
+                  <Tooltip.Root>
+                    <Tooltip.Trigger onClick={(e) => e.preventDefault()} asChild>
+                      <div>
+                        <Switch
+                          onChange={(checked) => setIsEngineOn(checked)}
+                          checked={isEngineOn}
+                          disabled={isSwitchDisabled}
+                        />
+                      </div>
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content
+                        className="bg-neutral-200 text-black px-3 py-2 rounded text-sm max-w-xs"
+                        sideOffset={-10}
+                        side="bottom"
+                      >
+                        {switchDisabledTooltip}
+                        <Tooltip.Arrow className="fill-neutral-200" />
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+                </Tooltip.Provider>
+              ) : (
+                <Switch
+                  onChange={(checked) => setIsEngineOn(checked)}
+                  checked={isEngineOn}
+                  disabled={isSwitchDisabled}
+                />
+              )
             )}
           </div>
         </div>

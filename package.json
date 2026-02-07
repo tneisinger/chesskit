@@ -20,6 +20,7 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
     "@radix-ui/react-context-menu": "^2.2.16",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.4.1",
     "chess.js": "^1.4.0",

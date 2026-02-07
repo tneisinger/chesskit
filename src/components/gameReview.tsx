@@ -287,6 +287,7 @@ const GameReview = ({ game }: Props) => {
       maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
       numLines={numLines}
       isSwitchDisabled={!hasGameBeenAnalyzed()}
+      switchDisabledTooltip='Analyze the game to unlock the engine'
       showMoveJudgements={false}
       colorLineScores={true}
     />
