@@ -1,6 +1,6 @@
 import { DotItemDotProps } from 'recharts';
 import { MoveJudgement } from '@/types/chess';
-import { ChessMoveColor } from '@/constants/colors';
+import { getJudgementColor } from '@/utils/chess';
 
 const KeyPositionDots = (props: DotItemDotProps) => {
   const { cx, cy, payload } = props;
@@ -13,10 +13,8 @@ const KeyPositionDots = (props: DotItemDotProps) => {
   ]
 
   let color: string = '';
-  if (payload.keyPosition === MoveJudgement.Blunder) color = ChessMoveColor.Blunder;
-  if (payload.keyPosition === MoveJudgement.Mistake) color = ChessMoveColor.Mistake;
-  if (payload.keyPosition === MoveJudgement.Inaccurate) color = ChessMoveColor.Inaccurate;
   if (judgementsToShow.includes(payload.keyPosition)) {
+    color = getJudgementColor(payload.keyPosition);
     return (
       <svg x={cx} y={cy} overflow="visible">
         <circle r="4" fill={color}/>
