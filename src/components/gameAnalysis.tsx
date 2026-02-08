@@ -5,7 +5,7 @@ import { GameData } from '@/types/chess';
 import { AnalysisStatus } from '@/hooks/useGameAnalyzer';
 
 interface Props extends GameChartProps {
-  analyzeGame: (game: GameData) => void;
+  analyzePgn: (pgn: string, analyzeVariations?: boolean) => void;
   depth: number;
   changeDepth: (newDepth: number) => void;
   numLines: number;
@@ -16,7 +16,7 @@ interface Props extends GameChartProps {
 
 const GameAnalysis = ({
   game,
-  analyzeGame,
+  analyzePgn,
   depth,
   changeDepth,
   numLines,
@@ -30,7 +30,7 @@ const GameAnalysis = ({
   width,
 }: Props) => {
   const handleAnalyzeGame = () => {
-    analyzeGame(game);
+    analyzePgn(game.pgn, false); // false means do not analyze variations
   }
 
   return (

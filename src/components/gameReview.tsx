@@ -115,7 +115,7 @@ const GameReview = ({ game }: Props) => {
 
   // Set up game analyzer
   const {
-    analyzeGame,
+    analyzePgn,
     gameAnalysisStatus,
     gameAnalysisProgress,
     engineName,
@@ -391,7 +391,7 @@ const GameReview = ({ game }: Props) => {
             {hasGameLoaded && (
               <GameAnalysis
                 game={game}
-                analyzeGame={analyzeGame}
+                analyzePgn={analyzePgn}
                 depth={depth}
                 changeDepth={setDepth}
                 numLines={numLines}

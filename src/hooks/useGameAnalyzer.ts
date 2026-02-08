@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { GameData, GameEvaluation, PositionEvaluation } from '@/types/chess';
+import { GameEvaluation, PositionEvaluation } from '@/types/chess';
 import { Move } from 'cm-chess/src/Chess';
 import {
   parseBestMoveLine,
@@ -27,7 +27,7 @@ export enum AnalysisStatus {
 }
 
 interface Output {
-  analyzeGame: (game: GameData) => void;
+  analyzePgn: (pgn: string, analyzeVariations?: boolean) => void;
   latestEvaluation: PositionEvaluation | null;
   fenBeingAnalyzed: string | null;
   engineName: string | null;
@@ -113,23 +113,50 @@ export default function useGameAnalyzer(
     return result;
   };
 
-  // Generate all FENs from the game
-  const generateFensFromGame = useCallback((game: GameData) => {
+  // Generate all FENs from the PGN
+  const generateFensFromPgn = useCallback((pgn: string, analyzeVariations: boolean) => {
     try {
-      const parsedPgn = parsePGN(game.pgn)[0];
+      const parsedPgn = parsePGN(pgn)[0];
       if (!parsedPgn) return [];
 
-      const cmchess = new CmChess();
       const fens: string[] = [];
 
-      parsedPgn.moves.forEach((move) => {
-        try {
-          cmchess.move(move.move);
-          fens.push(cmchess.fen());
-        } catch (error) {
-          console.error('Invalid move:', move.move, error);
-        }
-      });
+      // Helper function to recursively process moves and variations
+      const processMoves = (moves: any[], cmchess: CmChess) => {
+        moves.forEach((move) => {
+          try {
+            cmchess.move(move.move);
+            fens.push(cmchess.fen());
+
+            // Process variations (ravs) if they exist and analyzeVariations is true
+            if (analyzeVariations && move.ravs && move.ravs.length > 0) {
+              // Save the current position before entering variations
+              const positionBeforeVariations = cmchess.fen();
+
+              // Process each variation
+              move.ravs.forEach((rav: any) => {
+                // Reset to position before the variation
+                cmchess.load(positionBeforeVariations);
+                // Go back one move to get to the position before the current move
+                cmchess.undo();
+
+                // Process the variation recursively
+                if (rav.moves && rav.moves.length > 0) {
+                  processMoves(rav.moves, cmchess);
+                }
+
+                // Return to the position after the main move
+                cmchess.load(positionBeforeVariations);
+              });
+            }
+          } catch (error) {
+            console.error('Invalid move:', move.move, error);
+          }
+        });
+      };
+
+      const cmchess = new CmChess();
+      processMoves(parsedPgn.moves, cmchess);
 
       return fens;
     } catch (error) {
@@ -138,9 +165,9 @@ export default function useGameAnalyzer(
     }
   }, []);
 
-  // Start analyzing the game
-  const analyzeGame = useCallback((game: GameData) => {
-    const fens = generateFensFromGame(game);
+  // Start analyzing the PGN
+  const analyzePgn = useCallback((pgn: string, analyzeVariations = true) => {
+    const fens = generateFensFromPgn(pgn, analyzeVariations);
     if (fens.length === 0) {
       console.error('No positions to analyze');
       return;
@@ -162,7 +189,7 @@ export default function useGameAnalyzer(
     if (stockfish) {
       stockfish.postMessage('ucinewgame');
     }
-  }, [generateFensFromGame, stockfish, cancelAllAnalysis]);
+  }, [generateFensFromPgn, stockfish, cancelAllAnalysis]);
 
   const doWeAlreadyHaveEvaluationForFen = useCallback((fen: string): boolean => {
     const fenEval = evaluations[fen];
@@ -481,7 +508,7 @@ export default function useGameAnalyzer(
     : 0;
 
   return {
-    analyzeGame,
+    analyzePgn,
     latestEvaluation,
     fenBeingAnalyzed,
     engineName,
