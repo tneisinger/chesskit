@@ -715,3 +715,29 @@ export function playForcingLinesIntoCmChess(
   }
   return result;
 }
+
+
+/**
+ * Create a new Evaluations object that only contains PositionEvaluations from
+ * the input 'evaluations' object that come from positions represented by the
+ * input move or later (including variations of the input move or any
+ * later variations).
+ */
+export function getEvaluationsFromMoveForward(
+  move: Move,
+  evaluations: Evaluations,
+  result: Evaluations = {}
+): Evaluations {
+  if (move.fen in evaluations) result[move.fen] = evaluations[move.fen];
+  let nextMove = move.next;
+  while (nextMove != undefined) {
+    if (nextMove.fen in evaluations) result[nextMove.fen] = evaluations[nextMove.fen];
+    if (nextMove.variations.length > 0) {
+      nextMove.variations.forEach((v) => {
+        getEvaluationsFromMoveForward(v[0], evaluations, result);
+      })
+    }
+    nextMove = nextMove.next;
+  }
+  return result;
+}

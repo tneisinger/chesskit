@@ -7,6 +7,7 @@ import {
   renderPgn,
   doHistoriesMatch,
   playForcingLineIntoCmChess,
+  getEvaluationsFromMoveForward,
 } from './cmchess';
 import { convertLanLineToSanLine } from './chess';
 import { Evaluations, PieceColor } from '@/types/chess';
@@ -749,5 +750,424 @@ describe('playForcingLineIntoCmChess', () => {
     expect(result.length).toBe(5);
     const historyAfter = [...cmChess.history()];
     expect(historyAfter.length - historyBefore.length).toBe(5);
+  });
+});
+
+describe('getEvaluationsFromMoveForward', () => {
+  it('should return only the evaluation for a single move when it is the last move', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    const evaluations: Evaluations = {
+      [history[0].fen]: {
+        depth: 20,
+        fen: history[0].fen,
+        score: { key: "cp", value: 30 },
+        lines: [{ score: { key: "cp", value: 30 }, lanLine: "e7e5" }],
+      },
+      [history[1].fen]: {
+        depth: 20,
+        fen: history[1].fen,
+        score: { key: "cp", value: 25 },
+        lines: [{ score: { key: "cp", value: 25 }, lanLine: "g1f3" }],
+      },
+      [history[2].fen]: {
+        depth: 20,
+        fen: history[2].fen,
+        score: { key: "cp", value: 20 },
+        lines: [{ score: { key: "cp", value: 20 }, lanLine: "b8c6" }],
+      },
+      [history[3].fen]: {
+        depth: 20,
+        fen: history[3].fen,
+        score: { key: "cp", value: 15 },
+        lines: [{ score: { key: "cp", value: 15 }, lanLine: "f1c4" }],
+      },
+    };
+
+    // Get evaluations from the last move forward
+    const lastMove = history[3];
+    const result = getEvaluationsFromMoveForward(lastMove, evaluations);
+
+    // Should only contain the last move's evaluation
+    expect(Object.keys(result).length).toBe(1);
+    expect(result[lastMove.fen]).toBeDefined();
+    expect(result[lastMove.fen].score.value).toBe(15);
+  });
+
+  it('should return evaluations from the first move forward in a simple line', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    const evaluations: Evaluations = {
+      [history[0].fen]: {
+        depth: 20,
+        fen: history[0].fen,
+        score: { key: "cp", value: 30 },
+        lines: [{ score: { key: "cp", value: 30 }, lanLine: "e7e5" }],
+      },
+      [history[1].fen]: {
+        depth: 20,
+        fen: history[1].fen,
+        score: { key: "cp", value: 25 },
+        lines: [{ score: { key: "cp", value: 25 }, lanLine: "g1f3" }],
+      },
+      [history[2].fen]: {
+        depth: 20,
+        fen: history[2].fen,
+        score: { key: "cp", value: 20 },
+        lines: [{ score: { key: "cp", value: 20 }, lanLine: "b8c6" }],
+      },
+      [history[3].fen]: {
+        depth: 20,
+        fen: history[3].fen,
+        score: { key: "cp", value: 15 },
+        lines: [{ score: { key: "cp", value: 15 }, lanLine: "f1c4" }],
+      },
+    };
+
+    // Get evaluations from the first move forward
+    const firstMove = history[0];
+    const result = getEvaluationsFromMoveForward(firstMove, evaluations);
+
+    // Should contain all four moves
+    expect(Object.keys(result).length).toBe(4);
+    expect(result[history[0].fen]).toBeDefined();
+    expect(result[history[1].fen]).toBeDefined();
+    expect(result[history[2].fen]).toBeDefined();
+    expect(result[history[3].fen]).toBeDefined();
+  });
+
+  it('should return evaluations from a middle move forward', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    const evaluations: Evaluations = {
+      [history[0].fen]: {
+        depth: 20,
+        fen: history[0].fen,
+        score: { key: "cp", value: 30 },
+        lines: [{ score: { key: "cp", value: 30 }, lanLine: "e7e5" }],
+      },
+      [history[1].fen]: {
+        depth: 20,
+        fen: history[1].fen,
+        score: { key: "cp", value: 25 },
+        lines: [{ score: { key: "cp", value: 25 }, lanLine: "g1f3" }],
+      },
+      [history[2].fen]: {
+        depth: 20,
+        fen: history[2].fen,
+        score: { key: "cp", value: 20 },
+        lines: [{ score: { key: "cp", value: 20 }, lanLine: "b8c6" }],
+      },
+      [history[3].fen]: {
+        depth: 20,
+        fen: history[3].fen,
+        score: { key: "cp", value: 15 },
+        lines: [{ score: { key: "cp", value: 15 }, lanLine: "f1b5" }],
+      },
+      [history[4].fen]: {
+        depth: 20,
+        fen: history[4].fen,
+        score: { key: "cp", value: 10 },
+        lines: [{ score: { key: "cp", value: 10 }, lanLine: "a7a6" }],
+      },
+      [history[5].fen]: {
+        depth: 20,
+        fen: history[5].fen,
+        score: { key: "cp", value: 5 },
+        lines: [{ score: { key: "cp", value: 5 }, lanLine: "b5a4" }],
+      },
+    };
+
+    // Get evaluations from move 2 (Nf3) forward
+    const middleMove = history[2];
+    const result = getEvaluationsFromMoveForward(middleMove, evaluations);
+
+    // Should contain moves from index 2 onwards (4 moves)
+    expect(Object.keys(result).length).toBe(4);
+    expect(result[history[2].fen]).toBeDefined();
+    expect(result[history[3].fen]).toBeDefined();
+    expect(result[history[4].fen]).toBeDefined();
+    expect(result[history[5].fen]).toBeDefined();
+
+    // Should not contain earlier moves
+    expect(result[history[0].fen]).toBeUndefined();
+    expect(result[history[1].fen]).toBeUndefined();
+  });
+
+  it('should include evaluations from variations', () => {
+    const pgn = '1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    // Get the variation
+    const firstMoveWithVariation = history.find((m) => m.variations.length > 0);
+    if (!firstMoveWithVariation) throw new Error('No variation found');
+    const variation = firstMoveWithVariation.variations[0];
+
+    const evaluations: Evaluations = {
+      [history[0].fen]: {
+        depth: 20,
+        fen: history[0].fen,
+        score: { key: "cp", value: 30 },
+        lines: [{ score: { key: "cp", value: 30 }, lanLine: "e7e5" }],
+      },
+      [history[1].fen]: {
+        depth: 20,
+        fen: history[1].fen,
+        score: { key: "cp", value: 25 },
+        lines: [{ score: { key: "cp", value: 25 }, lanLine: "g1f3" }],
+      },
+      [history[2].fen]: {
+        depth: 20,
+        fen: history[2].fen,
+        score: { key: "cp", value: 20 },
+        lines: [{ score: { key: "cp", value: 20 }, lanLine: "b8c6" }],
+      },
+      // Variation moves
+      [variation[0].fen]: {
+        depth: 20,
+        fen: variation[0].fen,
+        score: { key: "cp", value: 40 },
+        lines: [{ score: { key: "cp", value: 40 }, lanLine: "g1f3" }],
+      },
+      [variation[1].fen]: {
+        depth: 20,
+        fen: variation[1].fen,
+        score: { key: "cp", value: 35 },
+        lines: [{ score: { key: "cp", value: 35 }, lanLine: "d7d6" }],
+      },
+      [variation[2].fen]: {
+        depth: 20,
+        fen: variation[2].fen,
+        score: { key: "cp", value: 30 },
+        lines: [{ score: { key: "cp", value: 30 }, lanLine: "d2d4" }],
+      },
+    };
+
+    // Get evaluations from the first move (e4) forward
+    const firstMove = history[0];
+    const result = getEvaluationsFromMoveForward(firstMove, evaluations);
+
+    // Should contain main line moves
+    expect(result[history[0].fen]).toBeDefined();
+    expect(result[history[1].fen]).toBeDefined();
+    expect(result[history[2].fen]).toBeDefined();
+
+    // Should also contain variation moves
+    expect(result[variation[0].fen]).toBeDefined();
+    expect(result[variation[1].fen]).toBeDefined();
+    expect(result[variation[2].fen]).toBeDefined();
+
+    // Total should be 6
+    expect(Object.keys(result).length).toBe(6);
+  });
+
+  it('should handle nested variations', () => {
+    const pgn = '1. e4 e5 (1... c5 2. Nf3 d6 (2... Nc6 3. d4)) 2. Nf3 Nc6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    // Get the first variation
+    const firstMoveWithVariation = history.find((m) => m.variations.length > 0);
+    if (!firstMoveWithVariation) throw new Error('No variation found');
+    const variation1 = firstMoveWithVariation.variations[0];
+
+    // Get the nested variation
+    const variationMoveWithNested = variation1.find((m) => m.variations.length > 0);
+    if (!variationMoveWithNested) throw new Error('No nested variation found');
+    const variation2 = variationMoveWithNested.variations[0];
+
+    const evaluations: Evaluations = {
+      [history[0].fen]: {
+        depth: 20,
+        fen: history[0].fen,
+        score: { key: "cp", value: 30 },
+        lines: [{ score: { key: "cp", value: 30 }, lanLine: "e7e5" }],
+      },
+      [history[1].fen]: {
+        depth: 20,
+        fen: history[1].fen,
+        score: { key: "cp", value: 25 },
+        lines: [{ score: { key: "cp", value: 25 }, lanLine: "g1f3" }],
+      },
+      // First variation
+      [variation1[0].fen]: {
+        depth: 20,
+        fen: variation1[0].fen,
+        score: { key: "cp", value: 40 },
+        lines: [{ score: { key: "cp", value: 40 }, lanLine: "g1f3" }],
+      },
+      [variation1[1].fen]: {
+        depth: 20,
+        fen: variation1[1].fen,
+        score: { key: "cp", value: 35 },
+        lines: [{ score: { key: "cp", value: 35 }, lanLine: "d7d6" }],
+      },
+      [variation1[2].fen]: {
+        depth: 20,
+        fen: variation1[2].fen,
+        score: { key: "cp", value: 32 },
+        lines: [{ score: { key: "cp", value: 32 }, lanLine: "d2d4" }],
+      },
+      // Nested variation
+      [variation2[0].fen]: {
+        depth: 20,
+        fen: variation2[0].fen,
+        score: { key: "cp", value: 38 },
+        lines: [{ score: { key: "cp", value: 38 }, lanLine: "d2d4" }],
+      },
+      [variation2[1].fen]: {
+        depth: 20,
+        fen: variation2[1].fen,
+        score: { key: "cp", value: 36 },
+        lines: [{ score: { key: "cp", value: 36 }, lanLine: "c5d4" }],
+      },
+    };
+
+    // Get evaluations from the first move forward
+    const firstMove = history[0];
+    const result = getEvaluationsFromMoveForward(firstMove, evaluations);
+
+    // Should contain all evaluations including nested variations
+    expect(result[history[0].fen]).toBeDefined();
+    expect(result[history[1].fen]).toBeDefined();
+    expect(result[variation1[0].fen]).toBeDefined();
+    expect(result[variation1[1].fen]).toBeDefined();
+    expect(result[variation1[2].fen]).toBeDefined();
+    expect(result[variation2[0].fen]).toBeDefined();
+    expect(result[variation2[1].fen]).toBeDefined();
+
+    expect(Object.keys(result).length).toBe(7);
+  });
+
+  it('should handle sparse evaluations (missing some moves)', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    const evaluations: Evaluations = {
+      // Only have evaluations for moves 0, 2, and 4 (skipping 1, 3, 5)
+      [history[0].fen]: {
+        depth: 20,
+        fen: history[0].fen,
+        score: { key: "cp", value: 30 },
+        lines: [{ score: { key: "cp", value: 30 }, lanLine: "e7e5" }],
+      },
+      [history[2].fen]: {
+        depth: 20,
+        fen: history[2].fen,
+        score: { key: "cp", value: 20 },
+        lines: [{ score: { key: "cp", value: 20 }, lanLine: "b8c6" }],
+      },
+      [history[4].fen]: {
+        depth: 20,
+        fen: history[4].fen,
+        score: { key: "cp", value: 10 },
+        lines: [{ score: { key: "cp", value: 10 }, lanLine: "a7a6" }],
+      },
+    };
+
+    // Get evaluations from the first move forward
+    const firstMove = history[0];
+    const result = getEvaluationsFromMoveForward(firstMove, evaluations);
+
+    // Should only contain the three moves that have evaluations
+    expect(Object.keys(result).length).toBe(3);
+    expect(result[history[0].fen]).toBeDefined();
+    expect(result[history[2].fen]).toBeDefined();
+    expect(result[history[4].fen]).toBeDefined();
+
+    // Missing moves should not be in result
+    expect(result[history[1].fen]).toBeUndefined();
+    expect(result[history[3].fen]).toBeUndefined();
+    expect(result[history[5].fen]).toBeUndefined();
+  });
+
+  it('should return empty object when starting move has no evaluation and no later evaluations', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    const evaluations: Evaluations = {};
+
+    // Get evaluations from a move forward
+    const move = history[1];
+    const result = getEvaluationsFromMoveForward(move, evaluations);
+
+    // Should be empty
+    expect(Object.keys(result).length).toBe(0);
+  });
+
+  it('should return evaluations from a variation move forward', () => {
+    const pgn = '1. e4 e5 (1... c5 2. Nf3 d6 3. d4) 2. Nf3 Nc6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+
+    // Get the variation
+    const firstMoveWithVariation = history.find((m) => m.variations.length > 0);
+    if (!firstMoveWithVariation) throw new Error('No variation found');
+    const variation = firstMoveWithVariation.variations[0];
+
+    const evaluations: Evaluations = {
+      // Main line
+      [history[0].fen]: {
+        depth: 20,
+        fen: history[0].fen,
+        score: { key: "cp", value: 30 },
+        lines: [{ score: { key: "cp", value: 30 }, lanLine: "e7e5" }],
+      },
+      [history[1].fen]: {
+        depth: 20,
+        fen: history[1].fen,
+        score: { key: "cp", value: 25 },
+        lines: [{ score: { key: "cp", value: 25 }, lanLine: "g1f3" }],
+      },
+      // Variation
+      [variation[0].fen]: {
+        depth: 20,
+        fen: variation[0].fen,
+        score: { key: "cp", value: 40 },
+        lines: [{ score: { key: "cp", value: 40 }, lanLine: "g1f3" }],
+      },
+      [variation[1].fen]: {
+        depth: 20,
+        fen: variation[1].fen,
+        score: { key: "cp", value: 35 },
+        lines: [{ score: { key: "cp", value: 35 }, lanLine: "d7d6" }],
+      },
+      [variation[2].fen]: {
+        depth: 20,
+        fen: variation[2].fen,
+        score: { key: "cp", value: 30 },
+        lines: [{ score: { key: "cp", value: 30 }, lanLine: "d2d4" }],
+      },
+      [variation[3].fen]: {
+        depth: 20,
+        fen: variation[3].fen,
+        score: { key: "cp", value: 28 },
+        lines: [{ score: { key: "cp", value: 28 }, lanLine: "c5d4" }],
+      },
+    };
+
+    // Get evaluations from the second move of the variation (Nf3 in variation)
+    const variationMove = variation[1];
+    const result = getEvaluationsFromMoveForward(variationMove, evaluations);
+
+    // Should contain only the variation moves from index 1 onwards
+    expect(Object.keys(result).length).toBe(3);
+    expect(result[variation[1].fen]).toBeDefined();
+    expect(result[variation[2].fen]).toBeDefined();
+    expect(result[variation[3].fen]).toBeDefined();
+
+    // Should not contain main line or earlier variation moves
+    expect(result[history[0].fen]).toBeUndefined();
+    expect(result[history[1].fen]).toBeUndefined();
+    expect(result[variation[0].fen]).toBeUndefined();
   });
 });
