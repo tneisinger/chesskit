@@ -30,7 +30,7 @@ enum MobileTab {
 }
 
 interface State {
-  isPositionAnalysisOn: boolean;
+  isCurrentMoveAnalysisOn: boolean;
   allowBoardInteraction: boolean;
   boardCursor: Cursor | null;
   markers: Marker[];
@@ -41,7 +41,7 @@ interface State {
 }
 
 type Action =
-  | { type: 'setIsPositionAnalysisOn'; value: boolean }
+  | { type: 'setIsCurrentMoveAnalysisOn'; value: boolean }
   | { type: 'setMarkers'; markers: Marker[] }
   | { type: 'setArrows'; arrows: Arrow[] }
   | { type: 'clearMoveSound' }
@@ -52,11 +52,11 @@ type Action =
 
 function reducer(s: State, a: Action): State {
   switch (a.type) {
-    case 'setIsPositionAnalysisOn':
+    case 'setIsCurrentMoveAnalysisOn':
       if (a.value === false) {
-        return { ...s, isPositionAnalysisOn: a.value, markers: [], arrows: [] };
+        return { ...s, isCurrentMoveAnalysisOn: a.value, markers: [], arrows: [] };
       }
-      return { ...s, isPositionAnalysisOn: a.value };
+      return { ...s, isCurrentMoveAnalysisOn: a.value };
     case 'setMarkers':
       return { ...s, markers: a.markers };
     case 'setArrows':
@@ -88,7 +88,7 @@ const GameReview = ({ game }: Props) => {
   const [hasGameLoaded, setHasGameLoaded] = useState(false);
 
   const initialState: State = {
-    isPositionAnalysisOn: false,
+    isCurrentMoveAnalysisOn: false,
     allowBoardInteraction: true,
     boardCursor: null,
     markers: [],
@@ -116,31 +116,32 @@ const GameReview = ({ game }: Props) => {
   // Set up game analyzer
   const {
     analyzePgn,
-    gameAnalysisStatus,
-    gameAnalysisProgress,
+    pgnAnalysisStatus,
+    pgnAnalysisProgress,
     engineName,
     fenBeingAnalyzed,
   } = useChessAnalyzer(
     evaluations,
     setEvaluations,
-    s.isPositionAnalysisOn,
+    s.isCurrentMoveAnalysisOn,
     currentMove,
     depth,
     numLines,
   );
 
-  const prevGameAnalysisStatus = usePrevious(gameAnalysisStatus);
+  const prevPgnAnalysisStatus = usePrevious(pgnAnalysisStatus);
 
   const hasGameBeenAnalyzed = useCallback((): boolean => {
-    if (gameAnalysisStatus === AnalysisStatus.Complete) return true;
+    if (pgnAnalysisStatus === AnalysisStatus.Complete) return true;
     if (game.engineAnalysis != undefined) return true;
     return false;
-  }, [gameAnalysisStatus, game]);
+  }, [pgnAnalysisStatus, game]);
 
-  // When game analysis completes, save the results to the db
+
+  // When pgn analysis completes, save the results to the db
   useEffect(() => {
-    if (prevGameAnalysisStatus == AnalysisStatus.Analyzing &&
-        gameAnalysisStatus == AnalysisStatus.Complete &&
+    if (prevPgnAnalysisStatus == AnalysisStatus.Analyzing &&
+        pgnAnalysisStatus == AnalysisStatus.Complete &&
         Object.keys(evaluations).length > 0
     ) {
       // Save a copy of evaluations that only contains evaluations of the game
@@ -161,7 +162,7 @@ const GameReview = ({ game }: Props) => {
           });
       }
     }
-  }, [gameAnalysisStatus, prevGameAnalysisStatus, game.id, evaluations])
+  }, [pgnAnalysisStatus, prevPgnAnalysisStatus, game.id, evaluations])
 
   // When we get the game...
   useEffect(() => {
@@ -181,8 +182,8 @@ const GameReview = ({ game }: Props) => {
 
   // When the engine is on, draw arrows on the board representing the best moves.
   useEffect(() => {
-    // If position analysis is not on, do nothing.
-    if (!s.isPositionAnalysisOn) return;
+    // If currentMove analysis is not on, do nothing.
+    if (!s.isCurrentMoveAnalysisOn) return;
 
     // If we don't have an evaluation for this position, do nothing.
     const ev = evaluations[getFen(currentMove)];
@@ -229,15 +230,15 @@ const GameReview = ({ game }: Props) => {
 
     // Update state, which will draw the arrows on board.
     dispatch({ type: 'setArrows', arrows })
-  }, [s.isPositionAnalysisOn, evaluations, currentMove])
+  }, [s.isCurrentMoveAnalysisOn, evaluations, currentMove])
 
 
   // While analyzing game, update gameEvaluations every time evaluations changes.
   useEffect(() => {
-    if (gameAnalysisStatus === AnalysisStatus.Analyzing) {
+    if (pgnAnalysisStatus === AnalysisStatus.Analyzing) {
       setGameEvaluation(evaluations);
     }
-  }, [evaluations, gameAnalysisStatus]);
+  }, [evaluations, pgnAnalysisStatus]);
 
 
   // Calculate board size
@@ -278,8 +279,8 @@ const GameReview = ({ game }: Props) => {
 
   const engineDisplay = (
     <EngineDisplay
-      isEngineOn={s.isPositionAnalysisOn}
-      setIsEngineOn={(b) => dispatch({ type: 'setIsPositionAnalysisOn', value: b })}
+      isEngineOn={s.isCurrentMoveAnalysisOn}
+      setIsEngineOn={(b) => dispatch({ type: 'setIsCurrentMoveAnalysisOn', value: b })}
       evaluations={evaluations}
       currentMove={currentMove}
       engineMaxDepth={depth}
@@ -396,8 +397,8 @@ const GameReview = ({ game }: Props) => {
                 changeDepth={setDepth}
                 numLines={numLines}
                 changeNumLines={setNumLines}
-                gameAnalysisStatus={gameAnalysisStatus}
-                gameAnalysisProgress={gameAnalysisProgress}
+                pgnAnalysisStatus={pgnAnalysisStatus}
+                pgnAnalysisProgress={pgnAnalysisProgress}
                 gameEvaluation={gameEvaluation}
                 currentMove={currentMove}
                 changeCurrentMove={setCurrentMove}

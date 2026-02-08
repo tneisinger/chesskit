@@ -31,8 +31,8 @@ interface Output {
   latestEvaluation: PositionEvaluation | null;
   fenBeingAnalyzed: string | null;
   engineName: string | null;
-  gameAnalysisStatus: AnalysisStatus;
-  gameAnalysisProgress: number; // Percentage (0-100)
+  pgnAnalysisStatus: AnalysisStatus;
+  pgnAnalysisProgress: number; // Percentage (0-100)
   currentPosition: number; // Current position being analyzed
   totalPositions: number; // Total positions to analyze
 }
@@ -40,19 +40,19 @@ interface Output {
 export default function useChessAnalyzer(
   evaluations: GameEvaluation,
   setEvaluations: React.Dispatch<React.SetStateAction<GameEvaluation>>,
-  isPositionAnalysisOn: boolean,
+  isCurrentMoveAnalysisOn: boolean,
   currentMove: Move | undefined,
   evalDepth = 20,
   numLines = 2,
 ): Output {
   const { stockfish, recommendation } = useStockfish();
 
-  const prevIsPositionAnalysisOn = usePrevious(isPositionAnalysisOn);
+  const prevIsCurrentMoveAnalysisOn = usePrevious(isCurrentMoveAnalysisOn);
 
   const [fensToAnalyze, setFensToAnalyze] = useState<string[]>([]);
   const [currentPositionIndex, setCurrentPositionIndex] = useState<number>(0);
   const [isAnalyzingGame, setIsAnalyzingGame] = useState(false);
-  const [gameAnalysisStatus, setGameAnalysisStatus] = useState(AnalysisStatus.NotStarted);
+  const [pgnAnalysisStatus, setPgnAnalysisStatus] = useState(AnalysisStatus.NotStarted);
   const [positionQueue, setPositionQueue] = useState<string[]>([]);
   const [latestEvaluation, setLatestEvaluation] = useState<PositionEvaluation | null>(null);
   const [fenBeingAnalyzed, setFenBeingAnalyzed] = useState<string | null>(null);
@@ -184,7 +184,7 @@ export default function useChessAnalyzer(
     setCurrentPositionIndex(0);
     linesRef.current = {};
     setIsAnalyzingGame(true);
-    setGameAnalysisStatus(AnalysisStatus.Analyzing);
+    setPgnAnalysisStatus(AnalysisStatus.Analyzing);
 
     if (stockfish) {
       stockfish.postMessage('ucinewgame');
@@ -417,7 +417,7 @@ export default function useChessAnalyzer(
     if (currentPositionIndex >= fensToAnalyze.length) {
       // Analysis complete
       setIsAnalyzingGame(false);
-      setGameAnalysisStatus(AnalysisStatus.Complete);
+      setPgnAnalysisStatus(AnalysisStatus.Complete);
       changeFenBeingAnalyzed(null);
       return;
     }
@@ -468,9 +468,9 @@ export default function useChessAnalyzer(
     stockfish.postMessage(`go depth ${evalDepth}`);
   }, [positionQueue, prevPositionQueue, stockfish, evalDepth, doWeAlreadyHaveEvaluationForFen]);
 
-  // Automatically analyze position when isPositionAnalysisOn is true
+  // Automatically analyze the currentMove when isCurrentMoveAnalysisOn is true
   useEffect(() => {
-    if (isPositionAnalysisOn) {
+    if (isCurrentMoveAnalysisOn) {
       if (isAnalyzingGameRef.current) {
         console.warn('Cannot enable position analysis while game analysis is running');
         return;
@@ -482,20 +482,20 @@ export default function useChessAnalyzer(
         analyzePosition(fen);
       }
     }
-  }, [isPositionAnalysisOn, currentMove, analyzePosition, isAnalyzingGame]);
+  }, [isCurrentMoveAnalysisOn, currentMove, analyzePosition, isAnalyzingGame]);
 
-  // Handle isPositionAnalysisOn changes
+  // Handle isCurrentMoveAnalysisOn changes
   useEffect(() => {
-    if (isPositionAnalysisOn === prevIsPositionAnalysisOn) return;
+    if (isCurrentMoveAnalysisOn === prevIsCurrentMoveAnalysisOn) return;
 
-    if (!isPositionAnalysisOn && fenBeingAnalyzed != null) {
+    if (!isCurrentMoveAnalysisOn && fenBeingAnalyzed != null) {
       if (isAnalyzingGameRef.current) {
         console.warn('Cannot disable position analysis while game analysis is running');
         return;
       }
       cancelAllAnalysis();
     }
-  }, [isPositionAnalysisOn, prevIsPositionAnalysisOn, cancelAllAnalysis, fenBeingAnalyzed, isAnalyzingGame]);
+  }, [isCurrentMoveAnalysisOn, prevIsCurrentMoveAnalysisOn, cancelAllAnalysis, fenBeingAnalyzed, isAnalyzingGame]);
 
   useEffect(() => {
     if (stockfish != undefined && hasStockfishBeenSetup.current) {
@@ -503,7 +503,7 @@ export default function useChessAnalyzer(
     }
   }, [numLines, stockfish])
 
-  const gameAnalysisProgress = fensToAnalyze.length > 0
+  const pgnAnalysisProgress = fensToAnalyze.length > 0
     ? Math.round((currentPositionIndex / fensToAnalyze.length) * 100)
     : 0;
 
@@ -512,8 +512,8 @@ export default function useChessAnalyzer(
     latestEvaluation,
     fenBeingAnalyzed,
     engineName,
-    gameAnalysisStatus,
-    gameAnalysisProgress,
+    pgnAnalysisStatus,
+    pgnAnalysisProgress,
     currentPosition: currentPositionIndex,
     totalPositions: fensToAnalyze.length,
   };
