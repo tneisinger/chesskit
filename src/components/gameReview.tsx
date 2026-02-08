@@ -125,7 +125,8 @@ const GameReview = ({ game }: Props) => {
     setEvaluations,
     s.isPositionAnalysisOn,
     currentMove,
-    { evalDepth: 20, numLines: 2 }
+    depth,
+    numLines,
   );
 
   const prevGameAnalysisStatus = usePrevious(gameAnalysisStatus);
@@ -281,7 +282,7 @@ const GameReview = ({ game }: Props) => {
       setIsEngineOn={(b) => dispatch({ type: 'setIsPositionAnalysisOn', value: b })}
       evaluations={evaluations}
       currentMove={currentMove}
-      engineMaxDepth={20}
+      engineMaxDepth={depth}
       engineName={engineName ? engineName : undefined}
       isEvaluating={fenBeingAnalyzed != null}
       maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}

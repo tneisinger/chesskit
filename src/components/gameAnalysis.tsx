@@ -65,8 +65,8 @@ const GameAnalysis = ({
                 <input
                   type='range'
                   className='w-20 accent-stone-300'
-                  min={1}
-                  max={5}
+                  min={2}
+                  max={4}
                   value={numLines}
                   onChange={(e) => changeNumLines(Number(e.target.value))}
                 />

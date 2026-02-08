@@ -37,20 +37,14 @@ interface Output {
   totalPositions: number; // Total positions to analyze
 }
 
-interface Options {
-  evalDepth?: number;
-  numLines?: number;
-}
-
 export default function useGameAnalyzer(
   evaluations: GameEvaluation,
   setEvaluations: React.Dispatch<React.SetStateAction<GameEvaluation>>,
   isPositionAnalysisOn: boolean,
   currentMove: Move | undefined,
-  options?: Options
+  evalDepth = 20,
+  numLines = 2,
 ): Output {
-  const evalDepth = (options && options.evalDepth) || 20;
-  const numLines = (options && options.numLines) || 1;
   const { stockfish, recommendation } = useStockfish();
 
   const prevIsPositionAnalysisOn = usePrevious(isPositionAnalysisOn);
@@ -174,7 +168,7 @@ export default function useGameAnalyzer(
     const fenEval = evaluations[fen];
     if (fenEval && fenEval.depth >= evalDepth && fen) return true;
     return false;
-  }, [evaluations, options]);
+  }, [evaluations, evalDepth]);
 
   // Analyze a single position or variation
   const analyzePosition = useCallback((fen: string, prevFen?: string) => {
@@ -475,6 +469,12 @@ export default function useGameAnalyzer(
       cancelAllAnalysis();
     }
   }, [isPositionAnalysisOn, prevIsPositionAnalysisOn, cancelAllAnalysis, fenBeingAnalyzed, isAnalyzingGame]);
+
+  useEffect(() => {
+    if (stockfish != undefined && hasStockfishBeenSetup.current) {
+      stockfish.postMessage(`setoption name MultiPV value ${numLines}`);
+    }
+  }, [numLines, stockfish])
 
   const gameAnalysisProgress = fensToAnalyze.length > 0
     ? Math.round((currentPositionIndex / fensToAnalyze.length) * 100)
