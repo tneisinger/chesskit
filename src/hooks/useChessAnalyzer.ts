@@ -26,6 +26,13 @@ export enum AnalysisStatus {
   Complete = 'Complete',
 }
 
+interface AnalyzeFenOptions {
+  addToEvaluations?: boolean;
+  depth?: number;
+  numLines?: number;
+  threads?: number;
+}
+
 interface Output {
   analyzePgn: (pgn: string, analyzeVariations?: boolean) => void;
   latestEvaluation: PositionEvaluation | null;
@@ -35,6 +42,7 @@ interface Output {
   pgnAnalysisProgress: number; // Percentage (0-100)
   currentPosition: number; // Current position being analyzed
   totalPositions: number; // Total positions to analyze
+  analyzeFen: (fen: string, options?: AnalyzeFenOptions) => Promise<PositionEvaluation>
 }
 
 export default function useChessAnalyzer(
@@ -71,6 +79,15 @@ export default function useChessAnalyzer(
   const prevPositionQueue = usePrevious(positionQueue);
 
   const linesRef = useRef<Lines>({});
+
+  const analyzeFenStateRef = useRef<{
+    addToEvaluations: boolean;
+    originalThreads: number;
+    originalNumLines: number;
+    targetDepth: number;
+    resolve: (value: PositionEvaluation) => void;
+    reject: (reason: any) => void;
+  } | null>(null);
 
   const changeFenBeingAnalyzed = (fen: string | null) => {
     fenRef.current = fen;
@@ -212,6 +229,78 @@ export default function useChessAnalyzer(
     });
   }, [isAnalyzingGame, cancelAllAnalysis]);
 
+
+  const getDefaultNumThreads = (): number => {
+      return Math.max(1, Math.floor(recommendation!.threads * MAX_THREADS_USAGE));
+  }
+
+
+  const analyzeFen = useCallback((fen: string, options?: AnalyzeFenOptions): Promise<PositionEvaluation> => {
+    const defaultOptions: AnalyzeFenOptions = {
+      addToEvaluations: true,
+      depth: evalDepth,
+      numLines,
+      threads: getDefaultNumThreads()
+    };
+
+    if (options == undefined) {
+      options = defaultOptions;
+    } else {
+      options = { ...defaultOptions, ...options }
+    }
+
+    return new Promise((resolve, reject) => {
+      // Check if analysis is ongoing
+      if (fenRef.current !== null || isAnalyzingGameRef.current || isAnalyzingPosition.current) {
+        console.warn('Cannot analyze FEN: another analysis is currently ongoing');
+        reject(new Error('Another analysis is currently ongoing'));
+        return;
+      }
+
+      // Check if we already have this evaluation at the required depth
+      if (fen in evaluations && evaluations[fen].depth >= options.depth!) {
+        changeFenBeingAnalyzed(null);
+        resolve(evaluations[fen]);
+        return;
+      }
+
+      if (!stockfish) {
+        reject(new Error('Stockfish is not initialized'));
+        return;
+      }
+
+      // Store original options
+      const originalThreads = getDefaultNumThreads();
+      const originalNumLines = numLines;
+      const needsThreadsReset = options.threads !== originalThreads;
+      const needsNumLinesReset = options.numLines !== originalNumLines;
+
+      // Set up the analyzeFen state
+      analyzeFenStateRef.current = {
+        addToEvaluations: options.addToEvaluations!,
+        originalThreads,
+        originalNumLines,
+        targetDepth: options.depth!,
+        resolve,
+        reject,
+      };
+
+      // Set custom stockfish options if provided
+      if (needsThreadsReset) {
+        stockfish.postMessage(`setoption name Threads value ${options.threads}`);
+      }
+      if (needsNumLinesReset) {
+        stockfish.postMessage(`setoption name MultiPV value ${options.numLines}`);
+      }
+
+      // Start analyzing
+      lastDepth.current = 0;
+      changeFenBeingAnalyzed(fen);
+      stockfish.postMessage(`position fen ${fen}`);
+      stockfish.postMessage(`go depth ${options.depth}`);
+    });
+  }, [evalDepth, numLines, stockfish, evaluations, recommendation]);
+
   useEffect(() => {
     isAnalyzingGameRef.current = isAnalyzingGame;
   }, [isAnalyzingGame])
@@ -244,7 +333,9 @@ export default function useChessAnalyzer(
     };
 
     const handleBestMoveInfo = (bestMoveInfo: BestMoveInfo) => {
-      if (bestMoveInfo.bestmove && lastDepth.current >= evalDepth) {
+      const requiredDepth = analyzeFenStateRef.current?.targetDepth ?? evalDepth;
+
+      if (bestMoveInfo.bestmove && lastDepth.current >= requiredDepth) {
         const bestMove = parseLanMove(bestMoveInfo.bestmove);
         if (fenRef.current == null) {
           console.error('fenRef was null');
@@ -275,6 +366,26 @@ export default function useChessAnalyzer(
         addEval(evaluation);
         setLatestEvaluation(evaluation);
 
+        // Handle analyzeFen completion
+        if (analyzeFenStateRef.current) {
+          const state = analyzeFenStateRef.current;
+
+          // Reset stockfish options
+          if (stockfish) {
+            stockfish.postMessage(`setoption name Threads value ${state.originalThreads}`);
+            stockfish.postMessage(`setoption name MultiPV value ${state.originalNumLines}`);
+          }
+
+          // Unset fenBeingAnalyzed
+          changeFenBeingAnalyzed(null);
+
+          // Resolve the promise
+          state.resolve(evaluation);
+
+          // Clear the state
+          analyzeFenStateRef.current = null;
+        }
+
         // Remove from position queue if analyzing position
         if (isAnalyzingPosition.current && fenRef.current) {
           removeFromPositionQueue(fenRef.current);
@@ -283,6 +394,12 @@ export default function useChessAnalyzer(
 
       // If there is no best move (probably because the game is over)
       if (bestMoveInfo.bestmove == null) {
+        // Handle analyzeFen failure
+        if (analyzeFenStateRef.current) {
+          analyzeFenStateRef.current.reject(new Error('No best move found (game may be over)'));
+          analyzeFenStateRef.current = null;
+        }
+
         if (isAnalyzingPosition.current && fenRef.current) {
           removeFromPositionQueue(fenRef.current);
         }
@@ -366,6 +483,11 @@ export default function useChessAnalyzer(
     const addEval = (evaluation: PositionEvaluation) => {
       lastAddedEval.current = evaluation;
 
+      // Check if we should skip adding to evaluations (for analyzeFen with addToEvaluations: false)
+      if (analyzeFenStateRef.current && !analyzeFenStateRef.current.addToEvaluations) {
+        return; // Don't add to evaluations state
+      }
+
       const updateEvaluation = (g: GameEvaluation) => {
         const storedEval = g[evaluation.fen];
         if (storedEval && storedEval.depth > evaluation.depth) {
@@ -391,7 +513,7 @@ export default function useChessAnalyzer(
     if (stockfish && !hasStockfishBeenSetup.current) {
       stockfish.onmessage = handleStockfishMessage;
       stockfish.postMessage('uci');
-      const numThreads = Math.max(1, Math.floor(recommendation!.threads * MAX_THREADS_USAGE));
+      const numThreads = getDefaultNumThreads();
       stockfish.postMessage(`setoption name Threads value ${numThreads}`);
       stockfish.postMessage('setoption name Hash value 1024');
       stockfish.postMessage(`setoption name MultiPV value ${numLines}`);
@@ -516,5 +638,6 @@ export default function useChessAnalyzer(
     pgnAnalysisProgress,
     currentPosition: currentPositionIndex,
     totalPositions: fensToAnalyze.length,
+    analyzeFen,
   };
 }
