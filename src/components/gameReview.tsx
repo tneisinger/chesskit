@@ -16,7 +16,7 @@ import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
-import useGameAnalyzer, { AnalysisStatus } from '@/hooks/useGameAnalyzer';
+import useChessAnalyzer, { AnalysisStatus } from '@/hooks/useChessAnalyzer';
 import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
 import usePrevious from '@/hooks/usePrevious';
@@ -120,7 +120,7 @@ const GameReview = ({ game }: Props) => {
     gameAnalysisProgress,
     engineName,
     fenBeingAnalyzed,
-  } = useGameAnalyzer(
+  } = useChessAnalyzer(
     evaluations,
     setEvaluations,
     s.isPositionAnalysisOn,

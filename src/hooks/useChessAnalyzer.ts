@@ -37,7 +37,7 @@ interface Output {
   totalPositions: number; // Total positions to analyze
 }
 
-export default function useGameAnalyzer(
+export default function useChessAnalyzer(
   evaluations: GameEvaluation,
   setEvaluations: React.Dispatch<React.SetStateAction<GameEvaluation>>,
   isPositionAnalysisOn: boolean,

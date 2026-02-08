@@ -2,7 +2,7 @@ import Button from '@/components/button';
 import Spinner from '@/components/spinner';
 import GameChart, { Props as GameChartProps } from '@/components/gameChart';
 import { GameData } from '@/types/chess';
-import { AnalysisStatus } from '@/hooks/useGameAnalyzer';
+import { AnalysisStatus } from '@/hooks/useChessAnalyzer';
 
 interface Props extends GameChartProps {
   analyzePgn: (pgn: string, analyzeVariations?: boolean) => void;
