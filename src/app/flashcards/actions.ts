@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { flashcards } from "@/db/schema";
 import { eq, and, lte, asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { PieceColor } from "@/types/chess";
+import { Evaluations, PieceColor } from "@/types/chess";
 import {
   calculateNextReview,
   initializeSM2,
@@ -20,7 +20,7 @@ export interface CreateFlashcardInput {
   pgn: string;
   positionIdx: number;
   userColor: PieceColor;
-  lines?: {score: Score, lanLine: string}[];
+  evaluations: Evaluations;
   areLinesForcing: boolean;
 }
 
@@ -65,7 +65,7 @@ export async function createFlashcard(
       pgn: input.pgn,
       positionIdx: input.positionIdx,
       userColor: input.userColor,
-      lines: input.lines,
+      evaluations: input.evaluations,
       areLinesForcing: input.areLinesForcing,
       repetitions: sm2.repetitions,
       easinessFactor: efToInt(sm2.easinessFactor),
