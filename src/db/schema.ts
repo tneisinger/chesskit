@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text, primaryKey, unique, index } from "drizzle-orm/sqlite-core";
 import type { Chapter } from "@/types/lesson";
 import type { Evaluations, PieceColor } from "@/types/chess";
-import type { Score } from "@/utils/stockfish";
 
 export const users = sqliteTable("users", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
@@ -139,7 +138,7 @@ export const flashcards = sqliteTable("flashcards", {
     .$type<PieceColor>(),
 
 	// Flashcard content
-	lines: text("lines", { mode: "json" }).$type<{score: Score, lanLine: string}[]>(),
+	evaluations: text("evaluations", { mode: "json" }).$type<Evaluations>(),
 	areLinesForcing: integer("are_lines_forcing", { mode: "boolean" }).notNull(),
 
 	// SuperMemo-2 algorithm fields
