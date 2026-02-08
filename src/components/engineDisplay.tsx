@@ -1,6 +1,6 @@
 import Switch from 'react-switch';
 import { Move, FEN } from 'cm-chess/src/Chess';
-import { PositionEvaluation, GameEvaluation, MoveJudgement } from '@/types/chess';
+import { PositionEvaluation, Evaluations, MoveJudgement } from '@/types/chess';
 import { getFen, getMoveJudgementColor, judgeLines, makeMoveJudgement } from '@/utils/chess';
 import { makeScoreString, MultiPV } from '@/utils/stockfish';
 import { isBookPosition } from '@/utils/bookPositions';
@@ -15,7 +15,7 @@ export interface Props {
   isEngineOn: boolean;
   setIsEngineOn: (isOn: boolean) => void;
   currentMove: Move | undefined;
-  evaluations: GameEvaluation;
+  evaluations: Evaluations;
   numLines: number;
   isEvaluating: boolean;
   engineMaxDepth: number;

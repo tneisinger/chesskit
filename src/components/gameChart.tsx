@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GameData, GameEvaluation, MoveJudgement, PieceColor } from '@/types/chess';
+import { GameData, Evaluations, MoveJudgement, PieceColor } from '@/types/chess';
 import {
   AreaChart,
   Area,
@@ -50,7 +50,7 @@ type ChartDataPoint = ChartDataPointWithCP | ChartDataPointWithMate;
 
 function makeChartData(
   history: Move[],
-  gameEvaluation: GameEvaluation,
+  gameEvaluation: Evaluations,
   userColor: PieceColor
 ): ChartDataPoint[] {
   const result: ChartDataPoint[] = [];
@@ -205,7 +205,7 @@ function fillChartDataWithEmptyPoints(
 
 export interface Props {
   game: GameData;
-  gameEvaluation: GameEvaluation;
+  gameEvaluation: Evaluations;
   currentMove: Move | undefined;
   changeCurrentMove: (newCurrentMove?: Move) => void;
   history: Move[];

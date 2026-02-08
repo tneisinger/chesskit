@@ -9,7 +9,7 @@ import {
   playForcingLineIntoCmChess,
 } from './cmchess';
 import { convertLanLineToSanLine } from './chess';
-import { GameEvaluation, PieceColor } from '@/types/chess';
+import { Evaluations, PieceColor } from '@/types/chess';
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
 
 describe('promoteToMainLine', () => {
@@ -488,7 +488,7 @@ describe('doHistoriesMatch', () => {
 describe('playForcingLineIntoCmChess', () => {
   it('should return an empty array when position has more than one good move', () => {
     const pgn = '1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Bc4 Nf6 5. f3 exf3 6. Nxf3 Bg4 7. Bxf7+ Kxf7 8. Ne5+ Ke8 9. Nxg4 *';
-    const evaluations: GameEvaluation = {
+    const evaluations: Evaluations = {
       "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": {
         depth: 20,
         fen: "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
@@ -513,7 +513,7 @@ describe('playForcingLineIntoCmChess', () => {
   it('should return an array with 5 elements when forcing line is 5 moves long', () => {
     const pgn = '1. e4 c5 2. d4 cxd4 3. c3 dxc3 4. Nxc3 Nc6 5. Nf3 d6 6. Bc4 h6 7. e5 Bg4 *';
 
-    const evaluations: GameEvaluation = {
+    const evaluations: Evaluations = {
       "r2qkbnr/pp2ppp1/2np3p/4P3/2B3b1/2N2N2/PP3PPP/R1BQK2R w KQkq - 1 8": {
         depth: 20,
         fen: "r2qkbnr/pp2ppp1/2np3p/4p3/2b3b1/2n2n2/pp3ppp/r1bqk2r w kqkq - 1 8",

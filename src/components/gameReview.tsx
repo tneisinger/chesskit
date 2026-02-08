@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useReducer, useCallback } from 'react';
 import { ScrollLock } from '@/components/ScrollLock';
-import { GameData, GameEvaluation, MoveJudgement } from '@/types/chess';
+import { GameData, Evaluations, MoveJudgement } from '@/types/chess';
 import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
 import { Marker, colorToMove, loadPgnIntoCmChess } from '@/utils/cmchess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
@@ -100,8 +100,8 @@ const GameReview = ({ game }: Props) => {
 
   const [s, dispatch] = useReducer(reducer, initialState);
 
-  const [gameEvaluation, setGameEvaluation] = useState<GameEvaluation>({});
-  const [evaluations, setEvaluations] = useState<GameEvaluation>({});
+  const [gameEvaluation, setGameEvaluation] = useState<Evaluations>({});
+  const [evaluations, setEvaluations] = useState<Evaluations>({});
 
   // Set up chessboard engine
   const {

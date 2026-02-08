@@ -2,7 +2,7 @@ import { Chess as CmChess, COLOR, Move } from 'cm-chess/src/Chess';
 import { MarkerTypeConfig } from 'cm-chessboard/src/extensions/markers/Markers';
 import ChessJS from '@/chessjs';
 import { Square, Move as ChessJsMove } from 'chess.js';
-import { GameEvaluation, PieceColor, ShortMove, MoveJudgement } from '@/types/chess';
+import { Evaluations, PieceColor, ShortMove, MoveJudgement } from '@/types/chess';
 import {
   isSubline,
   performMove,
@@ -538,7 +538,7 @@ export function getMainLineParentOfVariation(move: Move): Move | null {
 function playOnlyMove(
   cmChess: CmChess,
   move: Move,
-  evaluations: GameEvaluation,
+  evaluations: Evaluations,
   minDepth = 18,
 ): Move | null {
   // Make sure that we have an evaluation of enough depth.
@@ -580,7 +580,7 @@ function playOnlyMove(
 function playMovesThatLeadToOnlyMoves(
   cmChess: CmChess,
   move: Move,
-  evaluations: GameEvaluation,
+  evaluations: Evaluations,
   minDepth = 18,
 ): Move[] {
   const evaluation = evaluations[move.fen];
@@ -647,7 +647,7 @@ function playMovesThatLeadToOnlyMoves(
 export function playForcingLineIntoCmChess(
   cmChess: CmChess,
   move: Move,
-  evaluations: GameEvaluation,
+  evaluations: Evaluations,
   userColor: PieceColor,
   minDepth = 18,
 ): string[] {
@@ -682,7 +682,7 @@ export function playForcingLineIntoCmChess(
 export function playForcingLinesIntoCmChess(
   cmChess: CmChess,
   move: Move,
-  evaluations: GameEvaluation,
+  evaluations: Evaluations,
   userColor: PieceColor,
   minDepth = 18,
 ): string[] {

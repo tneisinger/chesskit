@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { GameData, GameEvaluation, MoveJudgement } from "@/types/chess";
+import { GameData, Evaluations, MoveJudgement } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Move } from 'cm-chess/src/Chess';
 import { makeMoveJudgement } from "@/utils/chess";
@@ -8,7 +8,7 @@ import CreateFlashcardModal from "./createFlashcardModal";
 
 interface Props {
   game: GameData;
-  evaluations: GameEvaluation;
+  evaluations: Evaluations;
   currentMove: Move | undefined;
   hasGameBeenAnalyzed: boolean;
 }

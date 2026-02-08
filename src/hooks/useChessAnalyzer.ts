@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { GameEvaluation, PositionEvaluation } from '@/types/chess';
+import { Evaluations, PositionEvaluation } from '@/types/chess';
 import { Move } from 'cm-chess/src/Chess';
 import {
   parseBestMoveLine,
@@ -46,8 +46,8 @@ interface Output {
 }
 
 export default function useChessAnalyzer(
-  evaluations: GameEvaluation,
-  setEvaluations: React.Dispatch<React.SetStateAction<GameEvaluation>>,
+  evaluations: Evaluations,
+  setEvaluations: React.Dispatch<React.SetStateAction<Evaluations>>,
   isCurrentMoveAnalysisOn: boolean,
   currentMove: Move | undefined,
   evalDepth = 20,
@@ -488,7 +488,7 @@ export default function useChessAnalyzer(
         return; // Don't add to evaluations state
       }
 
-      const updateEvaluation = (g: GameEvaluation) => {
+      const updateEvaluation = (g: Evaluations) => {
         const storedEval = g[evaluation.fen];
         if (storedEval && storedEval.depth > evaluation.depth) {
           return g;

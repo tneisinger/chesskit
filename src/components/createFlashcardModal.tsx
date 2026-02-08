@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Modal from '@/components/modal';
 import Button, { ButtonStyle } from "@/components/button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
-import { GameData, GameEvaluation, MoveJudgement } from '@/types/chess';
+import { GameData, Evaluations, MoveJudgement } from '@/types/chess';
 import { createFlashcard, CreateFlashcardInput } from '@/app/flashcards/actions';
 import { judgeLines, lanToShortMove } from '@/utils/chess';
 import {
@@ -21,13 +21,13 @@ interface Props {
   game: GameData;
   currentMove: Move;
   onClose: () => void;
-  evaluations: GameEvaluation;
+  evaluations: Evaluations;
 }
 
 function createFlashcardData(
   game: GameData,
   move: Move,
-  evaluations: GameEvaluation,
+  evaluations: Evaluations,
 ): CreateFlashcardInput {
   // The flashcard move is the move that represents the starting position
   // of the flashcard. If we are in a variation, the flashcard move should

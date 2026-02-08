@@ -32,7 +32,7 @@ export interface GameData {
   blackName?: string;
   blackElo?: number;
   website?: ChessWebsite;
-  engineAnalysis?: GameEvaluation;
+  engineAnalysis?: Evaluations;
 }
 
 export enum GameResult {
@@ -100,4 +100,4 @@ export interface PositionEvaluation {
 /**
  * A map from fen strings to PositionEvaluations for one chess game.
  */
-export type GameEvaluation = Record<string, PositionEvaluation>;
+export type Evaluations = Record<string, PositionEvaluation>;

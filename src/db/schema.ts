@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text, primaryKey, unique, index } from "drizzle-orm/sqlite-core";
 import type { Chapter } from "@/types/lesson";
-import type { GameEvaluation, PieceColor } from "@/types/chess";
+import type { Evaluations, PieceColor } from "@/types/chess";
 import type { Score } from "@/utils/stockfish";
 
 export const users = sqliteTable("users", {
@@ -112,7 +112,7 @@ export const games = sqliteTable("games", {
 	blackName: text("black_name"),
 	blackElo: integer("black_elo"),
 	website: text("website", { enum: ["chess.com", "lichess.org"] }),
-	engineAnalysis: text("engine_analysis", { mode: "json" }).$type<GameEvaluation>(),
+	engineAnalysis: text("engine_analysis", { mode: "json" }).$type<Evaluations>(),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.notNull()
 		.default(sql`(unixepoch())`),

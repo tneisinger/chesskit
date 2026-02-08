@@ -8,7 +8,7 @@ import {
   ShortMove,
   Evaluation,
   GameEvals,
-  GameEvaluation,
+  Evaluations,
   PositionEvaluation,
   TimeControl,
 } from '../types/chess';
@@ -449,10 +449,10 @@ function makeEvaluationScore(ev: Evaluation): Score {
 export function makeMoveJudgement(
   fen1: string,
   fen2: string,
-  ev: GameEvals | GameEvaluation,
+  ev: GameEvals | Evaluations,
 ): MoveJudgement | undefined {
-  if (isGameEvaluation(ev)) {
-    ev = convertGameEvaluationToGameEvals(ev);
+  if (isEvaluations(ev)) {
+    ev = convertEvaluationsToGameEvals(ev);
   }
   if (wasBestMovePlayed(fen1, fen2, ev)) return MoveJudgement.Best;
 
@@ -856,11 +856,11 @@ export function convertPositionEvaluationToEvaluation(
   return { ...partial, mate: posEval.score.value };
 }
 
-export function convertGameEvaluationToGameEvals(
-gev: GameEvaluation
+export function convertEvaluationsToGameEvals(
+evs: Evaluations
 ): GameEvals {
   const result: GameEvals = {};
-  for (const [fen, posEval] of Object.entries(gev)) {
+  for (const [fen, posEval] of Object.entries(evs)) {
     result[fen] = convertPositionEvaluationToEvaluation(posEval);
   }
   return result;
@@ -872,41 +872,41 @@ export function isPositionEvaluation(
   return (ev as PositionEvaluation).score !== undefined;
 }
 
-export function isGameEvaluation(
-  ev: GameEvals | GameEvaluation
-): ev is GameEvaluation {
+export function isEvaluations(
+  ev: GameEvals | Evaluations
+): ev is Evaluations {
   const firstKey = Object.keys(ev)[0];
   if (firstKey == undefined) return false;
   const firstValue = ev[firstKey];
   return isPositionEvaluation(firstValue);
 }
 
-// Convert a GameEvaluation object to an array of PositionEvaluation objects,
+// Convert an Evaluations object to an array of PositionEvaluation objects,
 // sorted by fen ply.
-export function makeGameEvaluationArray(gev: GameEvaluation): PositionEvaluation[] {
-  const gevArray = Object.values(gev).map((posEval) => posEval);
-  gevArray.sort((a, b) => getPlyFromFen(a.fen) - getPlyFromFen(b.fen));
-  return gevArray;
+export function makeEvaluationsArray(evs: Evaluations): PositionEvaluation[] {
+  const evsArray = Object.values(evs).map((posEval) => posEval);
+  evsArray.sort((a, b) => getPlyFromFen(a.fen) - getPlyFromFen(b.fen));
+  return evsArray;
 }
 
-// Given a GameEvaluation object, produce a mapping of fenAfter strings
+// Given an Evaluations object, produce a mapping of fenAfter strings
 // to MoveJudgement for each move in the game.
 export function makeMoveJudgements(
-  gev: GameEvaluation
+  evs: Evaluations
 ): Record<string, MoveJudgement | undefined> {
   const result: Record<string, MoveJudgement | undefined> = {};
-  const gevArray = makeGameEvaluationArray(gev);
-  if (gevArray.length < 1) return result;
+  const evsArray = makeEvaluationsArray(evs);
+  if (evsArray.length < 1) return result;
 
-  // Make a copy of gev to avoid modifying the input object.
+  // Make a copy of evs to avoid modifying the input object.
   // We may need to modify it by adding the starting position.
-  const modifiedGev = {...gev };
+  const modifiedEvs = {...evs };
 
-  // Check gevArray starts with the starting position.
-  const firstPly = getPlyFromFen(gevArray[0].fen);
+  // Check evsArray starts with the starting position.
+  const firstPly = getPlyFromFen(evsArray[0].fen);
   if (firstPly !== 0) {
     // If the first position is not ply 0, ensure it is ply 1.
-    if (firstPly !== 1) throw new Error('GameEvaluation is missing evaluation for move 1');
+    if (firstPly !== 1) throw new Error('Evaluations is missing evaluation for move 1');
 
     // If the first position is not the starting position, we need to
     // add the starting position evaluation to the front of the array.
@@ -918,16 +918,16 @@ export function makeMoveJudgements(
       lines: [],
       bestMove: startEval.bestMove,
     }
-    gevArray.unshift(positionEvaluationForStart);
-    modifiedGev[FEN.start] = positionEvaluationForStart;
+    evsArray.unshift(positionEvaluationForStart);
+    modifiedEvs[FEN.start] = positionEvaluationForStart;
   }
 
   // Loop through each consecutive pair of fens and make a MoveJudgement for each move.
   // If makeMoveJudgement returns undefined, add undefined to result.
-  for (let i = 0; i < gevArray.length - 1; i++) {
-    const fenBefore = gevArray[i].fen;
-    const fenAfter = gevArray[i + 1].fen;
-    const judgement = makeMoveJudgement(fenBefore, fenAfter, modifiedGev);
+  for (let i = 0; i < evsArray.length - 1; i++) {
+    const fenBefore = evsArray[i].fen;
+    const fenAfter = evsArray[i + 1].fen;
+    const judgement = makeMoveJudgement(fenBefore, fenAfter, modifiedEvs);
     result[fenAfter] = judgement;
   }
   return result;
