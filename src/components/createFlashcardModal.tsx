@@ -63,7 +63,6 @@ function createFlashcardData(
   }
 
   // When there are no forcing lines, add the good moves from evaluations to cmChess.
-  // TODO: Maybe change this? Maybe add the lines to CreateFlashcardInput.lines?
   if (!areLinesForcing) {
     const evaluation = evaluations[flashcardMove.fen];
     if (evaluation == undefined) throw new Error('evaluation was undefined');
@@ -82,12 +81,16 @@ function createFlashcardData(
     }
   }
 
+  const flashcardPev = evaluations[flashcardMove.fen];
+  if (flashcardPev == undefined) throw new Error('flashcardPev was undefined');
+  if (flashcardPev.lines.length < 2) throw new Error('Not enough evaluation lines to make flashcard');
+
   return {
     gameId: game.id,
     pgn: renderPgn(cmChess).trim(),
     positionIdx: flashcardMove.ply,
     userColor: game.userColor,
-    areLinesForcing,
+    bestLines: flashcardPev.lines,
   }
 }
 
@@ -108,21 +111,22 @@ const CreateFlashcardModal = ({ show, game, currentMove, evaluations, onClose }:
 
     // TODO: Prevent creation of duplicate flashcards
     const flashcardData = createFlashcardData(game, currentMove, evaluations);
+    console.log(flashcardData);
 
-    try {
-      const result = await createFlashcard(flashcardData);
+    // try {
+    //   const result = await createFlashcard(flashcardData);
 
-      if (result.success) {
-        onClose();
-      } else {
-        setError(result.error || 'Failed to create flashcard');
-      }
-    } catch (error) {
-      console.error('Error creating flashcard:', error);
-      setError('An unexpected error occurred');
-    } finally {
-      setIsSubmitting(false);
-    }
+    //   if (result.success) {
+    //     onClose();
+    //   } else {
+    //     setError(result.error || 'Failed to create flashcard');
+    //   }
+    // } catch (error) {
+    //   console.error('Error creating flashcard:', error);
+    //   setError('An unexpected error occurred');
+    // } finally {
+    //   setIsSubmitting(false);
+    // }
   };
 
   return (
