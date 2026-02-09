@@ -559,7 +559,7 @@ function playOnlyMove(
   // position. Therefore, if the second move is bad, we can be sure that there is
   // only one good move in the position. If there is only one good move, play that
   // move into cmChess and return the Move object that is returned from cmChess.move().
-  const badJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake];
+  const badJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake, MoveJudgement.Inaccurate];
   if (badJudgements.includes(lineJudgements[1])) {
     const firstMoveLan = evaluation.lines[0].lanLine.trim().split(' ')[0];
     const m = cmChess.move(lanToShortMove(firstMoveLan), move);
@@ -641,7 +641,8 @@ function playMovesThatLeadToOnlyMoves(
  * When it is the user's turn, add a move to the output if that move is the only good move
  * in the position. When it is not the user's turn, look for a move that will give the user
  * a position that has only one good move. The only moves that will be checked are the ones at
- * the start of each line in the 'evaluations' object. Return an empty array if there is not
+ * the start of each line in the 'evaluations' object. Return an array of san strings
+ * representing the moves that were added. Return an empty array if there is not
  * a forcing line.
  */
 export function playForcingLineIntoCmChess(
