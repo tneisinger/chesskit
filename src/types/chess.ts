@@ -95,6 +95,7 @@ export interface PositionEvaluation {
   score: Score;
   lines: {score: Score, lanLine: string}[];
   bestMove?: ShortMove;
+  extrapolationDepth?: number;
 }
 
 /**

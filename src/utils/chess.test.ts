@@ -19,6 +19,7 @@ import {
   makePgnFromHistory,
   makeMovesOnlyPGN,
   areFensEqual,
+  extrapolatePositionEvaluation,
 } from './chess';
 import { PieceColor, ShortMove } from '@/types/chess';
 import { Chess as ChessJS } from 'chess.js';
@@ -416,6 +417,234 @@ describe('chess utilities', () => {
       const fen2 = 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2';
       expect(areFensEqual(fen1, fen2, { allowEnpassantDif: true })).toBe(false);
       expect(areFensEqual(fen2, fen1, { allowEnpassantDif: true })).toBe(false);
+    });
+  });
+
+  describe('extrapolatePositionEvaluation', () => {
+    it('should extrapolate a position evaluation with cp score', () => {
+      const startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const pev = {
+        depth: 20,
+        fen: startingFen,
+        score: { key: 'cp' as const, value: 30 },
+        lines: [
+          { score: { key: 'cp' as const, value: 30 }, lanLine: 'e2e4 e7e5 g1f3' },
+          { score: { key: 'cp' as const, value: 25 }, lanLine: 'd2d4 d7d5 g1f3' },
+        ],
+      };
+
+      const result = extrapolatePositionEvaluation(pev);
+
+      // Should return 2 position evaluations (one for each line)
+      expect(result.length).toBe(2);
+
+      // First extrapolated position (after e2e4)
+      expect(result[0].fen).toBe('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1');
+      expect(result[0].score.key).toBe('cp');
+      expect(result[0].score.value).toBe(30); // cp score stays the same
+      expect(result[0].depth).toBe(20);
+      expect(result[0].extrapolationDepth).toBe(1);
+      expect(result[0].lines.length).toBe(1);
+      expect(result[0].lines[0].lanLine).toBe('e7e5 g1f3'); // Remaining moves
+
+      // Second extrapolated position (after d2d4)
+      expect(result[1].fen).toBe('rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1');
+      expect(result[1].score.key).toBe('cp');
+      expect(result[1].score.value).toBe(25);
+      expect(result[1].extrapolationDepth).toBe(1);
+    });
+
+    it('should extrapolate a position evaluation with positive mate score', () => {
+      const fen = 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4';
+      const pev = {
+        depth: 20,
+        fen,
+        score: { key: 'mate' as const, value: 1 },
+        lines: [
+          { score: { key: 'mate' as const, value: 1 }, lanLine: 'h5f7' },
+        ],
+      };
+
+      const result = extrapolatePositionEvaluation(pev);
+
+      expect(result.length).toBe(1);
+      expect(result[0].score.key).toBe('mate');
+      expect(result[0].score.value).toBe(0); // Mate in 1 becomes mate in 0
+      expect(result[0].extrapolationDepth).toBe(1);
+      expect(result[0].lines.length).toBe(0); // Next line shows mate in 1
+    });
+
+    it('should extrapolate a position evaluation with negative mate score', () => {
+      const fen = 'rnbqkbnr/pppp1ppp/8/4p3/5PP1/8/PPPPP2P/RNBQKBNR b KQkq g3 0 2';
+      const pev = {
+        depth: 20,
+        fen,
+        score: { key: 'mate' as const, value: -1 },
+        lines: [
+          { score: { key: 'mate' as const, value: -1 }, lanLine: 'd8h4' },
+        ],
+      };
+
+      const result = extrapolatePositionEvaluation(pev);
+
+      expect(result.length).toBe(1);
+      expect(result[0].score.key).toBe('mate');
+      expect(result[0].score.value).toBe(0); // Mate in -1 becomes mate in 0
+      expect(result[0].lines.length).toBe(0); // No lines
+    });
+
+    it('should handle a PositionEvaluation with no lines', () => {
+      const fen = 'rnb1kbnr/pppp1ppp/8/4p3/5PPq/8/PPPPP2P/RNBQKBNR w KQkq - 1 3';
+      const pev = {
+        depth: 20,
+        fen,
+        score: { key: 'mate' as const, value: 0 },
+        lines: [],
+      };
+
+      const result = extrapolatePositionEvaluation(pev);
+
+      expect(result.length).toBe(0);
+    });
+
+    it('should increment extrapolationDepth when already set', () => {
+      const startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const pev = {
+        depth: 20,
+        fen: startingFen,
+        score: { key: 'cp' as const, value: 30 },
+        lines: [
+          { score: { key: 'cp' as const, value: 30 }, lanLine: 'e2e4 e7e5' },
+        ],
+        extrapolationDepth: 2,
+      };
+
+      const result = extrapolatePositionEvaluation(pev);
+
+      expect(result.length).toBe(1);
+      expect(result[0].extrapolationDepth).toBe(3); // Should increment from 2 to 3
+    });
+
+    it('should handle multiple lines with different scores', () => {
+      const startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const pev = {
+        depth: 20,
+        fen: startingFen,
+        score: { key: 'cp' as const, value: 30 },
+        lines: [
+          { score: { key: 'cp' as const, value: 30 }, lanLine: 'e2e4 e7e5' },
+          { score: { key: 'cp' as const, value: 28 }, lanLine: 'd2d4 d7d5' },
+          { score: { key: 'cp' as const, value: 20 }, lanLine: 'g1f3 g8f6' },
+        ],
+      };
+
+      const result = extrapolatePositionEvaluation(pev);
+
+      expect(result.length).toBe(3);
+
+      // Verify each extrapolated position has the correct score
+      expect(result[0].score.value).toBe(30);
+      expect(result[1].score.value).toBe(28);
+      expect(result[2].score.value).toBe(20);
+
+      // Verify each has the correct FEN (different first moves)
+      expect(result[0].fen).toContain('4P3'); // e4
+      expect(result[1].fen).toContain('3P4'); // d4
+      expect(result[2].fen).toContain('5N2'); // Nf3
+    });
+
+    it('should handle single move in lanLine', () => {
+      const startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const pev = {
+        depth: 20,
+        fen: startingFen,
+        score: { key: 'cp' as const, value: 30 },
+        lines: [
+          { score: { key: 'cp' as const, value: 30 }, lanLine: 'e2e4' }, // Only one move
+        ],
+      };
+
+      const result = extrapolatePositionEvaluation(pev);
+
+      expect(result.length).toBe(1);
+      expect(result[0].lines.length).toBe(0); // No lines created
+    });
+
+    it('should preserve depth from original evaluation', () => {
+      const startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const pev = {
+        depth: 25, // Non-standard depth
+        fen: startingFen,
+        score: { key: 'cp' as const, value: 30 },
+        lines: [
+          { score: { key: 'cp' as const, value: 30 }, lanLine: 'e2e4 e7e5' },
+        ],
+      };
+
+      const result = extrapolatePositionEvaluation(pev);
+
+      expect(result[0].depth).toBe(25); // Should preserve the original depth
+    });
+
+    it('should handle mate in 3 correctly', () => {
+      const fen = '2rq1rk1/1p6/p3p1NQ/1b1n1p2/2pP3b/P1P2N1P/1P3PP1/R5K1 w - - 0 22';
+      const pev = {
+        depth: 20,
+        fen,
+        score: { key: 'mate' as const, value: 3 },
+        lines: [
+          { score: { key: 'mate' as const, value: 3 }, lanLine: 'h6h8 g8f7 f3e5 f7e8 h8f8' }, // Any move
+        ],
+      };
+
+      const result = extrapolatePositionEvaluation(pev);
+
+      expect(result.length).toBe(1);
+      expect(result[0].score.key).toBe('mate');
+      expect(result[0].score.value).toBe(2); // Mate in 3 becomes mate in 2
+
+      const result2 = extrapolatePositionEvaluation(result[0]);
+      expect(result2[0].score.key).toBe('mate');
+      expect(result2[0].score.value).toBe(2); // Mate in 2 stays mate in 2
+
+      const result3 = extrapolatePositionEvaluation(result2[0]);
+      expect(result3[0].score.key).toBe('mate');
+      expect(result3[0].score.value).toBe(1); // Mate in 2 becomes mate in 1
+
+      const result4 = extrapolatePositionEvaluation(result3[0]);
+      expect(result4[0].score.key).toBe('mate');
+      expect(result4[0].score.value).toBe(1); // Mate in 1 stays mate in 1
+
+      const result5 = extrapolatePositionEvaluation(result4[0]);
+    });
+
+    it('should handle mate in 2 for black correctly', () => {
+      const fen = '4k3/1prb4/1p4p1/2p1P3/2p4P/P2pNB2/nr3BRn/1R2K3 b - - 0 1';
+      const pev = {
+        depth: 20,
+        fen,
+        score: { key: 'mate' as const, value: -2 },
+        lines: [
+          { score: { key: 'mate' as const, value: -2 }, lanLine: 'd3d2 e1e2 a2c3' }, // Any move
+        ],
+      };
+      const result = extrapolatePositionEvaluation(pev);
+      console.log(result[0]);
+
+      expect(result.length).toBe(1);
+      expect(result[0].score.key).toBe('mate');
+      expect(result[0].score.value).toBe(-1); // Mate in -2 becomes mate in -1
+
+      const result2 = extrapolatePositionEvaluation(result[0]);
+      console.log(result2[0]);
+      expect(result2[0].score.key).toBe('mate');
+      expect(result2[0].score.value).toBe(-1); // Mate in -1 stays mate in -1
+
+      const result3 = extrapolatePositionEvaluation(result2[0]);
+      console.log(result3[0]);
+      expect(result3[0].score.key).toBe('mate');
+      expect(result3[0].score.value).toBe(0); // Mate in -1 becomes mate in 0
+      expect(result3[0].lines.length).toBe(0);
     });
   });
 });

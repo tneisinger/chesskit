@@ -954,3 +954,73 @@ export function getJudgementColor(moveJudgement: MoveJudgement): ChessMoveColor 
   if (moveJudgement === MoveJudgement.Best) return ChessMoveColor.Excellent;
   throw new Error(`Unknown MoveJudgement ${moveJudgement}`);
 }
+
+/**
+ * Extrapolate a new PositionEvaluation for each line in pev.lines
+ */
+export function extrapolatePositionEvaluation(pev: PositionEvaluation): PositionEvaluation[] {
+  const extrapolateScore = (score: Score, colorToMove: 'b' | 'w'): Score => {
+    // Assume that the cp value didn't change in one move
+    if (score.key === 'cp') return { key: 'cp', value: score.value };
+
+    // At this point, score.key must be 'mate'
+    // If value is 0, just leave it zero.
+    if (score.value === 0) return { key: 'mate', value: 0 };
+
+    // We want to move the value one integer closer to zero ONLY IF the colorToMove
+    // is the color that is threatening mate.
+    let value: number;
+    const sign = Math.sign(score.value);
+    if ( (colorToMove === 'w' && sign > 0) || (colorToMove === 'b' && sign < 0)) {
+      value = (Math.abs(score.value) - 1) * sign;
+    } else {
+      value = score.value;
+    }
+
+    // If value is negative zero, set it to zero.
+    if (Object.is(value, -0)) value = 0;
+
+    return { key: 'mate', value }
+  } 
+
+  const result: PositionEvaluation[] = [];
+  for (let i = 0; i < pev.lines.length; i++) {
+    const line = pev.lines[i];
+    const chessjs = new ChessJS();
+    chessjs.load(pev.fen);
+    const colorToMove = chessjs.turn();
+    const lanMoves = line.lanLine.trim().split(' ');
+    const firstMoveLan = lanMoves[0];
+
+    // If there are no moves in this line, continue.
+    if (firstMoveLan == undefined) continue;
+
+    const moveResult = chessjs.move(lanToShortMove(firstMoveLan));
+    if (moveResult == undefined) throw new Error('moveResult was undefined');
+
+    const fen = chessjs.fen();
+
+    let extrapolationDepth = 1;
+    if (pev.extrapolationDepth != undefined) {
+      extrapolationDepth = pev.extrapolationDepth + 1;
+    }
+
+    const score = extrapolateScore(line.score, colorToMove);
+
+    let lines: { score: Score, lanLine: string }[] = [];
+    const remainingLanMoves = lanMoves.slice(1);
+    if (remainingLanMoves.length > 0) {
+      lines = [{ score, lanLine: remainingLanMoves.join(' ')}]
+    }
+
+    result.push({
+      depth: pev.depth,
+      fen,
+      score,
+      lines,
+      extrapolationDepth,
+    })
+  }
+
+  return result;
+}
