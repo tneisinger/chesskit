@@ -33,7 +33,7 @@ import {
   Marker,
 } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
-import { areLinesEqual, convertLanLineToShortMoves, judgeLines } from '@/utils/chess';
+import { areLinesEqual, areMovesEqual, convertLanLineToShortMoves, judgeLines, lanToShortMove } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
 import { useCountdown } from '@/hooks/useCountdown';
@@ -44,6 +44,13 @@ import usePrevious from '@/hooks/usePrevious';
 import { FEN } from 'cm-chess/src/Chess';
 
 const MOVE_INCREMENT_SECONDS = 5;
+const GOOD_JUDGEMENTS = [MoveJudgement.Best, MoveJudgement.Excellent, MoveJudgement.Good];
+
+// TODO: Setup flashcard grading
+// Easy - No mistakes and remainingTime >= starting time
+// Good - No mistakes and remainingTime > 0
+// Hard - No mistakes but remainingTime === 0
+// Again - 1 or more mistakes
 
 interface Props {
   flashcards: Flashcard[];
@@ -64,6 +71,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
   const [opponentFirstMove, setOpponentFirstMove] = useState<Move | undefined | null>(null);
   const [lineJudgements, setLineJudgements] = useState<MoveJudgement[]>([]);
+  const [areLinesForcing, setAreLinesForcing] = useState<boolean | null>(null);
   const [lines, setLines] = useState<Record<string, LineStats>>({});
   const [wrongAnswerBlinkTrigger, setWrongAnswerBlinkTrigger] = useState(0);
   const [wrongAnswerCount, setWrongAnswerCount] = useState(0)
@@ -231,12 +239,17 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [lines, currentMove]);
 
 
+  // The user should play an alternative move if 'areLinesForcing' is true and
+  // every relevantLine is complete.
+  const shouldUserPlayAnAlternativeMove = useCallback((relevantLines: string[]): boolean => {
+    if (!areLinesForcing) return false;
+    return relevantLines.every((rLine => lines[rLine].isComplete));
+  }, [areLinesForcing]);
+
+
   const handleCorrectUserMove = useCallback((relevantLines: string[]) => {
-    // Handle alternative user moves:
-    // If the pgn has alternative moves for the user, the user could play a
-    // move that is only in lines that have already been completed.
-    // In that case, tell the user to play an alternative move instead.
-    if (relevantLines.every((rLine => lines[rLine].isComplete))) {
+    // Check if the user should play an alternative move.
+    if (shouldUserPlayAnAlternativeMove(relevantLines)) {
       if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
       setShowAltMoveModal(true);
       return;
@@ -256,32 +269,57 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     // If we have reached this point, then a line has been completed.
     markCurrentLineComplete();
   }, [lines, currentMove, remainingTime, addTimeToClock, setupOpponentMoveTimeout,
-      markCurrentLineComplete]);
+      shouldUserPlayAnAlternativeMove, markCurrentLineComplete]);
+
+
+  const getBestMoves = useCallback((): ShortMove[] | null => {
+    const fc = flashcards[flashcardIndex];
+    if (fc == undefined) return null;
+    const result: ShortMove[] = [];
+    fc.bestLines.forEach((line) => {
+      const firstMoveLan = line.lanLine.trim().split(' ')[0];
+      result.push(lanToShortMove(firstMoveLan));
+    });
+    return result;
+  }, [flashcardIndex, flashcards])
+
+
+  const gradeMove = useCallback((move: Move) => {
+    // TODO: implement this
+    console.log('implement this');
+  }, [getBestMoves, lineJudgements]);
+
+
+  const handleMoveThatWasNotInFlashcardPgn = useCallback(() => {
+    if (currentMove == undefined) throw new Error('currentMove was undefined');
+    if (areLinesForcing) {
+      handleIncorrectUserMove();
+    } else {
+      gradeMove(currentMove);
+    }
+  }, [currentMove, areLinesForcing, handleIncorrectUserMove]);
 
 
   const handleUserMove = useCallback(() => {
     // If in edit mode, we don't need to do anything.
     if (currentMode === Mode.Edit) return;
-    // TODO: Change this claude code
-    // Easy - No mistakes and remainingTime >= starting time
-    // Good - No mistakes and remainingTime > 0
-    // Hard - No mistakes but remainingTime === 0
-    // Again - 1 or more mistakes
+
     if (currentMove == undefined) throw new Error('currentMove was undefined');
     const move: ShortMove = { from: currentMove.from, to: currentMove.to };
     setUserAttemptedMove(move);
 
     const relevantLines = getRelevantLessonLines(lines, currentMove);
 
-    // If there are no relevant lines, the user's move was incorrect
+    // If there are no relevant lines, then the user played a move that was not in
+    // the flashcard pgn.
     if (relevantLines.length < 1) {
-      handleIncorrectUserMove();
+      handleMoveThatWasNotInFlashcardPgn();
       return;
     }
 
     // If there are relevant lines, then a correct move has been played.
     handleCorrectUserMove(relevantLines);
-  }, [lines, currentMove, handleIncorrectUserMove, handleCorrectUserMove, currentMode]);
+  }, [lines, currentMove, handleMoveThatWasNotInFlashcardPgn, handleCorrectUserMove, currentMode]);
 
 
   // Setup timeouts that will reset the board and play the opponent move
@@ -475,25 +513,33 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (numIncompleteLinesRef.current === null) return;
     if (totalLinesRef.current === null) return;
 
-    // If there are incomplete lines and numIncompleteLines < totalLines,
-    // that means that the user just solved a line but there are more lines
-    // left to be solved.
-    if (numIncompleteLinesRef.current > 0 && numIncompleteLinesRef.current < totalLinesRef.current) {
-      // Add time to the clock if time hasn't run out
-      if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
-      setupResetBoardTimeouts();
+    const haveAnyLinesBeenCompleted = numIncompleteLinesRef.current < totalLinesRef.current;
+
+    // If areLinesForcing is true, then the user has to complete every line in the pgn.
+    // If there are incomplete lines, reset the board so the user can solve the next line.
+    if (areLinesForcing) {
+      // If there are incomplete lines and at least one line has been completed,
+      // that means that the user just solved a line but there are more lines
+      // left to be solved.
+      if (numIncompleteLinesRef.current > 0 && haveAnyLinesBeenCompleted) {
+        // Add time to the clock if time hasn't run out
+        if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
+        setupResetBoardTimeouts();
+      }
     }
 
     // If there are no incomplete lines, then the flashcard is complete.
-    // Pause the clock and show the FlashcardCompleteModal after a delay.
-    if (numIncompleteLinesRef.current === 0) {
+    // Also, if areLinesForcing is false (aka this is not a forcing line flashcard) and
+    // ANY lines have been completed, then the flashcard is complete.
+    if (numIncompleteLinesRef.current === 0 || (!areLinesForcing && haveAnyLinesBeenCompleted)) {
+      // Pause the clock and show the FlashcardCompleteModal after a delay.
       pauseClock();
       showFlashcardCompleteModalTimeoutRef.current = window.setTimeout(() => {
         setShowFlashcardCompleteModal(true);
         setHasUserCompletedFlashcard(true);
       }, 600);
     }
-  }, [lines, previousLines, setupResetBoardTimeouts, pauseClock]);
+  }, [lines, areLinesForcing, previousLines, setupResetBoardTimeouts, pauseClock]);
 
 
   // When the flashcardIndex changes...
@@ -508,10 +554,20 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     const fc = flashcards[flashcardIndex];
     if (fc != undefined) {
-      if (fc.lines) {
-        setLineJudgements(judgeLines(fc.userColor, fc.lines));
+      if (fc.bestLines.length < 2) throw new Error('flashcard has fewer than two elements in bestLines');
+      const lineJs = judgeLines(fc.userColor, fc.bestLines);
+      setLineJudgements(lineJs);
+
+      // If the judgement of the second best line is one of the GOOD_JUDGEMENTS,
+      // that means that there are at least two 'good enough' answers to this flashcard.
+      // In that case, set areLinesForcing to false. Otherwise, set areLinesForcing to true.
+      if (GOOD_JUDGEMENTS.includes(lineJs[1])) {
+        setAreLinesForcing(false);
+      } else {
+        setAreLinesForcing(true);
       }
 
+      // Reset the clock for the new flashcard
       resetClock();
 
       loadPgnIntoCmChess(fc.pgn, cmchess.current);
@@ -526,6 +582,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setBoardFenOverride(undefined);
     } else {
       setLineJudgements([]);
+      setAreLinesForcing(null);
       setOpponentFirstMove(null);
       setLines({});
     }
@@ -826,11 +883,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
           {showAnswer ? (
             <>
-              {currentFlashcard.lines && currentFlashcard.lines.length > 0 && (
+              {currentFlashcard.bestLines.length > 0 && (
                 <>
                   <h3 className="text-md font-semibold mb-2">Best Lines:</h3>
                   <div className="space-y-2 mb-4">
-                    {currentFlashcard.lines.map((line, idx) => (
+                    {currentFlashcard.bestLines.map((line, idx) => (
                       <div key={idx} className="p-2 bg-background rounded border border-gray-600">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs text-gray-400">Line {idx + 1}</span>
