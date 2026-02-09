@@ -104,6 +104,47 @@ export async function getUserGames(): Promise<GameData[]> {
 }
 
 /**
+ * Get all games from all users (admin only), sorted by start time (newest first).
+ * Limited to maxGames.
+ */
+export async function getAllGames(maxGames: number): Promise<GameData[]> {
+  try {
+    const session = await auth();
+
+    // Check if user is admin
+    if (!session?.user || session.user.role !== "admin") {
+      return [];
+    }
+
+    const allGames = await db.query.games.findMany({
+      orderBy: [desc(games.startTime)],
+      limit: maxGames,
+    });
+
+    return allGames.map((game) => ({
+      id: game.id,
+      gameId: game.gameId,
+      pgn: game.pgn,
+      userColor: game.userColor as PieceColor,
+      result: game.result ? (game.result as GameResult) : undefined,
+      startTime: game.startTime,
+      url: game.url ?? undefined,
+      createdAt: game.createdAt,
+      engineAnalysis: game.engineAnalysis ?? undefined,
+      timeControl: game.timeControl ?? undefined,
+      whiteName: game.whiteName ?? undefined,
+      whiteElo: game.whiteElo ?? undefined,
+      blackName: game.blackName ?? undefined,
+      blackElo: game.blackElo ?? undefined,
+      website: game.website as ChessWebsite | undefined,
+    }));
+  } catch (error) {
+    console.error("Error fetching all games:", error);
+    return [];
+  }
+}
+
+/**
  * Get a single game by ID for the current user.
  */
 export async function getUserGameById(
