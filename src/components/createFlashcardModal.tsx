@@ -12,7 +12,7 @@ import {
   getLineFromCmMove,
   getMainLineParentOfVariation,
   isInVariation,
-  playForcingLinesIntoCmChess,
+  playForcingLineIntoCmChess,
   renderPgn
 } from '@/utils/cmchess';
 
@@ -55,10 +55,10 @@ function createFlashcardData(
   if (flashcardMoveOfCmChess == undefined) throw new Error('lastMove was undefined');
   if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
-  // Try to get a forcing line. If there is a forcing line, set 'areLinesForcing' to true.
-  const fensOfAddedMoves = playForcingLinesIntoCmChess(cmChess, flashcardMoveOfCmChess, evaluations, game.userColor);
+  // Try to get a forcing line. If a forcing line is found, set 'areLinesForcing' to true.
+  const addedMoves = playForcingLineIntoCmChess(cmChess, flashcardMoveOfCmChess, evaluations, game.userColor);
   let areLinesForcing = false;
-  if (fensOfAddedMoves.length > 0) {
+  if (addedMoves.length > 0) {
     areLinesForcing = true;
   }
 
@@ -111,22 +111,21 @@ const CreateFlashcardModal = ({ show, game, currentMove, evaluations, onClose }:
 
     // TODO: Prevent creation of duplicate flashcards
     const flashcardData = createFlashcardData(game, currentMove, evaluations);
-    console.log(flashcardData);
 
-    // try {
-    //   const result = await createFlashcard(flashcardData);
+    try {
+      const result = await createFlashcard(flashcardData);
 
-    //   if (result.success) {
-    //     onClose();
-    //   } else {
-    //     setError(result.error || 'Failed to create flashcard');
-    //   }
-    // } catch (error) {
-    //   console.error('Error creating flashcard:', error);
-    //   setError('An unexpected error occurred');
-    // } finally {
-    //   setIsSubmitting(false);
-    // }
+      if (result.success) {
+        onClose();
+      } else {
+        setError(result.error || 'Failed to create flashcard');
+      }
+    } catch (error) {
+      console.error('Error creating flashcard:', error);
+      setError('An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
