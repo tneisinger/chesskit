@@ -81,11 +81,11 @@ const GamesTableRow = ({
     } else {
       // Flexible width columns
       if (isMobile) {
-        // Mobile: 4 flexible columns (excluding checkbox)
-        classes.push('w-[calc((100%-60px)/4)]');
+        // Mobile: 5 flexible columns (excluding checkbox)
+        classes.push('w-[calc((100%-60px)/5)]');
       } else {
-        // Desktop: 6 flexible columns (excluding checkbox and opening)
-        classes.push('w-[calc((100%-220px-60px)/6)]');
+        // Desktop: 7 flexible columns (excluding checkbox and opening)
+        classes.push('w-[calc((100%-220px-60px)/7)]');
       }
     }
 
@@ -163,6 +163,16 @@ const GamesTableRow = ({
       name: 'Color',
       priority: 4,
       makeDataDiv: (game, key) => makeTableDataDiv(game.userColor.toLowerCase(), key, true),
+    },
+    {
+      name: 'Analyzed',
+      priority: 4.5,
+      makeDataDiv: (game, key) => {
+        const hasAnalysis = game.engineAnalysis !== undefined;
+        const symbol = hasAnalysis ? '✔' : '✘';
+        const extraClasses = hasAnalysis ? 'text-[#57a857] text-2xl leading-none' : 'text-[#ca3431] text-2xl leading-none';
+        return makeTableDataDiv(symbol, key, true, [extraClasses]);
+      },
     },
     {
       name: 'Opening',
