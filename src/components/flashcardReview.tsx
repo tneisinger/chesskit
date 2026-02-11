@@ -41,7 +41,6 @@ import {
   convertLanLineToShortMoves,
   judgeLines,
   judgePevAgainstBestLine,
-  lanToShortMove,
 } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
@@ -72,9 +71,19 @@ interface Props {
 }
 
 const FlashcardReview = ({ flashcards, stats }: Props) => {
-  const router = useRouter();
-
   const [flashcardIndex, setFlashcardIndex] = useState(0);
+
+  const currentFlashcard = flashcards[flashcardIndex];
+
+  if (!currentFlashcard) {
+    return (
+      <div className="text-center py-12 bg-background-page rounded-md">
+        <p className="text-xl mb-2">All flashcards reviewed!</p>
+        <p className="text-gray-400">Great job! Check back later for more reviews.</p>
+      </div>
+    );
+  }
+
   const [showAnswer, setShowAnswer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
@@ -95,6 +104,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [numHintsGiven, setNumHintsGiven] = useState(0);
   const [numShowMovesGiven, setNumShowMovesGiven] = useState(0);
   const [boardFenOverride, setBoardFenOverride] = useState<string | undefined>(undefined);
+  const [isGradingMove, setIsGradingMove] = useState(false);
+  const [moveGrade, setMoveGrade] = useState<MoveJudgement | null>(null);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -112,16 +123,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const numIncompleteLinesRef = useRef<number | null>(null);
   const totalLinesRef = useRef<number | null>(null);
 
-  const currentFlashcard = flashcards[flashcardIndex];
-
-  if (!currentFlashcard) {
-    return (
-      <div className="text-center py-12 bg-background-page rounded-md">
-        <p className="text-xl mb-2">All flashcards reviewed!</p>
-        <p className="text-gray-400">Great job! Check back later for more reviews.</p>
-      </div>
-    );
-  }
+  const router = useRouter();
 
   // Create a countdown for the countdownClock component (15 seconds)
   const {
@@ -303,40 +305,27 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       shouldUserPlayAnAlternativeMove, markCurrentLineComplete]);
 
 
-  const getBestMoves = useCallback((): ShortMove[] | null => {
-    const fc = flashcards[flashcardIndex];
-    if (fc == undefined) return null;
-    const result: ShortMove[] = [];
-    fc.bestLines.forEach((line) => {
-      const firstMoveLan = line.lanLine.trim().split(' ')[0];
-      result.push(lanToShortMove(firstMoveLan));
-    });
-    return result;
-  }, [flashcardIndex, flashcards])
-
-
-  const gradeMove = useCallback(async (move: Move) => {
+  const gradeMove = useCallback(async (move: Move): Promise<MoveJudgement> => {
     // TODO: Complete this
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) throw new Error('flashcard was undefined');
     if (fc.bestLines[0] == undefined) throw new Error('fc.bestLines was empty');
-    console.log('analyzing...');
     const pev = await analyzeFen(move.fen);
-    const judgement = judgePevAgainstBestLine(fc.bestLines[0], pev);
-    console.log('bestMove score:', fc.bestLines[0].score);
-    console.log('yourMove score:', pev.lines[0].score);
-    console.log(judgement);
+    return judgePevAgainstBestLine(fc.bestLines[0], pev);
   }, [analyzeFen, flashcards, flashcardIndex]);
 
 
-  const handleMoveThatWasNotInFlashcardPgn = useCallback(() => {
+  const handleMoveThatWasNotInFlashcardPgn = useCallback(async () => {
     if (currentMove == undefined) throw new Error('currentMove was undefined');
     if (areLinesForcing) {
       handleIncorrectUserMove();
     } else {
-      gradeMove(currentMove);
+      setIsGradingMove(true);
+      const judgement = await gradeMove(currentMove);
+      setIsGradingMove(false);
+      setMoveGrade(judgement);
     }
-  }, [currentMove, areLinesForcing, handleIncorrectUserMove]);
+  }, [currentMove, areLinesForcing, handleIncorrectUserMove, gradeMove]);
 
 
   const handleUserMove = useCallback(() => {
@@ -397,6 +386,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     const fc = flashcards[flashcardIndex];
     setLines(makeLineStatsRecord(fc.pgn));
     setHasUserCompletedFlashcard(false);
+    setMoveGrade(null);
     setWrongAnswerCount(0);
     setIsReplay(true);
     setupResetBoardTimeouts(resetBoardDelay);
@@ -582,6 +572,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     resetChessboardEngine();
     setIsReplay(false);
     setWrongAnswerCount(0);
+    setHasUserCompletedFlashcard(false);
+    setMoveGrade(null);
     setNumHintsGiven(0);
     setNumShowMovesGiven(0);
     numIncompleteLinesRef.current = null;
@@ -870,6 +862,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                     </div>
                   </div>
                   <FlashcardFeedback
+                    flashcard={currentFlashcard}
+                    currentMove={currentMove}
                     isFlashcardComplete={hasUserCompletedFlashcard}
                     onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
                     onNextFlashcardBtnClick={() => {
@@ -879,6 +873,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                     numWrongAnswers={wrongAnswerCount}
                     numHintsGiven={numHintsGiven}
                     numShowMovesGiven={numShowMovesGiven}
+                    isGradingMove={isGradingMove}
+                    moveGrade={moveGrade}
                   />
                 </div>
               )}
