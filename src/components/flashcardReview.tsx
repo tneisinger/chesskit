@@ -706,7 +706,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const contextMenu: ContextMenuItems = {
     'Delete from here forward': {
-      isDisabled: (move: Move) => move.ply <= currentFlashcard.positionIdx,
+      isDisabled: (move: Move) => move.ply <= currentFlashcard.positionIdx + 1,
       handler: (move: Move) => deleteMoves(move),
     },
     'Promote to main line': {
