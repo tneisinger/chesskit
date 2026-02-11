@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import BlinkOverlay from '@/components/blinkOverlay';
-import Button, { ButtonSize, ButtonStyle } from '@/components/button';
+import Button, { ButtonSize } from '@/components/button';
 import NewMovesDisplay, { ContextMenuItems } from '@/components/newMovesDisplay';
+import EngineDisplay from '@/components/engineDisplay';
 import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
 import FlashcardCompleteModal from './flashcardCompleteModal';
@@ -18,8 +19,9 @@ import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
 import { reviewFlashcard, updateFlashcardPgn, deleteFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
-import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
+import { MoveJudgement, PieceColor, ShortMove, Evaluations } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
+import useChessAnalyzer from '@/hooks/useChessAnalyzer';
 import {
   areCmMovesEqual,
   colorToMove,
@@ -33,7 +35,7 @@ import {
   Marker,
 } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
-import { areLinesEqual, areMovesEqual, convertLanLineToShortMoves, judgeLines, lanToShortMove } from '@/utils/chess';
+import { areLinesEqual, convertLanLineToShortMoves, judgeLines, lanToShortMove } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
 import { useCountdown } from '@/hooks/useCountdown';
@@ -140,6 +142,24 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     promoteVariationToMainLine,
     promoteVariation,
   } = useChessboardEngine();
+
+  const [evaluations, setEvaluations] = useState<Evaluations>({});
+  const [isCurrentMoveAnalysisOn, setIsCurrentMoveAnalysisOn] = useState(false);
+  const [engineDepth, setEngineDepth] = useState(20);
+  const [numEngineLines, setNumEngineLines] = useState(2);
+
+  const {
+    engineName,
+    fenBeingAnalyzed,
+    analyzeFen,
+  } = useChessAnalyzer(
+    evaluations,
+    setEvaluations,
+    isCurrentMoveAnalysisOn,
+    currentMove,
+    engineDepth,
+    numEngineLines,
+  );
 
   const previousMove = usePrevious(currentMove);
   const previousLines = usePrevious(lines);
@@ -742,6 +762,25 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const boardXMargin = 8;
   const mainDivWidth = boardSize + (outerColumnsWidth * 2) + (boardXMargin * 2);
 
+  const engineDisplay = (
+    <EngineDisplay
+      isEngineOn={isCurrentMoveAnalysisOn}
+      setIsEngineOn={(b) => setIsCurrentMoveAnalysisOn(b)}
+      evaluations={evaluations}
+      currentMove={currentMove}
+      engineMaxDepth={engineDepth}
+      engineName={engineName ? engineName : undefined}
+      isEvaluating={fenBeingAnalyzed != null}
+      maxLineLengthPx={outerColumnsWidth}
+      numLines={numEngineLines}
+      isSwitchDisabled={currentMode === Mode.Practice}
+      switchDisabledTooltip='Complete the flashcard to unlock the engine'
+      showMoveJudgements={false}
+      colorLineScores={true}
+    />
+  );
+
+
   return (
     <div className="flex flex-col items-center gap-3" style={{ width: mainDivWidth }}>
 
@@ -812,6 +851,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             <div className="flex flex-col items-center w-full flex-1 gap-2">
               {currentMode === Mode.Edit && (
                 <>
+                  <div className="flex bg-background-page w-full rounded-md min-h-4">
+                    {engineDisplay}
+                  </div>
                   <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
                     {movesDisplay}
                   </div>
