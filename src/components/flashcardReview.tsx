@@ -808,11 +808,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
         {/* Right column */}
         <div className="flex justify-end" style={{width: outerColumnsWidth + boardXMargin}}>
-          <div className="flex" style={{width: outerColumnsWidth}}>
+          <div className="flex" style={{width: outerColumnsWidth, height: boardSize }}>
             <div className="flex flex-col items-center w-full flex-1 gap-2">
               {currentMode === Mode.Edit && (
                 <>
-                  <div className="flex flex-col w-full flex-1 min-h-0">
+                  <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
                     {movesDisplay}
                   </div>
                   <FlashcardEditButtons
