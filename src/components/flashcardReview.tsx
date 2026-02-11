@@ -244,7 +244,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const shouldUserPlayAnAlternativeMove = useCallback((relevantLines: string[]): boolean => {
     if (!areLinesForcing) return false;
     return relevantLines.every((rLine => lines[rLine].isComplete));
-  }, [areLinesForcing]);
+  }, [areLinesForcing, lines]);
 
 
   const handleCorrectUserMove = useCallback((relevantLines: string[]) => {
