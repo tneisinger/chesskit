@@ -6,7 +6,7 @@ import Button, { ButtonStyle } from "@/components/button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
 import { GameData, Evaluations, MoveJudgement, PositionEvaluation } from '@/types/chess';
 import { createFlashcard, CreateFlashcardInput } from '@/app/flashcards/actions';
-import { judgeLines, lanToShortMove } from '@/utils/chess';
+import { judgeLines, lanToShortMove, getScoredBestMovesFromPev } from '@/utils/chess';
 import {
   colorToMove,
   getLineFromCmMove,
@@ -59,15 +59,15 @@ async function createFlashcardData(
   if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
   // Try to get forcing lines.
-  // TODO: clean this up
+  // TODO: Fix the 'findForcingLines' function
   const addedMoves = await findForcingLines(
     cmChess,
     flashcardMoveOfCmChess,
     evaluations,
     game.userColor,
     analyzeFen,
-    { numLines: 2, depth: 20, clearHash: false },
-    { minDepth: 20, maxLines: 2, maxLineLength: 7, moveFoundCallback: (move) => console.log('MOVE:', move.san)}
+    { numLines: 2, depth: 20, clearHash: true },
+    { minDepth: 20, maxLines: 1, maxLineLength: 4, moveFoundCallback: (move) => console.log('MOVE:', move.san)}
   );
 
   // If a forcing line is found, set 'areLinesForcing' to true.
@@ -104,7 +104,7 @@ async function createFlashcardData(
     pgn: renderPgn(cmChess).trim(),
     positionIdx: flashcardMove.ply,
     userColor: game.userColor,
-    bestLines: flashcardPev.lines,
+    bestMoves: getScoredBestMovesFromPev(flashcardPev),
   }
 }
 

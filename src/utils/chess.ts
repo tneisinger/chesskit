@@ -11,6 +11,7 @@ import {
   Evaluations,
   PositionEvaluation,
   TimeControl,
+  ScoredMove,
 } from '../types/chess';
 import { Chess as ChessJS } from 'chess.js';
 import { Chess as CmChess, Move, FEN  } from 'cm-chess/src/Chess';
@@ -938,9 +939,18 @@ export function makeMoveJudgements(
 // MoveJudgement.Excellent. Each element of the output array is the judgement for the
 // first move of the corresponding input line.
 export function judgeLines(color: PieceColor, lines: PositionEvaluation['lines']): MoveJudgement[] {
+  return judgeScores(color, lines.map(({score}) => score));
+}
+
+
+// Judge each score in the scores array. We assume that the scores array
+// is ordered from best to worst, so the first element in the output array will always be
+// MoveJudgement.Excellent. Each element of the output array is the judgement for the
+// corresponding score.
+export function judgeScores(color: PieceColor, scores: Score[]): MoveJudgement[] {
   const result: MoveJudgement[] = [];
-  lines.forEach((line) => {
-    result.push(judgeShift(povDiff(color, lines[0].score, line.score)))
+  scores.forEach((score) => {
+    result.push(judgeShift(povDiff(color, scores[0], score)))
   });
   return result;
 }
@@ -1025,9 +1035,14 @@ export function extrapolatePositionEvaluation(pev: PositionEvaluation): Position
   return result;
 }
 
-export function judgePevAgainstBestLine(
-  bestLine: {score: Score, lanLine: string },
-  pev: PositionEvaluation
+
+/**
+ * Judge a PositionEvaluation against the score that the best move received
+ * in the position prior to the PositionEvaluation's position.
+ */
+export function judgePevAgainstBestScore(
+  bestScore: Score,
+  pev: PositionEvaluation,
 ): MoveJudgement {
   if (pev.lines.length < 1) throw new Error('pev.lines.length < 1');
 
@@ -1038,6 +1053,19 @@ export function judgePevAgainstBestLine(
     colorThatMoved = PieceColor.BLACK;
   }
 
-  const [_, judgement] = judgeLines(colorThatMoved, [bestLine, pev.lines[0]])
-  return judgement;
+  return judgeShift(povDiff(colorThatMoved, bestScore, pev.lines[0].score))
+}
+
+export function getScoredBestMovesFromPev(pev: PositionEvaluation): ScoredMove[] {
+  if (pev.lines.length < 1) return [];
+
+  const result: ScoredMove[] = [];
+  pev.lines.forEach((line) => {
+    const lanMove = line.lanLine.trim().split(' ')[0];
+    const sanLine = convertLanLineToSanLine([lanMove], pev.fen);
+    if (sanLine.length !== 1) throw new Error('sanLine.length !== 1');
+    result.push({ moveSan: sanLine[0], score: line.score });
+  })
+
+  return result;
 }

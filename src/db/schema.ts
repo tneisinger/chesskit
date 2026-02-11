@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text, primaryKey, unique, index } from "drizzle-orm/sqlite-core";
 import type { Chapter } from "@/types/lesson";
-import type { Evaluations, PieceColor, PositionEvaluation } from "@/types/chess";
+import type { Evaluations, PieceColor, ScoredMove } from "@/types/chess";
 
 export const users = sqliteTable("users", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
@@ -136,9 +136,9 @@ export const flashcards = sqliteTable("flashcards", {
 	userColor: text("user_color", { enum: ["WHITE", "BLACK"] })
     .notNull()
     .$type<PieceColor>(),
-	bestLines: text("best_lines", { mode: "json" })
+	bestMoves: text("best_moves", { mode: "json" })
     .notNull()
-    .$type<PositionEvaluation['lines']>(),
+    .$type<ScoredMove[]>(),
 
 	// SuperMemo-2 algorithm fields
 	repetitions: integer("repetitions").notNull().default(0),

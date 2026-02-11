@@ -39,8 +39,8 @@ import { Move } from 'cm-chess/src/Chess';
 import {
   areLinesEqual,
   convertLanLineToShortMoves,
-  judgeLines,
-  judgePevAgainstBestLine,
+  judgeScores,
+  judgePevAgainstBestScore,
 } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
@@ -88,7 +88,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
   const [opponentFirstMove, setOpponentFirstMove] = useState<Move | undefined | null>(null);
-  const [lineJudgements, setLineJudgements] = useState<MoveJudgement[]>([]);
+  const [moveJudgements, setMoveJudgements] = useState<MoveJudgement[]>([]);
   const [areLinesForcing, setAreLinesForcing] = useState<boolean | null>(null);
   const [lines, setLines] = useState<Record<string, LineStats>>({});
   const [wrongAnswerBlinkTrigger, setWrongAnswerBlinkTrigger] = useState(0);
@@ -309,9 +309,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     // TODO: Complete this
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) throw new Error('flashcard was undefined');
-    if (fc.bestLines[0] == undefined) throw new Error('fc.bestLines was empty');
+    if (fc.bestMoves[0] == undefined) throw new Error('fc.bestLines was empty');
     const pev = await analyzeFen(move.fen);
-    return judgePevAgainstBestLine(fc.bestLines[0], pev);
+    return judgePevAgainstBestScore(fc.bestMoves[0].score, pev);
   }, [analyzeFen, flashcards, flashcardIndex]);
 
 
@@ -581,14 +581,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     const fc = flashcards[flashcardIndex];
     if (fc != undefined) {
-      if (fc.bestLines.length < 2) throw new Error('flashcard has fewer than two elements in bestLines');
-      const lineJs = judgeLines(fc.userColor, fc.bestLines);
-      setLineJudgements(lineJs);
+      if (fc.bestMoves.length < 2) throw new Error('flashcard has fewer than two elements in bestMoves');
+      const judgements = judgeScores(fc.userColor, fc.bestMoves.map(({score}) => score));
+      setMoveJudgements(judgements);
 
-      // If the judgement of the second best line is one of the GOOD_JUDGEMENTS,
+      // If the judgement of the second best move is one of the GOOD_JUDGEMENTS,
       // that means that there are at least two 'good enough' answers to this flashcard.
       // In that case, set areLinesForcing to false. Otherwise, set areLinesForcing to true.
-      if (GOOD_JUDGEMENTS.includes(lineJs[1])) {
+      if (GOOD_JUDGEMENTS.includes(judgements[1])) {
         setAreLinesForcing(false);
       } else {
         setAreLinesForcing(true);
@@ -608,7 +608,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setLines(makeLineStatsRecord(fc.pgn))
       setBoardFenOverride(undefined);
     } else {
-      setLineJudgements([]);
+      setMoveJudgements([]);
       setAreLinesForcing(null);
       setOpponentFirstMove(null);
       setLines({});

@@ -102,3 +102,5 @@ export interface PositionEvaluation {
  * A map from fen strings to PositionEvaluations for one chess game.
  */
 export type Evaluations = Record<string, PositionEvaluation>;
+
+export type ScoredMove = { moveSan: string, score: Score };
