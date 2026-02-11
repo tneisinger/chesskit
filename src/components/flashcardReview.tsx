@@ -865,13 +865,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                   <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
                     {movesDisplay}
                   </div>
+                  {arrowButtons}
                   <FlashcardEditButtons
                     onDiscardChangesBtnClick={discardUnsavedChanges}
                     onSaveChangesBtnClick={saveFlashcardPgnChanges}
                     onDeleteFlashcardBtnClick={() => setShowDeleteFlashcardModal(true)}
                     doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
                   />
-                  {arrowButtons}
                 </>
               )}
             </div>
