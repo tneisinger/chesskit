@@ -867,8 +867,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         </div>
       </div>
 
+      {/*
       <div>
-        {/* Review Section */}
+        {// Review Section }
         <div className="bg-background-page p-6 rounded-md w-full max-w-xl">
           <h2 className="text-lg font-semibold mb-4">Find the best move</h2>
 
@@ -904,7 +905,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                 </>
               )}
 
-              {/* Rating buttons */}
+              {// Rating buttons }
               <div className="mt-6">
                 <p className="text-sm mb-3 text-gray-400">How well did you know this?</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -954,11 +955,12 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
           )}
         </div>
 
-        {/* Stats reminder */}
+        {// Stats reminder }
         <div className="text-xs text-gray-500">
           Remaining today: {stats.due - flashcardIndex - 1}
         </div>
       </div>
+      */}
     </div>
   );
 };
