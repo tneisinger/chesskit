@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Modal from '@/components/modal';
 import Button, { ButtonStyle } from "@/components/button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
-import { GameData, Evaluations, MoveJudgement } from '@/types/chess';
+import { GameData, Evaluations, MoveJudgement, PositionEvaluation } from '@/types/chess';
 import { createFlashcard, CreateFlashcardInput } from '@/app/flashcards/actions';
 import { judgeLines, lanToShortMove } from '@/utils/chess';
 import {
@@ -12,9 +12,10 @@ import {
   getLineFromCmMove,
   getMainLineParentOfVariation,
   isInVariation,
-  playForcingLineIntoCmChess,
+  findForcingLines,
   renderPgn
 } from '@/utils/cmchess';
+import { AnalyzeFenOptions } from '@/hooks/useChessAnalyzer';
 
 interface Props {
   show: boolean;
@@ -22,13 +23,15 @@ interface Props {
   currentMove: Move;
   onClose: () => void;
   evaluations: Evaluations;
+  analyzeFen: (fen: string, options?: AnalyzeFenOptions) => Promise<PositionEvaluation>
 }
 
-function createFlashcardData(
+async function createFlashcardData(
   game: GameData,
   move: Move,
   evaluations: Evaluations,
-): CreateFlashcardInput {
+  analyzeFen: (fen: string, options?: AnalyzeFenOptions) => Promise<PositionEvaluation>
+): Promise<CreateFlashcardInput> {
   // The flashcard move is the move that represents the starting position
   // of the flashcard. If we are in a variation, the flashcard move should
   // be the mainLine parent of the variation.
@@ -55,8 +58,19 @@ function createFlashcardData(
   if (flashcardMoveOfCmChess == undefined) throw new Error('lastMove was undefined');
   if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
-  // Try to get a forcing line. If a forcing line is found, set 'areLinesForcing' to true.
-  const addedMoves = playForcingLineIntoCmChess(cmChess, flashcardMoveOfCmChess, evaluations, game.userColor);
+  // Try to get forcing lines.
+  // TODO: clean this up
+  const addedMoves = await findForcingLines(
+    cmChess,
+    flashcardMoveOfCmChess,
+    evaluations,
+    game.userColor,
+    analyzeFen,
+    { numLines: 2, depth: 20, clearHash: false },
+    { minDepth: 20, maxLines: 2, maxLineLength: 7, moveFoundCallback: (move) => console.log('MOVE:', move.san)}
+  );
+
+  // If a forcing line is found, set 'areLinesForcing' to true.
   let areLinesForcing = false;
   if (addedMoves.length > 0) {
     areLinesForcing = true;
@@ -94,7 +108,14 @@ function createFlashcardData(
   }
 }
 
-const CreateFlashcardModal = ({ show, game, currentMove, evaluations, onClose }: Props) => {
+const CreateFlashcardModal = ({
+  show,
+  game,
+  currentMove,
+  evaluations,
+  onClose,
+  analyzeFen,
+}: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,7 +131,7 @@ const CreateFlashcardModal = ({ show, game, currentMove, evaluations, onClose }:
     setIsSubmitting(true);
 
     // TODO: Prevent creation of duplicate flashcards
-    const flashcardData = createFlashcardData(game, currentMove, evaluations);
+    const flashcardData = await createFlashcardData(game, currentMove, evaluations, analyzeFen);
 
     try {
       const result = await createFlashcard(flashcardData);

@@ -1,16 +1,16 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { GameData, Evaluations, MoveJudgement } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Move } from 'cm-chess/src/Chess';
 import { makeMoveJudgement } from "@/utils/chess";
 import { getColor, getMainLineParentOfVariation, isInVariation } from "@/utils/cmchess";
-import CreateFlashcardModal from "./createFlashcardModal";
 
 interface Props {
   game: GameData;
   evaluations: Evaluations;
   currentMove: Move | undefined;
   hasGameBeenAnalyzed: boolean;
+  showCreateFlashcardModal: () => void;
 }
 
 const GameReviewButtons = ({
@@ -18,9 +18,8 @@ const GameReviewButtons = ({
   evaluations,
   currentMove,
   hasGameBeenAnalyzed,
+  showCreateFlashcardModal,
 }: Props) => {
-  const [showCreateFlashcardModal, setShowCreateFlashcardModal] = useState(false);
-
   const shouldHighlightFlashcardBtn = useCallback((): boolean => {
     // Don't highlight the button if in the starting position.
     if (currentMove === undefined) return false;
@@ -94,22 +93,12 @@ const GameReviewButtons = ({
           </Button>
           <Button
             buttonStyle={shouldHighlightFlashcardBtn() ? ButtonStyle.Primary : ButtonStyle.Normal}
-            onClick={() => setShowCreateFlashcardModal(true)}
+            onClick={() => showCreateFlashcardModal()}
             disabled={shouldDisableFlashcardBtn()}
           >
             Make Flashcard
           </Button>
         </div>
-      )}
-
-      {currentMove && (
-        <CreateFlashcardModal
-          show={showCreateFlashcardModal}
-          game={game}
-          currentMove={currentMove}
-          evaluations={evaluations}
-          onClose={() => setShowCreateFlashcardModal(false)}
-        />
       )}
     </div>
   );
