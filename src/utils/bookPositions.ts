@@ -47,6 +47,7 @@ export const commonOpeningPositions = [
   'rnbqkb1r/pppppppp/5n2/8/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq -', // Accelerated London Nf6
   'r1bqkbnr/pppppppp/2n5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -', // Nimzowitsch Defense
   'rnbqkb1r/pppppppp/5n2/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -', // Indian Defense
+  'rnbqkbnr/ppp1pppp/3p4/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -', // Pirc Defense
 ];
 
 export const possibleEnPassantSquares = [
