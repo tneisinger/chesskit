@@ -9,7 +9,7 @@ import NewMovesDisplay, { ContextMenuItems } from '@/components/newMovesDisplay'
 import EngineDisplay from '@/components/engineDisplay';
 import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
-import FlashcardCompleteModal from './flashcardCompleteModal';
+import FlashcardFeedback from './flashcardFeedback';
 import DeleteFlashcardModal, { DeleteStatus } from './deleteFlashcardModal';
 import FlashcardEditButtons from './flashcardEditButtons';
 import HintButtons from '@/components/hintButtons';
@@ -88,7 +88,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [showAltMoveModal, setShowAltMoveModal] = useState(false);
   const [showDeleteFlashcardModal, setShowDeleteFlashcardModal] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>(DeleteStatus.NotStarted);
-  const [showFlashcardCompleteModal, setShowFlashcardCompleteModal] = useState(false);
   const [isReplay, setIsReplay] = useState(false);
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [arrows, setArrows] = useState<Arrow[]>([]);
@@ -101,7 +100,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
   const undoMoveTimeoutRef = useRef<number>(0);
   const resetBoardTimeoutRef = useRef<number>(0);
-  const showFlashcardCompleteModalTimeoutRef = useRef<number>(0);
 
   // Put all the timeouts into an array for easy cleanup
   const timeoutRefs = [
@@ -109,7 +107,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     wrongAnswerBlinkTimeoutRef,
     undoMoveTimeoutRef,
     resetBoardTimeoutRef,
-    showFlashcardCompleteModalTimeoutRef,
   ]
 
   const numIncompleteLinesRef = useRef<number | null>(null);
@@ -396,13 +393,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [lines, currentMove]);
 
 
-  const handleReplayFlashcardBtnClick = useCallback(() => {
+  const handleReplayFlashcardBtnClick = useCallback((resetBoardDelay = 500) => {
     const fc = flashcards[flashcardIndex];
     setLines(makeLineStatsRecord(fc.pgn));
     setHasUserCompletedFlashcard(false);
     setWrongAnswerCount(0);
     setIsReplay(true);
-    setupResetBoardTimeouts(500); // 500 is a half-second delay
+    setupResetBoardTimeouts(resetBoardDelay);
     resetClock();
     setNumHintsGiven(0);
     setNumShowMovesGiven(0);
@@ -517,8 +514,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     // Switching to Practice mode
     if (currentMode === Mode.Edit) {
       setCurrentMode(Mode.Practice);
-      resetClock();
-      setupResetBoardTimeouts(250);
+      handleReplayFlashcardBtnClick(250);
     }
 
     // Switching to Edit mode
@@ -527,7 +523,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       discardUnsavedChanges();
       setCurrentMode(Mode.Edit);
     }
-  }, [currentMode, pauseClock, setupResetBoardTimeouts, resetClock, discardUnsavedChanges]);
+  }, [currentMode, pauseClock, handleReplayFlashcardBtnClick, discardUnsavedChanges]);
 
 
   // Whenever lines changes, update the numIncompleteLines and totalLines refs
@@ -574,12 +570,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     // Also, if areLinesForcing is false (aka this is not a forcing line flashcard) and
     // ANY lines have been completed, then the flashcard is complete.
     if (numIncompleteLinesRef.current === 0 || (!areLinesForcing && haveAnyLinesBeenCompleted)) {
-      // Pause the clock and show the FlashcardCompleteModal after a delay.
+      // Pause the clock and mark the flashcard complete
       pauseClock();
-      showFlashcardCompleteModalTimeoutRef.current = window.setTimeout(() => {
-        setShowFlashcardCompleteModal(true);
-        setHasUserCompletedFlashcard(true);
-      }, 600);
+      setHasUserCompletedFlashcard(true);
     }
   }, [lines, areLinesForcing, previousLines, setupResetBoardTimeouts, pauseClock]);
 
@@ -819,18 +812,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
               performWrongAnswerActions({ indicateThatTheMoveWasWrong: false });
             }}
           />
-          <FlashcardCompleteModal
-            show={showFlashcardCompleteModal}
-            onClose={() => setShowFlashcardCompleteModal(false)}
-            onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
-            onNextFlashcardBtnClick={() => {
-              setBoardFenOverride(FEN.empty);
-              setFlashcardIndex((i) => i + 1);
-            }}
-            numWrongAnswers={wrongAnswerCount}
-            numHintsGiven={numHintsGiven}
-            numShowMovesGiven={numShowMovesGiven}
-          />
           <DeleteFlashcardModal
             show={showDeleteFlashcardModal}
             onClose={() => {
@@ -859,7 +840,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         <div className="flex justify-end" style={{width: rightColumnWidth + columnGapWidth}}>
           <div className="flex" style={{width: rightColumnWidth, height: boardSize }}>
             <div className="flex flex-col items-center w-full flex-1 gap-2">
-              {currentMode === Mode.Edit ? (
+              {currentMode === Mode.Edit && (
                 <>
                   <div className="flex bg-background-page w-full rounded-md min-h-4">
                     {engineDisplay}
@@ -875,16 +856,30 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                     doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
                   />
                 </>
-              ): (
-                <div className="flex flex-col gap-4 w-full bg-background-page rounded-md p-2 text-center">
-                  <h1 className="text-2xl font-bold">Flashcard Review</h1>
-                  <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
-                  <div className="flex gap-4 text-sm text-gray-400 justify-center">
-                    <div>Total: <span className="font-semibold text-foreground">{stats.total}</span></div>
-                    <div>Due: <span className="font-semibold text-foreground">{stats.due}</span></div>
-                    <div>Learning: <span className="font-semibold text-foreground">{stats.learning}</span></div>
-                    <div>Mature: <span className="font-semibold text-foreground">{stats.mature}</span></div>
+              )}
+              {currentMode !== Mode.Edit && (
+                <div className="flex flex-col gap-2 flex-1">
+                  <div className="flex flex-col gap-4 w-full bg-background-page rounded-md p-2 text-center">
+                    <h1 className="text-2xl font-bold">Flashcard Review</h1>
+                    <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
+                    <div className="flex gap-4 text-sm text-gray-400 justify-center">
+                      <div>Total: <span className="font-semibold text-foreground">{stats.total}</span></div>
+                      <div>Due: <span className="font-semibold text-foreground">{stats.due}</span></div>
+                      <div>Learning: <span className="font-semibold text-foreground">{stats.learning}</span></div>
+                      <div>Mature: <span className="font-semibold text-foreground">{stats.mature}</span></div>
+                    </div>
                   </div>
+                  <FlashcardFeedback
+                    isFlashcardComplete={hasUserCompletedFlashcard}
+                    onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
+                    onNextFlashcardBtnClick={() => {
+                      setBoardFenOverride(FEN.empty);
+                      setFlashcardIndex((i) => i + 1);
+                    }}
+                    numWrongAnswers={wrongAnswerCount}
+                    numHintsGiven={numHintsGiven}
+                    numShowMovesGiven={numShowMovesGiven}
+                  />
                 </div>
               )}
             </div>
