@@ -2,7 +2,13 @@ import { Chess as CmChess, COLOR, Move } from 'cm-chess/src/Chess';
 import { MarkerTypeConfig } from 'cm-chessboard/src/extensions/markers/Markers';
 import ChessJS from '@/chessjs';
 import { Square, Move as ChessJsMove } from 'chess.js';
-import { Evaluations, PieceColor, ShortMove, MoveJudgement } from '@/types/chess';
+import {
+  Evaluations,
+  PieceColor,
+  ShortMove,
+  MoveJudgement,
+  PositionEvaluation
+} from '@/types/chess';
 import {
   isSubline,
   performMove,
@@ -13,6 +19,7 @@ import {
   judgeLines,
 } from '@/utils/chess';
 import { getLinesFromPGN } from './pgn';
+import { AnalyzeFenOptions } from '@/hooks/useChessAnalyzer';
 
 export function areMovesEqual(m1: Move | undefined, m2: Move | undefined): boolean {
   if (m1 == undefined || m2 == undefined) return false;
@@ -740,5 +747,163 @@ export function getEvaluationsFromMoveForward(
     }
     nextMove = nextMove.next;
   }
+  return result;
+}
+
+export async function findForcingLines(
+  cmChess: CmChess,
+  move: Move,
+  evaluations: Evaluations,
+  userColor: PieceColor,
+  analyzeFen: (fen: string, options?: AnalyzeFenOptions) => Promise<PositionEvaluation>,
+  analyzeFenOptions: AnalyzeFenOptions,
+  options: { minDepth: number, maxLines: number, maxLineLength: number, moveFoundCallback?: (move: Move) => void },
+): Promise<string[]> {
+  const { minDepth, maxLines, maxLineLength, moveFoundCallback } = options;
+
+  // Validate analyzeFenOptions
+  if (analyzeFenOptions.numLines !== undefined && analyzeFenOptions.numLines < 2) {
+    throw new Error('analyzeFenOptions.numLines must be at least 2');
+  }
+
+  const isUsersTurn = (m: Move) => userColor === colorToMove(m);
+  if (!isUsersTurn(move)) throw new Error("It was not the user's turn in the input move");
+
+  // Track total branches created across all opponent positions
+  let totalBranchesCreated = 0;
+
+  // Helper function to get or fetch evaluation
+  const getEvaluation = async (fen: string): Promise<PositionEvaluation | null> => {
+    const existing = evaluations[fen];
+    if (existing && existing.depth >= minDepth) {
+      return existing;
+    }
+
+    try {
+      const evaluation = await analyzeFen(fen, {
+        ...analyzeFenOptions,
+        addToEvaluations: true,
+      });
+      evaluations[fen] = evaluation;
+      return evaluation;
+    } catch (error) {
+      console.error('Error analyzing position:', error);
+      return null;
+    }
+  };
+
+  // Similar to playOnlyMove but async
+  const playOnlyMoveAsync = async (
+    cmChess: CmChess,
+    move: Move,
+  ): Promise<Move | null> => {
+    const evaluation = await getEvaluation(move.fen);
+    if (!evaluation) return null;
+    if (evaluation.lines.length < 2) return null;
+
+    const nextMoveColor = colorToMove(move);
+    const lineJudgements = judgeLines(nextMoveColor, evaluation.lines);
+
+    const badJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake, MoveJudgement.Inaccurate];
+    if (badJudgements.includes(lineJudgements[1])) {
+      const firstMoveLan = evaluation.lines[0].lanLine.trim().split(' ')[0];
+      const m = cmChess.move(lanToShortMove(firstMoveLan), move);
+      if (m == undefined) throw new Error('m was undefined');
+      if (moveFoundCallback) moveFoundCallback(m);
+      return m;
+    }
+    return null;
+  };
+
+  // Similar to playMovesThatLeadToOnlyMoves but async (sequential analysis)
+  const playMovesThatLeadToOnlyMovesAsync = async (
+    cmChess: CmChess,
+    move: Move,
+  ): Promise<Move[]> => {
+    const evaluation = await getEvaluation(move.fen);
+    if (!evaluation) return [];
+
+    const result: Move[] = [];
+    const lineMoves = evaluation.lines.map((line) => lanToShortMove(line.lanLine.trim().split(' ')[0]));
+
+    let numMovesPlayed = 0;
+
+    // Analyze positions sequentially to avoid parallel analysis conflicts
+    for (let i = 0; i < lineMoves.length; i++) {
+      // Stop if we've already created the maximum number of branches
+      if (numMovesPlayed > 0 && totalBranchesCreated >= maxLines) break;
+
+      const lineMove = lineMoves[i];
+
+      // Create a new cmChess with all the moves
+      const tempCmChess = new CmChess();
+      getLineFromCmMove(move).forEach((m) => {
+        const moveResult = tempCmChess.move(m.san);
+        if (moveResult == undefined) throw new Error('moveResult was undefined');
+      });
+
+      // Play the lineMove into tempCmChess
+      const moveResult = tempCmChess.move(lineMove);
+      if (moveResult == undefined) throw new Error('moveResult was undefined');
+
+      // Get evaluation for this position (sequential)
+      const lineMoveEvaluation = await getEvaluation(tempCmChess.fen());
+      if (!lineMoveEvaluation) continue;
+      if (lineMoveEvaluation.lines.length < 2) continue;
+
+      // Get the lineJudgements
+      const badJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake];
+      const nextMoveColor = colorToMove(moveResult);
+      const lineJudgements = judgeLines(nextMoveColor, lineMoveEvaluation.lines);
+
+      if (badJudgements.includes(lineJudgements[1])) {
+        const playedMove = cmChess.move(lineMove, move);
+        if (playedMove == undefined) throw new Error('result of cmChess.move(lineMove) was undefined');
+        result.push(playedMove);
+        if (moveFoundCallback) moveFoundCallback(playedMove);
+
+        // Increment total branches created
+        numMovesPlayed++;
+        if (numMovesPlayed > 1) {
+          totalBranchesCreated++;
+        }
+      }
+    }
+
+    return result;
+  };
+
+  // Main loop - similar to playForcingLinesIntoCmChess but async
+  // Track depth for each move to enforce maxLineLength
+  const result: string[] = [];
+  let mostRecentMoves: Array<{ move: Move, depth: number }> = [{ move, depth: 0 }];
+
+  while (mostRecentMoves.length > 0) {
+    const current = mostRecentMoves.pop();
+    if (current == undefined) throw new Error('current was undefined');
+
+    const { move: currentMove, depth: currentDepth } = current;
+
+    // Stop exploring this line if we've reached maxLineLength
+    if (currentDepth >= maxLineLength) continue;
+
+    if (isUsersTurn(currentMove)) {
+      const onlyMove = await playOnlyMoveAsync(cmChess, currentMove);
+      if (onlyMove == null) continue;
+      result.push(onlyMove.fen);
+      mostRecentMoves.push({ move: onlyMove, depth: currentDepth + 1 });
+    } else {
+      const moves = await playMovesThatLeadToOnlyMovesAsync(cmChess, currentMove);
+      if (moves.length === 0) {
+        continue;
+      } else {
+        moves.forEach((m) => {
+          result.push(m.fen);
+          mostRecentMoves.push({ move: m, depth: currentDepth + 1 });
+        });
+      }
+    }
+  }
+
   return result;
 }
