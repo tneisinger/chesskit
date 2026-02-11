@@ -26,11 +26,12 @@ export enum AnalysisStatus {
   Complete = 'Complete',
 }
 
-interface AnalyzeFenOptions {
+export interface AnalyzeFenOptions {
   addToEvaluations?: boolean;
   depth?: number;
   numLines?: number;
   threads?: number;
+  clearHash?: boolean; // Send ucinewgame before analyzing to clear hash tables
 }
 
 interface Output {
@@ -291,6 +292,11 @@ export default function useChessAnalyzer(
       }
       if (needsNumLinesReset) {
         stockfish.postMessage(`setoption name MultiPV value ${options.numLines}`);
+      }
+
+      // Clear hash tables if requested
+      if (options.clearHash) {
+        stockfish.postMessage('ucinewgame');
       }
 
       // Start analyzing
