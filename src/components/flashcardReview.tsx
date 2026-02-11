@@ -36,7 +36,13 @@ import {
   Marker,
 } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
-import { areLinesEqual, convertLanLineToShortMoves, judgeLines, lanToShortMove } from '@/utils/chess';
+import {
+  areLinesEqual,
+  convertLanLineToShortMoves,
+  judgeLines,
+  judgePevAgainstBestLine,
+  lanToShortMove,
+} from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
 import { useCountdown } from '@/hooks/useCountdown';
@@ -312,10 +318,18 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [flashcardIndex, flashcards])
 
 
-  const gradeMove = useCallback((move: Move) => {
-    // TODO: implement this
-    console.log('implement this');
-  }, [getBestMoves, lineJudgements]);
+  const gradeMove = useCallback(async (move: Move) => {
+    // TODO: Complete this
+    const fc = flashcards[flashcardIndex];
+    if (fc == undefined) throw new Error('flashcard was undefined');
+    if (fc.bestLines[0] == undefined) throw new Error('fc.bestLines was empty');
+    console.log('analyzing...');
+    const pev = await analyzeFen(move.fen);
+    const judgement = judgePevAgainstBestLine(fc.bestLines[0], pev);
+    console.log('bestMove score:', fc.bestLines[0].score);
+    console.log('yourMove score:', pev.lines[0].score);
+    console.log(judgement);
+  }, [analyzeFen, flashcards, flashcardIndex]);
 
 
   const handleMoveThatWasNotInFlashcardPgn = useCallback(() => {

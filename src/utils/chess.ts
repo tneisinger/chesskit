@@ -1024,3 +1024,20 @@ export function extrapolatePositionEvaluation(pev: PositionEvaluation): Position
 
   return result;
 }
+
+export function judgePevAgainstBestLine(
+  bestLine: {score: Score, lanLine: string },
+  pev: PositionEvaluation
+): MoveJudgement {
+  if (pev.lines.length < 1) throw new Error('pev.lines.length < 1');
+
+  // Get the color that moved to reach the pev position
+  const { activeColor } = getFenParts(pev.fen);
+  let colorThatMoved = PieceColor.WHITE;
+  if (activeColor === PieceColor.WHITE) {
+    colorThatMoved = PieceColor.BLACK;
+  }
+
+  const [_, judgement] = judgeLines(colorThatMoved, [bestLine, pev.lines[0]])
+  return judgement;
+}
