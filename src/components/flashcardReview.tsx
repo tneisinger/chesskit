@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { MoveJudgement, PieceColor, ShortMove, Evaluations } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import useChessAnalyzer from '@/hooks/useChessAnalyzer';
+import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
 import {
   areCmMovesEqual,
   colorToMove,
@@ -159,6 +160,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     currentMove,
     engineDepth,
     numEngineLines,
+  );
+
+  useEngineArrowCreator(
+    isCurrentMoveAnalysisOn,
+    evaluations,
+    currentMove,
+    (newArrows) => setArrows(newArrows),
   );
 
   const previousMove = usePrevious(currentMove);
