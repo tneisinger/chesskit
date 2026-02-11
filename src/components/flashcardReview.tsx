@@ -780,9 +780,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     />
   );
 
-  const outerColumnsWidth = 250;
-  const boardXMargin = 8;
-  const mainDivWidth = boardSize + (outerColumnsWidth * 2) + (boardXMargin * 2);
+  const rightColumnWidth = 300;
+  const columnGapWidth = 8;
+  const mainDivWidth = boardSize + rightColumnWidth + columnGapWidth;
 
   const engineDisplay = (
     <EngineDisplay
@@ -793,7 +793,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       engineMaxDepth={engineDepth}
       engineName={engineName ? engineName : undefined}
       isEvaluating={fenBeingAnalyzed != null}
-      maxLineLengthPx={outerColumnsWidth}
+      maxLineLengthPx={rightColumnWidth}
       numLines={numEngineLines}
       isSwitchDisabled={currentMode === Mode.Practice}
       switchDisabledTooltip='Complete the flashcard to unlock the engine'
@@ -806,22 +806,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   return (
     <div className="flex flex-col items-center gap-3" style={{ width: mainDivWidth }}>
 
-      {/* First row - Board is center column  */}
+      {/* First row  */}
       <div className="flex flex-row w-full max-w-[1400px]">
 
-        {/* Left Column */}
-        <div className="flex justify-start" style={{width: outerColumnsWidth + boardXMargin}}>
-          <div style={{width: outerColumnsWidth}}>
-            {currentMode === Mode.Edit && (
-              <div className="text-sm text-gray-400 w-full bg-background-page">
-                <p>Card Details</p>
-                <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Center Column - Chessboard */}
+        {/* Left Column - Chessboard */}
         <div className="relative" style={{ width: boardSize }}>
           <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
           <AltMoveModal
@@ -868,10 +856,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         </div>
 
         {/* Right column */}
-        <div className="flex justify-end" style={{width: outerColumnsWidth + boardXMargin}}>
-          <div className="flex" style={{width: outerColumnsWidth, height: boardSize }}>
+        <div className="flex justify-end" style={{width: rightColumnWidth + columnGapWidth}}>
+          <div className="flex" style={{width: rightColumnWidth, height: boardSize }}>
             <div className="flex flex-col items-center w-full flex-1 gap-2">
-              {currentMode === Mode.Edit && (
+              {currentMode === Mode.Edit ? (
                 <>
                   <div className="flex bg-background-page w-full rounded-md min-h-4">
                     {engineDisplay}
@@ -887,6 +875,17 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                     doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
                   />
                 </>
+              ): (
+                <div className="flex flex-col gap-4 w-full bg-background-page rounded-md p-2 text-center">
+                  <h1 className="text-2xl font-bold">Flashcard Review</h1>
+                  <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
+                  <div className="flex gap-4 text-sm text-gray-400 justify-center">
+                    <div>Total: <span className="font-semibold text-foreground">{stats.total}</span></div>
+                    <div>Due: <span className="font-semibold text-foreground">{stats.due}</span></div>
+                    <div>Learning: <span className="font-semibold text-foreground">{stats.learning}</span></div>
+                    <div>Mature: <span className="font-semibold text-foreground">{stats.mature}</span></div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -895,10 +894,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
       {/* Second Row  */}
       <div className="flex flex-row w-full max-w-[1400px]">
-
-        {/* Left Column */}
-        <div className="flex justify-start" style={{width: outerColumnsWidth + boardXMargin}}>
-        </div>
 
         {/* Center Column */}
         <div className="relative" style={{ width: boardSize }}>
@@ -927,7 +922,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         </div>
 
         {/* Right column */}
-        <div className="flex justify-end" style={{width: outerColumnsWidth + boardXMargin}}>
+        <div className="flex justify-end" style={{width: rightColumnWidth + columnGapWidth}}>
         </div>
       </div>
 
