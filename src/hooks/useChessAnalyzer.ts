@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Evaluations, PositionEvaluation } from '@/types/chess';
+import { Evaluations, MoveJudgement, PositionEvaluation } from '@/types/chess';
 import { Move } from 'cm-chess/src/Chess';
 import {
   parseBestMoveLine,
@@ -12,11 +12,12 @@ import {
   MultiPV,
   Lines,
 } from '@/utils/stockfish';
-import { getFen } from '@/utils/chess';
+import { getFen, judgeLines, lanToShortMove } from '@/utils/chess';
 import useStockfish from '@/hooks/useStockfish';
 import { parse as parsePGN } from 'pgn-parser';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
 import usePrevious from '@/hooks/usePrevious';
+import { colorToMove, getLineFromCmMove } from '@/utils/cmchess';
 
 const MAX_THREADS_USAGE = 0.5;
 
@@ -34,7 +35,14 @@ export interface AnalyzeFenOptions {
   clearHash?: boolean; // Send ucinewgame before analyzing to clear hash tables
 }
 
-interface Output {
+export interface AddForcingLinesOptions {
+  minDepth: number;
+  moveFoundCallback: (move: Move) => void;
+  maxLines: number;
+  maxLineLength: number;
+}
+
+export interface Output {
   analyzePgn: (pgn: string, analyzeVariations?: boolean) => void;
   latestEvaluation: PositionEvaluation | null;
   fenBeingAnalyzed: string | null;
@@ -44,6 +52,7 @@ interface Output {
   currentPosition: number; // Current position being analyzed
   totalPositions: number; // Total positions to analyze
   analyzeFen: (fen: string, options?: AnalyzeFenOptions) => Promise<PositionEvaluation>
+  addForcingLinesToCmChess: (cmChess: CmChess, move: Move, options: AddForcingLinesOptions) => Promise<Move[][]>
 }
 
 export default function useChessAnalyzer(
@@ -89,6 +98,8 @@ export default function useChessAnalyzer(
     resolve: (value: PositionEvaluation) => void;
     reject: (reason: any) => void;
   } | null>(null);
+
+  const pendingAnalyzeFenStart = useRef<{ fen: string; depth: number } | null>(null);
 
   const changeFenBeingAnalyzed = (fen: string | null) => {
     fenRef.current = fen;
@@ -299,13 +310,195 @@ export default function useChessAnalyzer(
         stockfish.postMessage('ucinewgame');
       }
 
-      // Start analyzing
+      // Start analyzing - wait for stockfish to be ready
       lastDepth.current = 0;
       changeFenBeingAnalyzed(fen);
-      stockfish.postMessage(`position fen ${fen}`);
-      stockfish.postMessage(`go depth ${options.depth}`);
+      pendingAnalyzeFenStart.current = { fen, depth: options.depth! };
+      stockfish.postMessage('isready');
     });
   }, [evalDepth, numLines, stockfish, evaluations, recommendation]);
+
+
+  const addForcingLinesToCmChess = useCallback(async (cmChess: CmChess, move: Move, options: AddForcingLinesOptions): Promise<Move[][]> => {
+    const { minDepth, moveFoundCallback, maxLines, maxLineLength } = options;
+
+    if (maxLines < 1) throw new Error('maxLines must be >= 1');
+    if (maxLineLength < 1) throw new Error('maxLineLength must be >= 1');
+
+    // Create a modified version of the maxLineLength variable. Make sure it is odd.
+    // If it is even, decrement it by 1.
+    let maximumLineLength = maxLineLength;
+    if (maximumLineLength % 2 === 0) maximumLineLength--;
+
+    let numLinesCreated = 0;
+
+    const badJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake, MoveJudgement.Inaccurate];
+
+    // Helper function to get or fetch evaluation
+    const getEvaluation = async (fen: string): Promise<PositionEvaluation | null> => {
+      const existing = evaluations[fen];
+      if (existing && existing.depth >= minDepth) {
+        return existing;
+      }
+
+      try {
+        const evaluation = await analyzeFen(fen, { clearHash: false });
+        setEvaluations((evs) => ({ ...evs, [fen]: evaluation}));
+        return evaluation;
+      } catch (error) {
+        console.error('Error analyzing position:', error);
+        return null;
+      }
+    };
+
+    // Helper function that will play an only move if one is found
+    const playOnlyMove = async (
+      cmChess: CmChess,
+      move: Move,
+    ): Promise<{ move: Move, pev: PositionEvaluation } | null> => {
+      const evaluation = await getEvaluation(move.fen);
+      if (!evaluation) return null;
+      if (evaluation.lines.length < 2) return null;
+
+      const nextMoveColor = colorToMove(move);
+      const lineJudgements = judgeLines(nextMoveColor, evaluation.lines);
+
+      // If the second best move of an evaluation is one of these, then the best move is considered
+      // a forcing move.
+      if (badJudgements.includes(lineJudgements[1])) {
+        const firstMoveLan = evaluation.lines[0].lanLine.trim().split(' ')[0];
+        const m = cmChess.move(lanToShortMove(firstMoveLan), move);
+        if (m == undefined) throw new Error('m was undefined');
+        if (moveFoundCallback) moveFoundCallback(m);
+        return { move: m, pev: evaluation};
+      }
+      return null;
+    };
+
+    // Helper function that plays a move into cmChess if the subsequent position has only one good move
+    // for the color to play in the new position. The only moves that will potentially be played into
+    // cmChess are the first moves from each line of PositionEvaluation.lines, where the
+    // PositionEvaluation is the PositionEvaluation of the input move. If a move is too bad, don't play it.
+    const playMovesThatLeadToOnlyMoves = async (
+      cmChess: CmChess,
+      move: Move,
+    ): Promise<Move[]> => {
+      const evaluation = await getEvaluation(move.fen);
+      if (!evaluation) return [];
+
+      const result: Move[] = [];
+      const lineMoves = evaluation.lines.map((line) => lanToShortMove(line.lanLine.trim().split(' ')[0]));
+
+      // Get the moveJudgements of the lines.
+      const nextMoveColor = colorToMove(move);
+      const moveJudgements = judgeLines(nextMoveColor, evaluation.lines);
+
+      // If a move has one of these MoveJudgements, we won't play that move into cmChess.
+      // We use a different array here than the 'badJudgements' one defined above because
+      // we may want to be more or less strict about which moves the opponent can play.
+      const opponentBadJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake];
+
+      let numMovesPlayed = 0;
+
+      // Analyze the first move of each line (the lineMove)
+      for (let i = 0; i < lineMoves.length; i++) {
+        // if this line is too bad, don't even consider it. Continue.
+        if (opponentBadJudgements.includes(moveJudgements[i])) continue;
+
+        // Break out of the loop if we've already added to a line (numMovesPlayed > 0) and
+        // we've already created the maximum number of lines (maxLines)
+        if (numMovesPlayed > 0 && numLinesCreated >= maxLines) break;
+
+        const lineMove = lineMoves[i];
+
+        // Create a new cmChess with all the moves
+        const tempCmChess = new CmChess();
+        getLineFromCmMove(move).forEach((m) => {
+          const moveResult = tempCmChess.move(m.san);
+          if (moveResult == undefined) throw new Error('moveResult was undefined');
+        });
+
+        // Play the lineMove into tempCmChess
+        const moveResult = tempCmChess.move(lineMove);
+        if (moveResult == undefined) throw new Error('moveResult was undefined');
+
+        // Get evaluation for this position
+        const lineMoveEvaluation = await getEvaluation(tempCmChess.fen());
+        if (!lineMoveEvaluation) continue;
+        if (lineMoveEvaluation.lines.length < 2) continue;
+
+        // Get the lineJudgements
+        const nextMoveColor = colorToMove(moveResult);
+        const lineJudgements = judgeLines(nextMoveColor, lineMoveEvaluation.lines);
+
+        // If the second best line from the evaluation is bad, then there
+        // is only one good move in the new position. In that case, play the move into CmChess.
+        if (badJudgements.includes(lineJudgements[1])) {
+          const playedMove = cmChess.move(lineMove, move);
+          if (playedMove == undefined) throw new Error('result of cmChess.move(lineMove) was undefined');
+          result.push(playedMove);
+          if (moveFoundCallback) moveFoundCallback(playedMove);
+          numMovesPlayed++;
+
+          if (numMovesPlayed > 1) {
+            numLinesCreated++;
+          }
+        }
+      }
+
+      return result;
+    };
+
+    const initialColorToMove = colorToMove(move);
+    const isInitialColorsTurn = (m: Move) => initialColorToMove === colorToMove(m);
+
+    const result: Move[][] = [];
+
+    const queue: Move[][] = [[move]];
+
+    while (queue.length > 0) {
+      const moves = queue.pop();
+
+      if (moves == undefined) throw new Error('moves was undefined');
+      if (moves.length < 1) throw new Error('moves.length < 1');
+
+      // If this line has reached the maximumLineLength, add it to the result and
+      // continue to the next item in the queue.
+      if (moves.slice(1).length >= maximumLineLength) {
+        result.push(moves.slice(1));
+        continue;
+      }
+
+      const lastMove = moves[moves.length - 1];
+
+      if (isInitialColorsTurn(lastMove)) {
+        // Play an only move if there is one.
+        const r = await playOnlyMove(cmChess, lastMove);
+
+        // If there was not an onlyMove to play, just continue
+        if (r == null) continue;
+
+        // Otherwise, use the new resulting move to add an entry to the queue.
+        queue.push([...moves, r.move]);
+
+        if (numLinesCreated === 0) numLinesCreated++;
+
+      // If it is not initialColorsTurn, we want to find moves that will lead
+      // to positions where there is only one good move.
+      } else {
+        const playedMoves = await playMovesThatLeadToOnlyMoves(cmChess, lastMove);
+        if (playedMoves.length < 1) {
+          result.push(moves.slice(1));
+          continue;
+        }
+        playedMoves.forEach((playedMove) => {
+          queue.push([...moves, playedMove]);
+        });
+      }
+    }
+
+    return result;
+  }, [evaluations, setEvaluations]);
 
   useEffect(() => {
     isAnalyzingGameRef.current = isAnalyzingGame;
@@ -323,6 +516,14 @@ export default function useChessAnalyzer(
 
       if (parseIsStockfishReady(line)) {
         setIsStockfishReady(true);
+
+        // Check if we have a pending analyzeFen start
+        if (pendingAnalyzeFenStart.current && stockfish) {
+          const { fen, depth } = pendingAnalyzeFenStart.current;
+          pendingAnalyzeFenStart.current = null;
+          stockfish.postMessage(`position fen ${fen}`);
+          stockfish.postMessage(`go depth ${depth}`);
+        }
       }
 
       const fen = fenRef.current ? fenRef.current : undefined;
@@ -521,7 +722,7 @@ export default function useChessAnalyzer(
       stockfish.postMessage('uci');
       const numThreads = getDefaultNumThreads();
       stockfish.postMessage(`setoption name Threads value ${numThreads}`);
-      stockfish.postMessage('setoption name Hash value 1024');
+      stockfish.postMessage('setoption name Hash value 512');
       stockfish.postMessage(`setoption name MultiPV value ${numLines}`);
       stockfish.postMessage('isready');
       hasStockfishBeenSetup.current = true;
@@ -645,5 +846,6 @@ export default function useChessAnalyzer(
     currentPosition: currentPositionIndex,
     totalPositions: fensToAnalyze.length,
     analyzeFen,
+    addForcingLinesToCmChess,
   };
 }

@@ -122,7 +122,7 @@ const GameReview = ({ game }: Props) => {
     pgnAnalysisProgress,
     engineName,
     fenBeingAnalyzed,
-    analyzeFen,
+    addForcingLinesToCmChess,
   } = useChessAnalyzer(
     evaluations,
     setEvaluations,
@@ -237,7 +237,7 @@ const GameReview = ({ game }: Props) => {
           currentMove={currentMove}
           evaluations={evaluations}
           onClose={() => setShowCreateFlashcardModal(false)}
-          analyzeFen={analyzeFen}
+          addForcingLinesToCmChess={addForcingLinesToCmChess}
         />
       )}
       {chessboard}
