@@ -12,6 +12,7 @@ import AltMoveModal from '@/components/altMoveModal';
 import FlashcardFeedback from './flashcardFeedback';
 import DeleteFlashcardModal, { DeleteStatus } from './deleteFlashcardModal';
 import FlashcardEditButtons from './flashcardEditButtons';
+import FlashcardDetails from './flashcardDetails';
 import HintButtons from '@/components/hintButtons';
 import { Arrow } from '@/components/cmChessboard';
 import { MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers';
@@ -861,6 +862,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                       <div>Mature: <span className="font-semibold text-foreground">{stats.mature}</span></div>
                     </div>
                   </div>
+                  <FlashcardDetails flashcard={currentFlashcard} />
                   <FlashcardFeedback
                     flashcard={currentFlashcard}
                     currentMove={currentMove}
