@@ -42,6 +42,7 @@ import {
   convertLanLineToShortMoves,
   judgeScores,
   judgePevAgainstBestScore,
+  isMoveJudgementWorseThan,
 } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
@@ -106,7 +107,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [numShowMovesGiven, setNumShowMovesGiven] = useState(0);
   const [boardFenOverride, setBoardFenOverride] = useState<string | undefined>(undefined);
   const [isGradingMove, setIsGradingMove] = useState(false);
-  const [moveGrade, setMoveGrade] = useState<MoveJudgement | null>(null);
+  const [moveGrade, setMoveGrade] = useState<{ san: string, grade: MoveJudgement } | null>(null);
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -324,9 +325,12 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setIsGradingMove(true);
       const judgement = await gradeMove(currentMove);
       setIsGradingMove(false);
-      setMoveGrade(judgement);
+      setMoveGrade({ san: currentMove.san, grade: judgement });
+      if (isMoveJudgementWorseThan(MoveJudgement.Good, judgement)) {
+        handleIncorrectUserMove();
+      }
     }
-  }, [currentMove, areLinesForcing, handleIncorrectUserMove, gradeMove]);
+  }, [currentMove, areLinesForcing, handleIncorrectUserMove, gradeMove, handleIncorrectUserMove]);
 
 
   const handleUserMove = useCallback(() => {

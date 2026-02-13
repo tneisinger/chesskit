@@ -11,7 +11,7 @@ interface Props {
   currentMove: Move | undefined;
   isFlashcardComplete: boolean;
   isGradingMove: boolean;
-  moveGrade: MoveJudgement | null;
+  moveGrade: { san: string, grade: MoveJudgement } | null;
   onReplayFlashcardBtnClick: () => void;
   onNextFlashcardBtnClick: () => void;
   numWrongAnswers: number;
@@ -33,7 +33,7 @@ const FlashcardFeedback = ({
 }: Props) => {
 
   const wrapContent = (content: ReactElement): ReactElement => (
-    <div className='flex flex-col w-full flex-1 bg-background-page p-6 rounded-md text-center gap-4 justify-end'>
+    <div className='flex flex-col w-full flex-1 bg-background-page p-6 rounded-md text-center gap-4 justify-center'>
       {content}
     </div>
   );
@@ -44,7 +44,7 @@ const FlashcardFeedback = ({
     return (
       <div className="flex flex-col text-center gap-2">
         <p>
-          {currentMove.san} is <span style={{ color: getJudgementColor(moveGrade) }}>{moveGrade}</span>
+          {moveGrade.san} is <span style={{ color: getJudgementColor(moveGrade.grade) }}>{moveGrade.grade}</span>
         </p>
       </div>
     );
@@ -105,7 +105,9 @@ const FlashcardFeedback = ({
 
 
   if (!isFlashcardComplete) return wrapContent(
-    <div>Incomplete</div>
+    <div className="flex flex-col">
+      <p>Play a Move!</p>
+    </div>
   );
 
   throw new Error('This error should be unreachable');
