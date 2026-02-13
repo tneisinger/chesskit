@@ -38,15 +38,17 @@ const FlashcardFeedback = ({
     </div>
   );
 
+  const renderBestMove = useCallback((): ReactElement => {
+    return <span style={{ color: getJudgementColor(MoveJudgement.Best) }}>{flashcard.bestMoves[0].moveSan}</span>;
+  }, [flashcard]);
+
   const renderMoveGradeFeedback = useCallback((): ReactElement => {
     if (currentMove == undefined) throw new Error('currentMove was undefined');
     if (moveGrade == null) throw new Error('moveGrade was null');
     return (
-      <div className="flex flex-col text-center gap-2">
         <p>
           {moveGrade.san} is <span style={{ color: getJudgementColor(moveGrade.grade) }}>{moveGrade.grade}</span>
         </p>
-      </div>
     );
   }, [currentMove, moveGrade]);
 
@@ -62,22 +64,13 @@ const FlashcardFeedback = ({
 
   if (isFlashcardComplete) return wrapContent(
     <>
-      <h3 className='text-xl font-bold text-nowrap'>
+      <h3 className='text-xl font-bold text-nowrap leading-2'>
         Flashcard Complete!
       </h3>
       <div className="">
-        <p className="text-sm">
-          You made {numWrongAnswers} {numWrongAnswers === 1 ? 'mistake' : 'mistakes'}
-        </p>
-        {Boolean(numHintsGiven) && (
-          <p className="text-center">
-            You used {numHintsGiven} {numHintsGiven === 1 ? 'hint' : 'hints'}
-          </p>
-        )}
-        {Boolean(numShowMovesGiven) && (
-          <p className="text-center">
-            You asked to see {numShowMovesGiven} {numShowMovesGiven === 1 ? 'move' : 'moves'}
-          </p>
+        <p className="text-md">{renderMoveGradeFeedback()}</p>
+        {(moveGrade && moveGrade.grade !== MoveJudgement.Best) && (
+          <p className="text-md">The best move was {renderBestMove()}</p>
         )}
       </div>
       <div className='flex flex-row gap-4 justify-center'>
@@ -100,7 +93,9 @@ const FlashcardFeedback = ({
 
 
   if (!isFlashcardComplete && moveGrade) return wrapContent(
-    renderMoveGradeFeedback()
+    <div className="text-lg">
+      {renderMoveGradeFeedback()}
+    </div>
   );
 
 

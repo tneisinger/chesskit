@@ -281,8 +281,30 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     return relevantLines.every((rLine => lines[rLine].isComplete));
   }, [areLinesForcing, lines]);
 
+  const getJudgementOfCorrectMove = useCallback((move: Move): MoveJudgement => {
+    const fc = flashcards[flashcardIndex];
+    if (fc == undefined) throw new Error('flashcard was undefined');
+    const i = fc.bestMoves.map((bm) => bm.moveSan).indexOf(move.san);
+    if (i < 0) throw new Error('correct move not found in bestMoves');
+    if (moveJudgements[i] == undefined) throw new Error('moveJudgements[i] was undefined');
+    if (i === 0) return MoveJudgement.Best;
+    return moveJudgements[i];
+  }, [moveJudgements, flashcards, flashcardIndex])
+
 
   const handleCorrectUserMove = useCallback((relevantLines: string[]) => {
+    if (currentMove == undefined) throw new Error('currentMove was undefined');
+
+    // If areLinesForcing, then the only correct move is the best move.
+    // If we have reached this point in the code, we can assume that the user
+    // played the best move.
+    if (areLinesForcing) {
+      setMoveGrade({ san: currentMove.san, grade: MoveJudgement.Best });
+    } else {
+      const j = getJudgementOfCorrectMove(currentMove);
+      setMoveGrade({ san: currentMove.san, grade: j });
+    }
+
     // Check if the user should play an alternative move.
     if (shouldUserPlayAnAlternativeMove(relevantLines)) {
       if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
@@ -304,7 +326,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     // If we have reached this point, then a line has been completed.
     markCurrentLineComplete();
   }, [lines, currentMove, remainingTime, addTimeToClock, setupOpponentMoveTimeout,
-      shouldUserPlayAnAlternativeMove, markCurrentLineComplete]);
+      shouldUserPlayAnAlternativeMove, markCurrentLineComplete, areLinesForcing]);
 
 
   const gradeMove = useCallback(async (move: Move): Promise<MoveJudgement> => {
