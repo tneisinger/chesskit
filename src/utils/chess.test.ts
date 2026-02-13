@@ -20,8 +20,10 @@ import {
   makeMovesOnlyPGN,
   areFensEqual,
   extrapolatePositionEvaluation,
+  getMoveJudgementIndex,
+  isMoveJudgementWorseThan,
 } from './chess';
-import { PieceColor, ShortMove } from '@/types/chess';
+import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
 import { Chess as ChessJS } from 'chess.js';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
 import { FEN } from 'cm-chessboard/src/Chessboard';
@@ -645,6 +647,25 @@ describe('chess utilities', () => {
       expect(result3[0].score.key).toBe('mate');
       expect(result3[0].score.value).toBe(0); // Mate in -1 becomes mate in 0
       expect(result3[0].lines.length).toBe(0);
+    });
+  });
+
+  describe('getMoveJudgementIndex', () => {
+    it('should return the correct index', () => {
+      expect(getMoveJudgementIndex(MoveJudgement.Best)).toBe(0);
+      expect(getMoveJudgementIndex(MoveJudgement.Excellent)).toBe(1);
+      expect(getMoveJudgementIndex(MoveJudgement.Good)).toBe(2);
+      expect(getMoveJudgementIndex(MoveJudgement.Inaccurate)).toBe(3);
+      expect(getMoveJudgementIndex(MoveJudgement.Mistake)).toBe(4);
+      expect(getMoveJudgementIndex(MoveJudgement.Blunder)).toBe(5);
+    });
+  });
+
+  describe('isMoveJudgementWorseThan', () => {
+    it('should respond correctly', () => {
+      expect(isMoveJudgementWorseThan(MoveJudgement.Good, MoveJudgement.Inaccurate)).toBe(true);
+      expect(isMoveJudgementWorseThan(MoveJudgement.Good, MoveJudgement.Good)).toBe(false);
+      expect(isMoveJudgementWorseThan(MoveJudgement.Best, MoveJudgement.Good)).toBe(true);
     });
   });
 });

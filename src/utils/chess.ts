@@ -1069,3 +1069,13 @@ export function getScoredBestMovesFromPev(pev: PositionEvaluation): ScoredMove[]
 
   return result;
 }
+
+export function getMoveJudgementIndex(mj: MoveJudgement): number {
+  const values = Object.values(MoveJudgement);
+  console.log(values);
+  return values.indexOf(mj);
+}
+
+export function isMoveJudgementWorseThan(mj: MoveJudgement, mjBeingChecked: MoveJudgement) {
+  return getMoveJudgementIndex(mjBeingChecked) > getMoveJudgementIndex(mj);
+}
