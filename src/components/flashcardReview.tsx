@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import BlinkOverlay from '@/components/blinkOverlay';
-import Button, { ButtonSize } from '@/components/button';
+import Button, { ButtonSize, ButtonStyle } from '@/components/button';
 import NewMovesDisplay, { ContextMenuItems } from '@/components/newMovesDisplay';
 import EngineDisplay from '@/components/engineDisplay';
 import ArrowButtons from '@/components/arrowButtons';
@@ -413,6 +413,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     const fc = flashcards[flashcardIndex];
     setLines(makeLineStatsRecord(fc.pgn));
     setHasUserCompletedFlashcard(false);
+    setIsCurrentMoveAnalysisOn(false);
     setMoveGrade(null);
     setWrongAnswerCount(0);
     setIsReplay(true);
@@ -547,6 +548,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (flashcardIndex < flashcards.length - 1) {
       setBoardFenOverride(FEN.empty);
       setFlashcardIndex((i) => i + 1);
+      setCurrentMode(Mode.Practice);
     }
   }, [flashcardIndex, flashcards]);
 
@@ -938,9 +940,26 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                 />
               </div>
               <div className="ml-auto mr-auto">
-                <Button onClick={handleModeBtnClick}>
-                  {currentMode !== Mode.Edit ? ( 'Edit Flashcard') : ( 'Play Flashcard')}
-                </Button>
+                {currentMode === Mode.Practice && (
+                  <Button
+                    onClick={handleModeBtnClick}
+                    disabled={!hasUserCompletedFlashcard}
+                  >
+                    Edit Flashcard
+                  </Button>
+                )}
+                {currentMode === Mode.Edit && (
+                  <div className="flex flex-row gap-4">
+                    <Button onClick={handleModeBtnClick}>
+                      Replay
+                    </Button>
+                    {(hasUserCompletedFlashcard && flashcardIndex < flashcards.length - 1) && (
+                      <Button buttonStyle={ButtonStyle.Primary} onClick={handleNextFlashcardBtnClick}>
+                        Next Flashcard
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex justify-end basis-32">
                 <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
