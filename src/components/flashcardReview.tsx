@@ -553,6 +553,24 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [flashcardIndex, flashcards]);
 
 
+  const makeContextMenu = useCallback((): ContextMenuItems => {
+    return ({
+      'Delete from here forward': {
+        isDisabled: (move: Move) => !areLinesForcing || move.ply <= currentFlashcard.positionIdx + 1,
+        handler: (move: Move) => deleteMoves(move),
+      },
+      'Promote to main line': {
+        isDisabled: (move: Move) => !areLinesForcing || !isInVariation(move),
+        handler: (move: Move) => promoteToMainLine(move),
+      },
+      'Promote line': {
+        isDisabled: (move: Move) => !areLinesForcing  || !isInVariation(move),
+        handler: (move: Move) => promoteMoveVariation(move)
+      },
+    });
+  }, [areLinesForcing, currentFlashcard]);
+
+
   // Whenever lines changes, update the numIncompleteLines and totalLines refs
   useEffect(() => {
     if (Object.keys(lines).length < 1) {
@@ -768,20 +786,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     }
   }
 
-  const contextMenu: ContextMenuItems = {
-    'Delete from here forward': {
-      isDisabled: (move: Move) => move.ply <= currentFlashcard.positionIdx + 1,
-      handler: (move: Move) => deleteMoves(move),
-    },
-    'Promote to main line': {
-      isDisabled: (move: Move) => !isInVariation(move),
-      handler: (move: Move) => promoteToMainLine(move),
-    },
-    'Promote line': {
-      isDisabled: (move: Move) => !isInVariation(move),
-      handler: (move: Move) => promoteMoveVariation(move)
-    },
-  }
 
   const movesDisplay = (
     <NewMovesDisplay
@@ -790,7 +794,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       changeCurrentMove={setCurrentMove}
       useMobileLayout={false}
       showVariations={true}
-      contextMenu={contextMenu}
+      contextMenu={makeContextMenu()}
     />
   );
 

@@ -76,7 +76,7 @@ const FlashcardFeedback = ({
   // If all the flashcards are complete
   if (isFlashcardComplete && flashcardIndex >= dueFlashcards.length - 1) return wrapContent(
     <>
-      <h3 className='text-xl font-bold text-nowrap leading-2'>
+      <h3 className='text-lg font-bold text-nowrap leading-2'>
         All Flashcards Complete!
       </h3>
       <div>
@@ -99,7 +99,7 @@ const FlashcardFeedback = ({
 
   if (isFlashcardComplete) return wrapContent(
     <>
-      <h3 className='text-xl font-bold text-nowrap leading-2'>
+      <h3 className='text-lg font-bold text-nowrap leading-2'>
         Flashcard Complete!
       </h3>
       <div>
