@@ -7,7 +7,8 @@ import {  Move } from 'cm-chess/src/Chess';
 import { Flashcard } from "@/db/schema";
 
 interface Props {
-  flashcard: Flashcard;
+  dueFlashcards: Flashcard[];
+  flashcardIndex: number;
   currentMove: Move | undefined;
   isFlashcardComplete: boolean;
   isGradingMove: boolean;
@@ -20,7 +21,8 @@ interface Props {
 }
 
 const FlashcardFeedback = ({
-  flashcard,
+  dueFlashcards,
+  flashcardIndex,
   currentMove,
   isFlashcardComplete,
   isGradingMove,
@@ -32,6 +34,13 @@ const FlashcardFeedback = ({
   numShowMovesGiven,
 }: Props) => {
 
+  const getCurrentFlashcard = useCallback((): Flashcard | null => {
+    if (dueFlashcards.length < 1) return null;
+    const fc = dueFlashcards[flashcardIndex];
+    if (fc == undefined) throw new Error('fc was undefined');
+    return fc;
+  }, [dueFlashcards, flashcardIndex])
+
   const wrapContent = (content: ReactElement): ReactElement => (
     <div className='flex flex-col w-full flex-1 bg-background-page p-6 rounded-md text-center gap-4 justify-center'>
       {content}
@@ -39,8 +48,10 @@ const FlashcardFeedback = ({
   );
 
   const renderBestMove = useCallback((): ReactElement => {
-    return <span style={{ color: getJudgementColor(MoveJudgement.Best) }}>{flashcard.bestMoves[0].moveSan}</span>;
-  }, [flashcard]);
+    const fc = getCurrentFlashcard();
+    if (fc == null) return <></>;
+    return <span style={{ color: getJudgementColor(MoveJudgement.Best) }}>{fc.bestMoves[0].moveSan}</span>;
+  }, [getCurrentFlashcard]);
 
   const renderMoveGradeFeedback = useCallback((): ReactElement => {
     if (currentMove == undefined) throw new Error('currentMove was undefined');
@@ -62,13 +73,37 @@ const FlashcardFeedback = ({
     </div>
   );
 
+  // If all the flashcards are complete
+  if (isFlashcardComplete && flashcardIndex >= dueFlashcards.length - 1) return wrapContent(
+    <>
+      <h3 className='text-xl font-bold text-nowrap leading-2'>
+        All Flashcards Complete!
+      </h3>
+      <div>
+        {renderMoveGradeFeedback()}
+        {(moveGrade && moveGrade.grade !== MoveJudgement.Best) && (
+          <p className="text-md">The best move was {renderBestMove()}</p>
+        )}
+      </div>
+      <div className='flex flex-row gap-4 justify-center'>
+        <Button
+          buttonSize={ButtonSize.Small}
+          onClick={onReplayFlashcardBtnClick}
+        >
+          Replay Flashcard
+        </Button>
+      </div>
+    </>
+  );
+
+
   if (isFlashcardComplete) return wrapContent(
     <>
       <h3 className='text-xl font-bold text-nowrap leading-2'>
         Flashcard Complete!
       </h3>
-      <div className="">
-        <p className="text-md">{renderMoveGradeFeedback()}</p>
+      <div>
+        {renderMoveGradeFeedback()}
         {(moveGrade && moveGrade.grade !== MoveJudgement.Best) && (
           <p className="text-md">The best move was {renderBestMove()}</p>
         )}

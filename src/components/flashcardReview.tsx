@@ -543,6 +543,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [currentMode, pauseClock, handleReplayFlashcardBtnClick, discardUnsavedChanges]);
 
 
+  const handleNextFlashcardBtnClick = useCallback(() => {
+    if (flashcardIndex < flashcards.length - 1) {
+      setBoardFenOverride(FEN.empty);
+      setFlashcardIndex((i) => i + 1);
+    }
+  }, [flashcardIndex, flashcards]);
+
+
   // Whenever lines changes, update the numIncompleteLines and totalLines refs
   useEffect(() => {
     if (Object.keys(lines).length < 1) {
@@ -890,7 +898,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                   </div>
                   <FlashcardDetails flashcard={currentFlashcard} />
                   <FlashcardFeedback
-                    flashcard={currentFlashcard}
+                    dueFlashcards={flashcards}
+                    flashcardIndex={flashcardIndex}
                     currentMove={currentMove}
                     isFlashcardComplete={hasUserCompletedFlashcard}
                     onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
