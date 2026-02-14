@@ -6,7 +6,7 @@ import Button, { ButtonStyle } from "@/components/button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
 import { GameData, Evaluations, MoveJudgement } from '@/types/chess';
 import { createFlashcard, CreateFlashcardInput } from '@/app/flashcards/actions';
-import { judgeLines, lanToShortMove, getScoredBestMovesFromPev } from '@/utils/chess';
+import { judgeLines, lanToShortMove, getScoredBestMovesFromPev, makeMoveNumberString } from '@/utils/chess';
 import {
   colorToMove,
   getLineFromCmMove,
@@ -42,7 +42,8 @@ const CreateFlashcardModal = ({
     }
   }, [show]);
 
-  const makeFlashcardData = useCallback(async (): Promise<CreateFlashcardInput> => {
+
+  const getFlashcardMove = useCallback((): Move => {
     // The flashcard move is the move that represents the starting position
     // of the flashcard. If we are in a variation, the flashcard move should
     // be the mainLine parent of the variation.
@@ -52,6 +53,11 @@ const CreateFlashcardModal = ({
       if (parent == null) throw new Error('parent was null');
       flashcardMove = parent;
     }
+    return flashcardMove;
+  }, [currentMove]);
+
+  const makeFlashcardData = useCallback(async (): Promise<CreateFlashcardInput> => {
+    const flashcardMove = getFlashcardMove();
 
     if (colorToMove(flashcardMove) !== game.userColor) {
       throw new Error("In the flashcardMove position, it is not the user's turn");
@@ -116,7 +122,15 @@ const CreateFlashcardModal = ({
       userColor: game.userColor,
       bestMoves: getScoredBestMovesFromPev(flashcardPev),
     }
-  }, [game, currentMove, evaluations, addForcingLinesToCmChess])
+  }, [game, getFlashcardMove, evaluations, addForcingLinesToCmChess])
+
+
+  const getFlashcardPositionString = useCallback((): string => {
+    const flashcardMove = getFlashcardMove();
+    const moveNumberString = makeMoveNumberString(flashcardMove.fen);
+    return `${moveNumberString} ${flashcardMove.san}`;
+  }, [getFlashcardMove]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,9 +168,8 @@ const CreateFlashcardModal = ({
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div className="text-gray-300">
-            {/* TODO: make text more descriptive */}
-            <p>Create a flashcard for this mistake?</p>
+          <div className="text-gray-300 text-center">
+            <p>Create a flashcard for the position after {getFlashcardPositionString()}?</p>
           </div>
 
           <div className='flex flex-row justify-evenly gap-3'>
