@@ -887,6 +887,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                     onSaveChangesBtnClick={saveFlashcardPgnChanges}
                     onDeleteFlashcardBtnClick={() => setShowDeleteFlashcardModal(true)}
                     doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
+                    showSaveAndUndoBtns={areLinesForcing === true}
                   />
                 </>
               )}
@@ -929,7 +930,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       {/* Second Row  */}
       <div className="flex flex-row w-full max-w-[1400px]">
 
-        {/* Center Column */}
+        {/* Left Column */}
         <div className="relative" style={{ width: boardSize }}>
           <div className="flex justify-center">
             <div className="flex flex-1 justify-between items-center">
