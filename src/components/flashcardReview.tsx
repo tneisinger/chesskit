@@ -799,6 +799,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       history={history}
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
+      marginTop={0}
     />
   );
 
@@ -877,7 +878,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                   <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
                     {movesDisplay}
                   </div>
-                  {arrowButtons}
                   <FlashcardEditButtons
                     onDiscardChangesBtnClick={discardUnsavedChanges}
                     onSaveChangesBtnClick={saveFlashcardPgnChanges}
@@ -969,7 +969,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         </div>
 
         {/* Right column */}
-        <div className="flex justify-end" style={{width: rightColumnWidth + columnGapWidth}}>
+        <div className="flex justify-center" style={{width: rightColumnWidth, marginLeft: columnGapWidth}}>
+            {currentMode === Mode.Edit && arrowButtons}
         </div>
       </div>
 
