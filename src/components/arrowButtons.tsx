@@ -8,6 +8,7 @@ interface Props {
   currentMove: Move | undefined;
   changeCurrentMove: (newCurrentMove?: Move) => void;
   excludeStartAndEndBtns?: boolean;
+  marginTop?: number;
 }
 
 const ArrowButtons = ({
@@ -15,6 +16,7 @@ const ArrowButtons = ({
   currentMove,
   changeCurrentMove,
   excludeStartAndEndBtns = false,
+  marginTop,
 }: Props) => {
   const doesNextMoveExist = (): boolean => {
     if (history.length > 0 && currentMove == undefined) return true;
@@ -57,7 +59,10 @@ const ArrowButtons = ({
   }
 
   return (
-    <div className="m-2 mb-0 mr-4 [&>button]:mr-9 [&>button:last-child]:mr-0">
+    <div
+      className="m-2 mb-0 mr-4 [&>button]:mr-9 [&>button:last-child]:mr-0"
+      style={{ marginTop }}
+    >
       {!excludeStartAndEndBtns && (
         <ArrowButton
           arrow={Svg.ArrowBeginning}
