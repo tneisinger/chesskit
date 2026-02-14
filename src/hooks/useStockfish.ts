@@ -56,7 +56,7 @@ export default function useStockfish(): UseStockfishResult {
 
         // Try to load the recommended engine
         try {
-          const worker = new Worker(`/stockfish/${detected.fileName}`);
+          const worker = new Worker(`/stockfish18/${detected.fileName}`);
 
           // Set up error handler
           worker.onerror = (e) => {
