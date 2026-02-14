@@ -53,6 +53,7 @@ import { getRandom } from '@/utils';
 import usePrevious from '@/hooks/usePrevious';
 import { FEN } from 'cm-chess/src/Chess';
 
+const COUNTDOWN_CLOCK_SECONDS = 30;
 const MOVE_INCREMENT_SECONDS = 5;
 const GOOD_JUDGEMENTS = [MoveJudgement.Best, MoveJudgement.Excellent, MoveJudgement.Good];
 
@@ -127,7 +128,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const router = useRouter();
 
-  // Create a countdown for the countdownClock component (15 seconds)
+  // Create a countdown for the countdownClock component
   const {
     remainingTime,
     pause: pauseClock,
@@ -135,7 +136,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     isPaused,
     addTime: addTimeToClock,
     reset: resetClock,
-  } = useCountdown(15);
+  } = useCountdown(COUNTDOWN_CLOCK_SECONDS);
 
   const {
     cmchess,
@@ -549,6 +550,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setBoardFenOverride(FEN.empty);
       setFlashcardIndex((i) => i + 1);
       setCurrentMode(Mode.Practice);
+      setIsCurrentMoveAnalysisOn(false);
     }
   }, [flashcardIndex, flashcards]);
 
@@ -910,10 +912,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                     currentMove={currentMove}
                     isFlashcardComplete={hasUserCompletedFlashcard}
                     onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
-                    onNextFlashcardBtnClick={() => {
-                      setBoardFenOverride(FEN.empty);
-                      setFlashcardIndex((i) => i + 1);
-                    }}
+                    onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
                     numWrongAnswers={wrongAnswerCount}
                     numHintsGiven={numHintsGiven}
                     numShowMovesGiven={numShowMovesGiven}
