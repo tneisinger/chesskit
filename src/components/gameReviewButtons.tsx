@@ -96,7 +96,7 @@ const GameReviewButtons = ({
             onClick={() => showCreateFlashcardModal()}
             disabled={shouldDisableFlashcardBtn()}
           >
-            Make Flashcard
+            Create Flashcard
           </Button>
         </div>
       )}
