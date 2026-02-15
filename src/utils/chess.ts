@@ -1072,7 +1072,6 @@ export function getScoredBestMovesFromPev(pev: PositionEvaluation): ScoredMove[]
 
 export function getMoveJudgementIndex(mj: MoveJudgement): number {
   const values = Object.values(MoveJudgement);
-  console.log(values);
   return values.indexOf(mj);
 }
 

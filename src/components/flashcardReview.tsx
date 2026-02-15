@@ -53,15 +53,17 @@ import { getRandom } from '@/utils';
 import usePrevious from '@/hooks/usePrevious';
 import { FEN } from 'cm-chess/src/Chess';
 
-const COUNTDOWN_CLOCK_SECONDS = 30;
+const COUNTDOWN_START_TIME = 30;
 const MOVE_INCREMENT_SECONDS = 5;
 const GOOD_JUDGEMENTS = [MoveJudgement.Best, MoveJudgement.Excellent, MoveJudgement.Good];
 
 // TODO: Setup flashcard grading
-// Easy - No mistakes and remainingTime >= starting time
-// Good - No mistakes and remainingTime > 0
-// Hard - No mistakes but remainingTime === 0
+// Again - any moves shown
 // Again - 1 or more mistakes
+// Again - any hints used
+// Hard - No mistakes but remainingTime === 0
+// Good - No mistakes and remainingTime > 0
+// Easy - No mistakes and remainingTime >= (starting time / 2)
 
 interface Props {
   flashcards: Flashcard[];
@@ -87,7 +89,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     );
   }
 
-  const [showAnswer, setShowAnswer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
   const [opponentFirstMove, setOpponentFirstMove] = useState<Move | undefined | null>(null);
@@ -136,7 +137,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     isPaused,
     addTime: addTimeToClock,
     reset: resetClock,
-  } = useCountdown(COUNTDOWN_CLOCK_SECONDS);
+  } = useCountdown(COUNTDOWN_START_TIME);
 
   const {
     cmchess,
@@ -202,9 +203,36 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [flashcardIndex, currentMove, flashcards]);
 
 
-  const handleReveal = () => {
-    setShowAnswer(true);
-  };
+  const getReviewQuality = useCallback((): ReviewQuality | null => {
+    if (!hasUserCompletedFlashcard) return null;
+    if (isReplay) return null;
+    if (moveGrade == null) {
+      throw new Error('moveGrade was null');
+    }
+
+    if (numShowMovesGiven > 0) return ReviewQuality.Again;
+    if (numHintsGiven > 0) return ReviewQuality.Again;
+    if (wrongAnswerCount > 0) return ReviewQuality.Again;
+
+    if (wrongAnswerCount < 1) {
+      if (isMoveJudgementWorseThan(MoveJudgement.Excellent, moveGrade.grade)) {
+        return ReviewQuality.Hard;
+      }
+      if (remainingTime < 1) return ReviewQuality.Hard;
+      if (remainingTime < COUNTDOWN_START_TIME * 0.5) return ReviewQuality.Good;
+      if (remainingTime >= COUNTDOWN_START_TIME * 0.5) return ReviewQuality.Easy;
+    }
+
+    console.warn('Something went wrong');
+    console.log('hasUserCompletedFlashcard:', hasUserCompletedFlashcard);
+    console.log('isReplay:', isReplay);
+    console.log('numShowMovesGiven:', numShowMovesGiven);
+    console.log('numHintsGiven:', numHintsGiven);
+    console.log('wrongAnswerCount:', wrongAnswerCount);
+    console.log('remainingTime:', remainingTime);
+    throw new Error('Unexpected scenario in getReviewQuality')
+  }, [hasUserCompletedFlashcard, numShowMovesGiven, numHintsGiven, wrongAnswerCount,
+      isReplay, remainingTime, moveGrade]);
 
 
   const handleRate = async (quality: ReviewQuality) => {
@@ -624,6 +652,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [lines, areLinesForcing, previousLines, setupResetBoardTimeouts, pauseClock]);
 
 
+  useEffect(() => {
+    if (hasUserCompletedFlashcard) {
+      console.log(getReviewQuality());
+    }
+  }, [hasUserCompletedFlashcard]);
+
+
   // When the flashcardIndex changes...
   useEffect(() => {
     resetChessboardEngine();
@@ -800,6 +835,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     />
   );
 
+
   const arrowButtons = (
     <ArrowButtons
       history={history}
@@ -834,7 +870,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   return (
     <div className="flex flex-col items-center gap-3" style={{ width: mainDivWidth }}>
-
       {/* First row  */}
       <div className="flex flex-row w-full max-w-[1400px]">
 
@@ -977,101 +1012,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             {currentMode === Mode.Edit && arrowButtons}
         </div>
       </div>
-
-      {/*
-      <div>
-        {// Review Section }
-        <div className="bg-background-page p-6 rounded-md w-full max-w-xl">
-          <h2 className="text-lg font-semibold mb-4">Find the best move</h2>
-
-          {userAttemptedMove && !showAnswer && (
-            <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500 rounded">
-              <p className="text-sm text-blue-200">
-                You played: {userAttemptedMove.from}{userAttemptedMove.to}
-                {userAttemptedMove.promotion || ''}
-              </p>
-            </div>
-          )}
-
-          {showAnswer ? (
-            <>
-              {currentFlashcard.bestLines.length > 0 && (
-                <>
-                  <h3 className="text-md font-semibold mb-2">Best Lines:</h3>
-                  <div className="space-y-2 mb-4">
-                    {currentFlashcard.bestLines.map((line, idx) => (
-                      <div key={idx} className="p-2 bg-background rounded border border-gray-600">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-400">Line {idx + 1}</span>
-                          <span className="text-xs font-mono text-gray-300">
-                            {line.score.key === 'cp'
-                              ? `${(line.score.value / 100).toFixed(2)}`
-                              : `M${line.score.value}`}
-                          </span>
-                        </div>
-                        <p className="text-sm font-mono text-foreground">{line.lanLine}</p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {// Rating buttons }
-              <div className="mt-6">
-                <p className="text-sm mb-3 text-gray-400">How well did you know this?</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    onClick={() => handleRate(ReviewQuality.Again)}
-                    disabled={isSubmitting}
-                    buttonStyle={ButtonStyle.Normal}
-                  >
-                    Again
-                    <span className="block text-xs text-gray-400">Forgot completely</span>
-                  </Button>
-                  <Button
-                    onClick={() => handleRate(ReviewQuality.Hard)}
-                    disabled={isSubmitting}
-                    buttonStyle={ButtonStyle.Normal}
-                  >
-                    Hard
-                    <span className="block text-xs text-gray-400">Difficult recall</span>
-                  </Button>
-                  <Button
-                    onClick={() => handleRate(ReviewQuality.Good)}
-                    disabled={isSubmitting}
-                    buttonStyle={ButtonStyle.Normal}
-                  >
-                    Good
-                    <span className="block text-xs text-gray-400">Correct with effort</span>
-                  </Button>
-                  <Button
-                    onClick={() => handleRate(ReviewQuality.Easy)}
-                    disabled={isSubmitting}
-                    buttonStyle={ButtonStyle.Primary}
-                  >
-                    Easy
-                    <span className="block text-xs text-gray-400">Perfect recall</span>
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <Button
-              onClick={handleReveal}
-              buttonStyle={ButtonStyle.Primary}
-              disabled={isSubmitting}
-            >
-              Show Answer
-            </Button>
-          )}
-        </div>
-
-        {// Stats reminder }
-        <div className="text-xs text-gray-500">
-          Remaining today: {stats.due - flashcardIndex - 1}
-        </div>
-      </div>
-      */}
     </div>
   );
 };
