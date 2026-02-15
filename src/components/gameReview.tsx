@@ -21,8 +21,7 @@ import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
 import usePrevious from '@/hooks/usePrevious';
 import { updateGameAnalysis } from '@/app/game-review/actions';
-import GameReviewButtons from './gameReviewButtons';
-import CreateFlashcardModal from "./createFlashcardModal";
+import FlashcardCreator from './flashcardCreator';
 
 enum MobileTab {
   Moves = 'Moves',
@@ -102,7 +101,6 @@ const GameReview = ({ game }: Props) => {
 
   const [gameEvaluation, setGameEvaluation] = useState<Evaluations>({});
   const [evaluations, setEvaluations] = useState<Evaluations>({});
-  const [showCreateFlashcardModal, setShowCreateFlashcardModal] = useState(false);
 
 
   // Set up chessboard engine
@@ -230,16 +228,6 @@ const GameReview = ({ game }: Props) => {
 
   const chessboardDiv = (
     <div className="relative" style={{ height: boardSize, width: boardSize }}>
-      {currentMove && (
-        <CreateFlashcardModal
-          show={showCreateFlashcardModal}
-          game={game}
-          currentMove={currentMove}
-          evaluations={evaluations}
-          onClose={() => setShowCreateFlashcardModal(false)}
-          addForcingLinesToCmChess={addForcingLinesToCmChess}
-        />
-      )}
       {chessboard}
     </div>
   );
@@ -375,12 +363,12 @@ const GameReview = ({ game }: Props) => {
             )}
           </div>
           <div style={{ width: rightColWidth }}>
-            <GameReviewButtons
+            <FlashcardCreator
               game={game}
               evaluations={evaluations}
               currentMove={currentMove}
               hasGameBeenAnalyzed={hasGameBeenAnalyzed()}
-              showCreateFlashcardModal={() => setShowCreateFlashcardModal(true)}
+              addForcingLinesToCmChess={addForcingLinesToCmChess}
             />
           </div>
         </div>

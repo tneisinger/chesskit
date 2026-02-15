@@ -449,6 +449,8 @@ export default function useChessAnalyzer(
       return result;
     };
 
+
+    // MAIN LOOP
     const initialColorToMove = colorToMove(move);
     const isInitialColorsTurn = (m: Move) => initialColorToMove === colorToMove(m);
 
@@ -462,9 +464,12 @@ export default function useChessAnalyzer(
       if (moves == undefined) throw new Error('moves was undefined');
       if (moves.length < 1) throw new Error('moves.length < 1');
 
+      // If the line has exceeded the maximumLineLength, throw an error.
+      if (moves.slice(1).length > maximumLineLength) throw new Error(`line to long: ${moves.slice(1)}`);
+
       // If this line has reached the maximumLineLength, add it to the result and
       // continue to the next item in the queue.
-      if (moves.slice(1).length >= maximumLineLength) {
+      if (moves.slice(1).length === maximumLineLength) {
         result.push(moves.slice(1));
         continue;
       }
