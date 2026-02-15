@@ -121,6 +121,8 @@ const CreateFlashcardModal = ({
       positionIdx: flashcardMove.ply,
       userColor: game.userColor,
       bestMoves: getScoredBestMovesFromPev(flashcardPev),
+      movePlayedInGame: { san: flashcardMove.san, lan: (flashcardMove.from + flashcardMove.to)},
+      gameUrl: game.url,
     }
   }, [game, getFlashcardMove, evaluations, addForcingLinesToCmChess])
 

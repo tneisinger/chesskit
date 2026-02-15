@@ -57,13 +57,6 @@ const COUNTDOWN_START_TIME = 30;
 const MOVE_INCREMENT_SECONDS = 5;
 const GOOD_JUDGEMENTS = [MoveJudgement.Best, MoveJudgement.Excellent, MoveJudgement.Good];
 
-// TODO: Setup flashcard grading
-// Again - any moves shown
-// Again - 1 or more mistakes
-// Again - any hints used
-// Hard - No mistakes but remainingTime === 0
-// Good - No mistakes and remainingTime > 0
-// Easy - No mistakes and remainingTime >= (starting time / 2)
 
 interface Props {
   flashcards: Flashcard[];

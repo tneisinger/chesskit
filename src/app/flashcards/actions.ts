@@ -21,6 +21,8 @@ export interface CreateFlashcardInput {
   positionIdx: number;
   userColor: PieceColor;
   bestMoves: ScoredMove[];
+  movePlayedInGame: { san: string, lan: string };
+  gameUrl?: string;
 }
 
 /**
@@ -65,6 +67,8 @@ export async function createFlashcard(
       positionIdx: input.positionIdx,
       userColor: input.userColor,
       bestMoves: input.bestMoves,
+      movePlayedInGame: input.movePlayedInGame,
+      gameUrl: input.gameUrl,
       repetitions: sm2.repetitions,
       easinessFactor: efToInt(sm2.easinessFactor),
       interval: sm2.interval,

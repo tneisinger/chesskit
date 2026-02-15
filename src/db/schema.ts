@@ -139,6 +139,10 @@ export const flashcards = sqliteTable("flashcards", {
 	bestMoves: text("best_moves", { mode: "json" })
     .notNull()
     .$type<ScoredMove[]>(),
+  movePlayedInGame: text("move_played_in_game", { mode: "json" })
+    .notNull()
+    .$type<{ san: string, lan: string}>(),
+  gameUrl: text("game_url"),
 
 	// SuperMemo-2 algorithm fields
 	repetitions: integer("repetitions").notNull().default(0),
