@@ -513,6 +513,7 @@ export default function useChessAnalyzer(
   useEffect(() => {
     const handleStockfishMessage = (event: MessageEvent) => {
       const line = typeof event === 'object' ? event.data : event;
+      console.log('Stockfish:', line);
 
       const name = parseName(line);
       if (name) {

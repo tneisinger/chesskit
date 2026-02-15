@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, ReactElement } from "react";
 import { GameData, Evaluations, MoveJudgement } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
+import Spinner from '@/components/spinner';
 import {
   judgeLines,
   lanToShortMove,
@@ -30,6 +31,8 @@ interface Props {
   currentMove: Move | undefined;
   hasGameBeenAnalyzed: boolean;
   addForcingLinesToCmChess: ChessAnalyzerOutput['addForcingLinesToCmChess'];
+  isCreatingFlashcard: boolean;
+  changeIsCreatingFlashcard: (b: boolean) => void;
 }
 
 const FlashcardCreator = ({
@@ -38,10 +41,11 @@ const FlashcardCreator = ({
   currentMove,
   hasGameBeenAnalyzed,
   addForcingLinesToCmChess,
+  isCreatingFlashcard,
+  changeIsCreatingFlashcard,
 }: Props) => {
   const [gameFlashcards, setGameFlashcards] = useState<Flashcard[] | null>(null);
   const [awaitingUserConfirm, setAwaitingUserConfirm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdFlashcards, setCreatedFlashcards] = useState<CreateFlashcardInput[]>([]);
 
@@ -235,7 +239,7 @@ const FlashcardCreator = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
+    changeIsCreatingFlashcard(true);
 
     // TODO: Prevent creation of duplicate flashcards
     const flashcardData = await makeFlashcardData();
@@ -252,13 +256,23 @@ const FlashcardCreator = ({
       console.error('Error creating flashcard:', error);
       setError('An unexpected error occurred');
     } finally {
-      setIsSubmitting(false);
+      changeIsCreatingFlashcard(false);
     }
   };
 
   useEffect(() => {
     if (gameFlashcards) console.log(gameFlashcards.length);
   }, [gameFlashcards]);
+
+
+  if (isCreatingFlashcard) {
+    return wrapContent(
+      <div className="flex flex-col items-center justify-center">
+        <p>Creating Flashcard</p>
+        <Spinner white />
+      </div>
+    );
+  }
 
 
   if (awaitingUserConfirm) {
@@ -283,14 +297,14 @@ const FlashcardCreator = ({
             <Button
               type="submit"
               buttonStyle={ButtonStyle.Primary}
-              disabled={isSubmitting}
+              disabled={isCreatingFlashcard}
             >
-              {isSubmitting ? "Creating..." : 'Create'}
+              {isCreatingFlashcard ? "Creating..." : 'Create'}
             </Button>
             <Button
               type="button"
               onClick={() => setAwaitingUserConfirm(false)}
-              disabled={isSubmitting}
+              disabled={isCreatingFlashcard}
             >
               Cancel
             </Button>

@@ -85,6 +85,7 @@ const GameReview = ({ game }: Props) => {
   const [depth, setDepth] = useState(20);
   const [numLines, setNumLines] = useState(2);
   const [hasGameLoaded, setHasGameLoaded] = useState(false);
+  const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
 
   const initialState: State = {
     isCurrentMoveAnalysisOn: false,
@@ -369,6 +370,8 @@ const GameReview = ({ game }: Props) => {
               currentMove={currentMove}
               hasGameBeenAnalyzed={hasGameBeenAnalyzed()}
               addForcingLinesToCmChess={addForcingLinesToCmChess}
+              isCreatingFlashcard={isCreatingFlashcard}
+              changeIsCreatingFlashcard={setIsCreatingFlashcard}
             />
           </div>
         </div>
