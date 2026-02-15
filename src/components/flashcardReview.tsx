@@ -43,6 +43,7 @@ import {
   judgeScores,
   judgePevAgainstBestScore,
   isMoveJudgementWorseThan,
+  isMoveJudgementAtLeast,
 } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
@@ -55,7 +56,6 @@ import { FEN } from 'cm-chess/src/Chess';
 
 const COUNTDOWN_START_TIME = 30;
 const MOVE_INCREMENT_SECONDS = 5;
-const GOOD_JUDGEMENTS = [MoveJudgement.Best, MoveJudgement.Excellent, MoveJudgement.Good];
 
 
 interface Props {
@@ -103,6 +103,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [boardFenOverride, setBoardFenOverride] = useState<string | undefined>(undefined);
   const [isGradingMove, setIsGradingMove] = useState(false);
   const [moveGrade, setMoveGrade] = useState<{ san: string, grade: MoveJudgement } | null>(null);
+
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -173,6 +174,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const previousMove = usePrevious(currentMove);
   const previousLines = usePrevious(lines);
+  const previousMoveGrade = usePrevious(moveGrade);
 
   const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
     // By default, indicate that the move was wrong.
@@ -203,9 +205,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       throw new Error('moveGrade was null');
     }
 
+    if (wrongAnswerCount > 0) return ReviewQuality.Again;
     if (numShowMovesGiven > 0) return ReviewQuality.Again;
     if (numHintsGiven > 0) return ReviewQuality.Again;
-    if (wrongAnswerCount > 0) return ReviewQuality.Again;
 
     if (wrongAnswerCount < 1) {
       if (isMoveJudgementWorseThan(MoveJudgement.Excellent, moveGrade.grade)) {
@@ -352,7 +354,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const gradeMove = useCallback(async (move: Move): Promise<MoveJudgement> => {
-    // TODO: Complete this
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) throw new Error('flashcard was undefined');
     if (fc.bestMoves[0] == undefined) throw new Error('fc.bestLines was empty');
@@ -363,18 +364,30 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const handleMoveThatWasNotInFlashcardPgn = useCallback(async () => {
     if (currentMove == undefined) throw new Error('currentMove was undefined');
+
+    // If this is a flashcard with forcing lines (areLinesForcing === true) then
+    // a move not in the pgn is an incorrect move.
     if (areLinesForcing) {
       handleIncorrectUserMove();
+
+    // Otherwise, use the engine to evaluate the move.
     } else {
+      // Use the engine to create a moveGrade
       setIsGradingMove(true);
       const judgement = await gradeMove(currentMove);
       setIsGradingMove(false);
+
+      // Setting the moveGrade will cause a useEffect to run. That useEffect is where the flashcard will
+      // be marked complete if this is not a forcing flashcard (areLinesForcing === false)
       setMoveGrade({ san: currentMove.san, grade: judgement });
+
+      // If the move was worse than good, tell the user that they played an incorrect move.
       if (isMoveJudgementWorseThan(MoveJudgement.Good, judgement)) {
         handleIncorrectUserMove();
       }
     }
-  }, [currentMove, areLinesForcing, handleIncorrectUserMove, gradeMove, handleIncorrectUserMove]);
+  }, [currentMove, areLinesForcing, handleIncorrectUserMove, gradeMove,
+      handleIncorrectUserMove, markCurrentLineComplete]);
 
 
   const handleUserMove = useCallback(() => {
@@ -645,13 +658,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [lines, areLinesForcing, previousLines, setupResetBoardTimeouts, pauseClock]);
 
 
-  useEffect(() => {
-    if (hasUserCompletedFlashcard) {
-      console.log(getReviewQuality());
-    }
-  }, [hasUserCompletedFlashcard]);
-
-
   // When the flashcardIndex changes...
   useEffect(() => {
     resetChessboardEngine();
@@ -670,10 +676,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       const judgements = judgeScores(fc.userColor, fc.bestMoves.map(({score}) => score));
       setMoveJudgements(judgements);
 
-      // If the judgement of the second best move is one of the GOOD_JUDGEMENTS,
-      // that means that there are at least two 'good enough' answers to this flashcard.
-      // In that case, set areLinesForcing to false. Otherwise, set areLinesForcing to true.
-      if (GOOD_JUDGEMENTS.includes(judgements[1])) {
+      // If the judgement of the second best move is Good or better, that means that
+      // there are at least two 'good enough' answers to this flashcard. In that case,
+      // set areLinesForcing to false. Otherwise, set areLinesForcing to true.
+      if (isMoveJudgementAtLeast(MoveJudgement.Good, judgements[1])) {
         setAreLinesForcing(false);
       } else {
         setAreLinesForcing(true);
@@ -796,6 +802,22 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     // If we have reached this point, then a line has been completed.
     markCurrentLineComplete();
   }, [lines, currentMove, flashcards, flashcardIndex, currentMode])
+
+
+  useEffect(() => {
+    if (areLinesForcing) return;
+    if (previousMoveGrade == null && moveGrade != null &&
+        isMoveJudgementAtLeast(MoveJudgement.Good, moveGrade.grade)) {
+      setHasUserCompletedFlashcard(true);
+    }
+  }, [moveGrade, previousMoveGrade, areLinesForcing])
+
+
+  useEffect(() => {
+    if (hasUserCompletedFlashcard) {
+      console.log('Review:', getReviewQuality());
+    }
+  }, [hasUserCompletedFlashcard])
 
 
   // Determine the board size

@@ -1078,3 +1078,11 @@ export function getMoveJudgementIndex(mj: MoveJudgement): number {
 export function isMoveJudgementWorseThan(mj: MoveJudgement, mjBeingChecked: MoveJudgement) {
   return getMoveJudgementIndex(mjBeingChecked) > getMoveJudgementIndex(mj);
 }
+
+export function isMoveJudgementBetterThan(mj: MoveJudgement, mjBeingChecked: MoveJudgement) {
+  return getMoveJudgementIndex(mjBeingChecked) < getMoveJudgementIndex(mj);
+}
+
+export function isMoveJudgementAtLeast(mj: MoveJudgement, mjBeingChecked: MoveJudgement) {
+  return getMoveJudgementIndex(mjBeingChecked) <= getMoveJudgementIndex(mj);
+}
