@@ -230,32 +230,25 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       isReplay, remainingTime, moveGrade]);
 
 
-  const handleRate = async (quality: ReviewQuality) => {
+  const saveFlashcardSolveResult = async (quality: ReviewQuality) => {
     setIsSubmitting(true);
-    console.log('quality', quality);
     setIsSubmitting(false);
-    // try {
-    //   const result = await reviewFlashcard(currentFlashcard.id, quality);
+    try {
+      const result = await reviewFlashcard(currentFlashcard.id, quality);
 
-    //   if (result.success) {
-    //     // Move to next flashcard or finish
-    //     if (flashcardIndex < flashcards.length - 1) {
-    //       setFlashcardIndex(flashcardIndex + 1);
-    //       setShowAnswer(false);
-    //       setUserAttemptedMove(null);
-    //     } else {
-    //       // All done - refresh to show updated stats
-    //       router.refresh();
-    //     }
-    //   } else {
-    //     alert(`Error: ${result.error}`);
-    //   }
-    // } catch (error) {
-    //   console.error('Error submitting review:', error);
-    //   alert('An error occurred while submitting review');
-    // } finally {
-    //   setIsSubmitting(false);
-    // }
+      if (result.success) {
+        // Move to next flashcard or finish
+        console.log('Flashcard result saved to db')
+        } else {
+          // All done - refresh to show updated stats
+          router.refresh();
+        }
+    } catch (error) {
+      console.error('Error saving flashcard solve result:', error);
+      alert('An error occurred while submitting review');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
@@ -815,7 +808,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   useEffect(() => {
     if (hasUserCompletedFlashcard) {
-      console.log('Review:', getReviewQuality());
+      const reviewQuality = getReviewQuality();
+      if (reviewQuality) {
+        saveFlashcardSolveResult(reviewQuality)
+      }
     }
   }, [hasUserCompletedFlashcard])
 
