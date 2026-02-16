@@ -47,10 +47,40 @@ const FlashcardCreator = ({
   const [gameFlashcards, setGameFlashcards] = useState<Flashcard[] | null>(null);
   const [awaitingUserConfirm, setAwaitingUserConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Flashcards created in this session
   const [createdFlashcards, setCreatedFlashcards] = useState<CreateFlashcardInput[]>([]);
 
-  const getFlashcardMove = useCallback((): Move => {
-    if (currentMove == undefined) throw new Error('currentMove was undefined');
+
+  // Returns true if the given move represents a position that is flashcard worthy.
+  // If 'isFlashcardRecommended' is true, this function will only return true if
+  // the move that was played in the position was bad enough that a flashcard is
+  // not just acceptable, but recommended.
+  const isPositionFlashcardWorthy = useCallback((
+    move: Move,
+    isFlashcardRecommended = false,
+  ) => {
+    // Return false if it is not the user's turn
+    if (game.userColor === getColor(move)) return false;
+
+    // If there is no next move, then there is no move to judge.
+    if (move.next == undefined) return false;
+
+    // If the judgement of the next move is bad enough, then this position
+    // is flashcard worthy
+    const js = [
+      MoveJudgement.Blunder,
+      MoveJudgement.Mistake,
+    ];
+    if (!isFlashcardRecommended) js.push(MoveJudgement.Inaccurate);
+    const j = makeMoveJudgement(move.fen, move.next.fen, evaluations);
+    if (j == undefined) return false;
+    return js.includes(j);
+  }, [game, evaluations]);
+
+
+  const getFlashcardMove = useCallback((): Move | null => {
+    if (currentMove == undefined) return null;
     // The flashcard move is the move that represents the starting position
     // of the flashcard. If we are in a variation, the flashcard move should
     // be the mainLine parent of the variation.
@@ -60,11 +90,13 @@ const FlashcardCreator = ({
       if (parent == null) throw new Error('parent was null');
       flashcardMove = parent;
     }
+    if (!isPositionFlashcardWorthy(flashcardMove)) return null;
     return flashcardMove;
-  }, [currentMove]);
+  }, [currentMove, isPositionFlashcardWorthy]);
 
   const makeFlashcardData = useCallback(async (): Promise<CreateFlashcardInput> => {
     const flashcardMove = getFlashcardMove();
+    if (flashcardMove == null) throw new Error('flashcardMove was null');
 
     if (colorToMove(flashcardMove) !== game.userColor) {
       throw new Error("In the flashcardMove position, it is not the user's turn");
@@ -136,6 +168,7 @@ const FlashcardCreator = ({
 
   const makeFlashcardPositionHtml = useCallback((): ReactElement => {
     const flashcardMove = getFlashcardMove();
+    if (flashcardMove == null) throw new Error('flashcardMove was null');
     if (flashcardMove.next == undefined) throw new Error('flashcardMove.next was undefined');
     const mj = getMoveJudgement(flashcardMove.next, convertEvaluationsToGameEvals(evaluations));
     const color = getMoveJudgementColor(mj);
@@ -166,53 +199,43 @@ const FlashcardCreator = ({
   }, [currentMove, gameFlashcards]);
 
 
-  const shouldDisableFlashcardBtn = useCallback((): boolean => {
-    // If in the starting position, the button should be disabled.
-    if (currentMove == undefined) return true;
+  // Return true if a flashcard could be made from the currentMove position,
+  // or if in a variation whose mainline parent position could be a flashcard.
+  const isPositionFlashcardRelevant = useCallback((): boolean => {
+    if (currentMove == undefined) return false;
 
+    // If we are in a variation that derives from a flashcard worthy position,
+    // return true.
+    if (isInVariation(currentMove)) {
+      const parent = getMainLineParentOfVariation(currentMove);
+      if (parent && isPositionFlashcardWorthy(parent)) return true;
+    }
+
+    // If the current position is flashcard worthy, return true
+    if (isPositionFlashcardWorthy(currentMove)) return true;
+
+    return false;
+  }, [currentMove]);
+
+
+  const shouldDisableFlashcardBtn = useCallback((): boolean => {
     // Disable the button if we already have a flashcard for this position
     if (doesFlashcardAlreadyExistForThisPosition()) return true;
 
-    // If we are in a variation that derives from a flashcard worthy position,
-    // the flashcard button should not be disabled.
-    if (isInVariation(currentMove)) {
-      const parent = getMainLineParentOfVariation(currentMove);
-      if (parent && isPositionFlashcardWorthy(parent)) return false;
-    }
-
-    // If the current position is flashcard worthy, the button should
-    // not be disabled.
-    if (isPositionFlashcardWorthy(currentMove)) return false;
+    // Don't disable the button if the current position could be a flashcard,
+    // or if we are in a variation whose mainline parent could be a flashcard.
+    if (isPositionFlashcardRelevant()) return false;
 
     // Otherwise, the button should be disabled.
     return true;
-  }, [currentMove, game, doesFlashcardAlreadyExistForThisPosition]);
+  }, [isPositionFlashcardRelevant, doesFlashcardAlreadyExistForThisPosition]);
 
-  // Returns true if the given move represents a position that is flashcard worthy.
-  // If 'isFlashcardRecommended' is true, this function will only return true if
-  // the move that was played in the position was bad enough that a flashcard is
-  // not just acceptable, but recommended.
-  const isPositionFlashcardWorthy = useCallback((
-    move: Move,
-    isFlashcardRecommended = false,
-  ) => {
-    // Return false if it is not the user's turn
-    if (game.userColor === getColor(move)) return false;
 
-    // If there is no next move, then there is no move to judge.
-    if (move.next == undefined) return false;
-
-    // If the judgement of the next move is bad enough, then this position
-    // is flashcard worthy
-    const js = [
-      MoveJudgement.Blunder,
-      MoveJudgement.Mistake,
-    ];
-    if (!isFlashcardRecommended) js.push(MoveJudgement.Inaccurate);
-    const j = makeMoveJudgement(move.fen, move.next.fen, evaluations);
-    if (j == undefined) return false;
-    return js.includes(j);
-  }, [game, evaluations]);
+  const hasFlashcardBeenCreatedForThisPositionOrVariation = useCallback((): boolean => {
+    const flashcardMove = getFlashcardMove();
+    if (flashcardMove == null) return false;
+    return createdFlashcards.some((fc) => fc.positionIdx === flashcardMove.ply);
+  }, [getFlashcardMove, createdFlashcards]);
 
 
   useEffect(() => {
@@ -230,7 +253,7 @@ const FlashcardCreator = ({
 
   const wrapContent = (content: ReactElement): ReactElement => {
     return (
-      <div className="w-full h-full p-5 flex flex-col items-center gap-4 bg-background-page rounded-md">
+      <div className="w-full p-5 flex flex-col items-center gap-4 bg-background-page rounded-md">
         {content}
       </div>
     );
@@ -241,7 +264,6 @@ const FlashcardCreator = ({
     setError(null);
     changeIsCreatingFlashcard(true);
 
-    // TODO: Prevent creation of duplicate flashcards
     const flashcardData = await makeFlashcardData();
 
     try {
@@ -257,6 +279,7 @@ const FlashcardCreator = ({
       setError('An unexpected error occurred');
     } finally {
       changeIsCreatingFlashcard(false);
+      setAwaitingUserConfirm(false);
     }
   };
 
@@ -315,8 +338,18 @@ const FlashcardCreator = ({
   }
 
 
-  return (
-    <div>
+  if (hasFlashcardBeenCreatedForThisPositionOrVariation()) {
+    return wrapContent(
+      <div className="text-center flex flex-col gap-4">
+        <h2 className="text-xl font-bold">Flashcard Created</h2>
+        <p>Flashcard created for the position after {makeFlashcardPositionHtml()}</p>
+      </div>
+    );
+  }
+
+
+  return wrapContent(
+    <>
       {hasGameBeenAnalyzed && (
         <div className="w-full h-full p-5 flex flex-col items-center gap-4 bg-background-page rounded-md">
           <Button
@@ -331,7 +364,7 @@ const FlashcardCreator = ({
           )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
