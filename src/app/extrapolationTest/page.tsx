@@ -45,6 +45,21 @@ interface CpDiffOutlier {
   gameId: string;
 }
 
+interface CpRangeStats {
+  rangeLabel: string;
+  rangeMin: number;
+  rangeMax: number;
+  cpDiffMean: number;
+  cpDiffMedian: number;
+  cpDiffStdDev: number;
+  dataPoints: number;
+}
+
+interface DepthCpRangeStats {
+  depth: number;
+  ranges: CpRangeStats[];
+}
+
 export default function ExtrapolationTestPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -52,13 +67,14 @@ export default function ExtrapolationTestPage() {
   const [extrapolations, setExtrapolations] = useState<Record<string, Evaluations[]>>({});
   const [stats, setStats] = useState<DepthStats[]>([]);
   const [lineIndexStats, setLineIndexStats] = useState<LineIndexStats[]>([]);
+  const [depthCpRangeStats, setDepthCpRangeStats] = useState<DepthCpRangeStats[]>([]);
   const [cpDiffOutliers, setCpDiffOutliers] = useState<CpDiffOutlier[]>([]);
   const [hasExtrapolationCompleted, setHasExtrapolationCompleted] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
 
   // Form state
-  const [maxGames, setMaxGames] = useState<number>(100);
-  const [maxDepth, setMaxDepth] = useState<number>(5);
+  const [maxGames, setMaxGames] = useState<number>(300);
+  const [maxDepth, setMaxDepth] = useState<number>(3);
 
   const loadGames = async () => {
     const games = await getAllGames(maxGames);
@@ -145,6 +161,17 @@ export default function ExtrapolationTestPage() {
     return count;
   };
 
+  // Get CP range key for grouping by absolute value (e.g., 0 to 100, 100 to 200, etc.)
+  const getCpRangeKey = (cp: number): string => {
+    const absCp = Math.abs(cp);
+    if (absCp <= 100) {
+      return '0 to 100';
+    }
+    const rangeStart = Math.floor((absCp - 1) / 100) * 100;
+    const rangeEnd = rangeStart + 100;
+    return `${rangeStart} to ${rangeEnd}`;
+  };
+
   useEffect(() => {
     if (hasStarted) {
       loadGames();
@@ -172,6 +199,11 @@ export default function ExtrapolationTestPage() {
         cpDiffsSigned: number[],
         matchingMoves: number[]
       }> = {};
+
+      // Group data by depth and CP range for all extrapolations
+      const dataByDepthAndCpRange: Record<number, Record<string, {
+        cpDiffs: number[]
+      }>> = {};
 
       // Track all CP differences with context for outlier detection
       const allCpDiffs: CpDiffOutlier[] = [];
@@ -204,6 +236,11 @@ export default function ExtrapolationTestPage() {
               };
             }
 
+            // Initialize depth for CP range tracking
+            if (!dataByDepthAndCpRange[depth]) {
+              dataByDepthAndCpRange[depth] = {};
+            }
+
             // Find the non-extrapolated version
             const pev = g.engineAnalysis![xpev.fen];
 
@@ -215,6 +252,15 @@ export default function ExtrapolationTestPage() {
                 const cpDiffSigned = xpev.score.value - pev.score.value;
                 dataByDepth[depth].cpDiffs.push(cpDiff);
                 dataByDepth[depth].cpDiffsSigned.push(cpDiffSigned);
+
+                // Group by CP range (using extrapolated CP value)
+                const cpRangeKey = getCpRangeKey(xpev.score.value);
+                if (!dataByDepthAndCpRange[depth][cpRangeKey]) {
+                  dataByDepthAndCpRange[depth][cpRangeKey] = {
+                    cpDiffs: []
+                  };
+                }
+                dataByDepthAndCpRange[depth][cpRangeKey].cpDiffs.push(cpDiff);
               }
 
               // Compare lines
@@ -320,6 +366,39 @@ export default function ExtrapolationTestPage() {
           moveDataPoints: dataByLineIndex[lineIndex].matchingMoves.length,
         }));
 
+      // Calculate statistics by CP range for each depth
+      const calculatedDepthCpRangeStats: DepthCpRangeStats[] = Object.keys(dataByDepthAndCpRange)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map(depth => {
+          const rangeStats: CpRangeStats[] = Object.keys(dataByDepthAndCpRange[depth])
+            .map(rangeLabel => {
+              // Parse range to get min/max for sorting
+              const parts = rangeLabel.split(' to ');
+              const rangeMin = parseInt(parts[0]);
+              const rangeMax = parseInt(parts[1]);
+
+              return {
+                rangeLabel,
+                rangeMin,
+                rangeMax,
+                cpDiffMean: mean(dataByDepthAndCpRange[depth][rangeLabel].cpDiffs),
+                cpDiffMedian: median(dataByDepthAndCpRange[depth][rangeLabel].cpDiffs),
+                cpDiffStdDev: stdDev(dataByDepthAndCpRange[depth][rangeLabel].cpDiffs),
+                dataPoints: dataByDepthAndCpRange[depth][rangeLabel].cpDiffs.length,
+              };
+            })
+            .sort((a, b) => {
+              // Sort by the lower bound of the range
+              return a.rangeMin - b.rangeMin;
+            });
+
+          return {
+            depth,
+            ranges: rangeStats
+          };
+        });
+
       // Get top outliers (highest CP differences)
       const topOutliers = allCpDiffs
         .sort((a, b) => b.cpDiff - a.cpDiff)
@@ -327,6 +406,7 @@ export default function ExtrapolationTestPage() {
 
       setStats(calculatedStats);
       setLineIndexStats(calculatedLineIndexStats);
+      setDepthCpRangeStats(calculatedDepthCpRangeStats);
       setCpDiffOutliers(topOutliers);
       setHasExtrapolationCompleted(true);
     }
@@ -339,8 +419,9 @@ export default function ExtrapolationTestPage() {
       console.log('extrapolations', extrapolations);
       console.log('stats', stats);
       console.log('lineIndexStats', lineIndexStats);
+      console.log('depthCpRangeStats', depthCpRangeStats);
     }
-  }, [hasExtrapolationCompleted, extrapolations, stats, lineIndexStats]);
+  }, [hasExtrapolationCompleted, extrapolations, stats, lineIndexStats, depthCpRangeStats]);
 
   // Show loading while checking auth
   if (status === "loading") {
@@ -591,6 +672,47 @@ export default function ExtrapolationTestPage() {
             </table>
           </div>
 
+          {depthCpRangeStats.map((depthStats) => (
+            <div key={depthStats.depth} className="overflow-x-auto mb-8">
+              <h2 className="text-2xl font-bold mb-4">Depth-{depthStats.depth} Extrapolation by CP Range (Absolute Value)</h2>
+              <p className="mb-4 text-gray-300">
+                Shows accuracy of depth-{depthStats.depth} extrapolations grouped by the absolute value of the extrapolated CP.
+              </p>
+              <table className="min-w-full border-collapse border border-gray-300">
+                <thead className="bg-gray-600">
+                  <tr>
+                    <th className="border border-gray-300 px-4 py-2">CP Range (Absolute)</th>
+                    <th className="border border-gray-300 px-4 py-2">Data Points</th>
+                    <th className="border border-gray-300 px-4 py-2">Mean CP Diff</th>
+                    <th className="border border-gray-300 px-4 py-2">Median CP Diff</th>
+                    <th className="border border-gray-300 px-4 py-2">Std Dev CP Diff</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {depthStats.ranges.map((stat, idx) => (
+                    <tr key={idx} className="hover:bg-gray-700">
+                      <td className="border border-gray-300 px-4 py-2 font-semibold text-center">
+                        {stat.rangeLabel}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-center">
+                        {stat.dataPoints}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-right">
+                        {stat.cpDiffMean.toFixed(2)}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-right">
+                        {stat.cpDiffMedian.toFixed(2)}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-right">
+                        {stat.cpDiffStdDev.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+
           <div className="overflow-x-auto mb-8">
             <h2 className="text-2xl font-bold mb-4">Top CP Difference Outliers (Depth-1)</h2>
             <p className="mb-4 text-gray-300">
@@ -660,6 +782,13 @@ export default function ExtrapolationTestPage() {
                 <strong>Line Index Statistics:</strong> Shows whether extrapolation accuracy varies based on which
                 engine line was used. Line 0 is the best move, line 1 is the second-best, etc. This reveals if
                 extrapolation is more reliable for the engine's top choice vs alternative lines.
+              </p>
+              <p>
+                <strong>CP Range Statistics:</strong> Shows whether extrapolation accuracy varies based on the
+                evaluation range. Positions are grouped by the absolute value of their extrapolated CP.
+                For example, both +150 and -150 fall into the "100 to 200" range. This reveals if
+                extrapolation is more reliable in balanced positions (0 to 100) vs decisive positions
+                (high absolute CP values). Separate tables are shown for each extrapolation depth.
               </p>
               <p>
                 <strong>Data Points:</strong> Number of comparisons made. Format: (CP comparisons / Total move comparisons / Mate comparisons).
