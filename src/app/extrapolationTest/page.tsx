@@ -24,12 +24,35 @@ interface DepthStats {
   mateDataPoints: number;
 }
 
+interface LineIndexStats {
+  lineIndex: number;
+  cpDiffMean: number;
+  cpDiffMedian: number;
+  cpDiffStdDev: number;
+  cpDiffSignedMean: number;
+  matchingMovesMean: number;
+  matchingMovesStdDev: number;
+  cpDataPoints: number;
+  moveDataPoints: number;
+}
+
+interface CpDiffOutlier {
+  lineIndex: number;
+  fen: string;
+  cpDiff: number;
+  extrapolatedCp: number;
+  actualCp: number;
+  gameId: string;
+}
+
 export default function ExtrapolationTestPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [userGames, setUserGames] = useState<GameData[]>([]);
   const [extrapolations, setExtrapolations] = useState<Record<string, Evaluations[]>>({});
   const [stats, setStats] = useState<DepthStats[]>([]);
+  const [lineIndexStats, setLineIndexStats] = useState<LineIndexStats[]>([]);
+  const [cpDiffOutliers, setCpDiffOutliers] = useState<CpDiffOutlier[]>([]);
   const [hasExtrapolationCompleted, setHasExtrapolationCompleted] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
 
@@ -59,6 +82,19 @@ export default function ExtrapolationTestPage() {
     return extrapolationSet;
   }
 
+  const makeExtrapolationSetWithLineIndex = (evaluations: Evaluations): { extrapolationSet: Evaluations, lineIndexMap: Map<string, number> } => {
+    const extrapolationSet: Evaluations = {};
+    const lineIndexMap = new Map<string, number>();
+    Object.values(evaluations).forEach((pev) => {
+      const extrapolations = extrapolatePositionEvaluation(pev);
+      extrapolations.forEach((e, lineIndex) => {
+        extrapolationSet[e.fen] = e;
+        lineIndexMap.set(e.fen, lineIndex);
+      });
+    });
+    return { extrapolationSet, lineIndexMap };
+  }
+
   const makeExtrapolationSets = (evaluations: Evaluations, maxDepth: number): Evaluations[] => {
     const result: Evaluations[] = [];
     let depthCounter = 0;
@@ -76,6 +112,16 @@ export default function ExtrapolationTestPage() {
   const mean = (values: number[]): number => {
     if (values.length === 0) return 0;
     return values.reduce((sum, val) => sum + val, 0) / values.length;
+  };
+
+  const median = (values: number[]): number => {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 0) {
+      return (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+    return sorted[mid];
   };
 
   const stdDev = (values: number[]): number => {
@@ -120,10 +166,23 @@ export default function ExtrapolationTestPage() {
         matchingMovesMate: number[]
       }> = {};
 
+      // Group data by line index for depth-1 extrapolations only
+      const dataByLineIndex: Record<number, {
+        cpDiffs: number[],
+        cpDiffsSigned: number[],
+        matchingMoves: number[]
+      }> = {};
+
+      // Track all CP differences with context for outlier detection
+      const allCpDiffs: CpDiffOutlier[] = [];
+
       analyzedGames.forEach((g) => {
         if (g.engineAnalysis == undefined) return;
         const extrapolationSets = makeExtrapolationSets(g.engineAnalysis, maxDepth);
         allExtrapolations[g.gameId] = extrapolationSets;
+
+        // Track line indices for depth-1 extrapolations
+        const { extrapolationSet: depth1Set, lineIndexMap } = makeExtrapolationSetWithLineIndex(g.engineAnalysis);
 
         // Process each depth level
         extrapolationSets.forEach((extrapolationSet) => {
@@ -173,11 +232,58 @@ export default function ExtrapolationTestPage() {
             }
           });
         });
+
+        // Process depth-1 extrapolations by line index
+        Object.values(depth1Set).forEach((xpev) => {
+          if (xpev.extrapolationDepth !== 1) return;
+
+          const lineIndex = lineIndexMap.get(xpev.fen);
+          if (lineIndex === undefined) return;
+
+          // Initialize line index if needed
+          if (!dataByLineIndex[lineIndex]) {
+            dataByLineIndex[lineIndex] = {
+              cpDiffs: [],
+              cpDiffsSigned: [],
+              matchingMoves: []
+            };
+          }
+
+          // Find the non-extrapolated version
+          const pev = g.engineAnalysis![xpev.fen];
+
+          // Only compare if we found a non-extrapolated version
+          if (pev && pev.extrapolationDepth === undefined) {
+            // Compare CP values (only if both are cp scores)
+            if (xpev.score.key === 'cp' && pev.score.key === 'cp') {
+              const cpDiff = Math.abs(xpev.score.value - pev.score.value);
+              const cpDiffSigned = xpev.score.value - pev.score.value;
+              dataByLineIndex[lineIndex].cpDiffs.push(cpDiff);
+              dataByLineIndex[lineIndex].cpDiffsSigned.push(cpDiffSigned);
+
+              // Track for outlier detection
+              allCpDiffs.push({
+                lineIndex,
+                fen: xpev.fen,
+                cpDiff,
+                extrapolatedCp: xpev.score.value,
+                actualCp: pev.score.value,
+                gameId: g.gameId
+              });
+            }
+
+            // Compare lines
+            if (xpev.lines[0] && pev.lines[0]) {
+              const matches = countMatchingMoves(xpev.lines[0].lanLine, pev.lines[0].lanLine);
+              dataByLineIndex[lineIndex].matchingMoves.push(matches);
+            }
+          }
+        });
       });
 
       setExtrapolations(allExtrapolations);
 
-      // Calculate statistics
+      // Calculate statistics by depth
       const calculatedStats: DepthStats[] = Object.keys(dataByDepth)
         .map(Number)
         .sort((a, b) => a - b)
@@ -198,7 +304,30 @@ export default function ExtrapolationTestPage() {
           dataPoints: Math.max(dataByDepth[depth].cpDiffs.length, dataByDepth[depth].matchingMoves.length),
         }));
 
+      // Calculate statistics by line index (depth-1 only)
+      const calculatedLineIndexStats: LineIndexStats[] = Object.keys(dataByLineIndex)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map(lineIndex => ({
+          lineIndex,
+          cpDiffMean: mean(dataByLineIndex[lineIndex].cpDiffs),
+          cpDiffMedian: median(dataByLineIndex[lineIndex].cpDiffs),
+          cpDiffStdDev: stdDev(dataByLineIndex[lineIndex].cpDiffs),
+          cpDiffSignedMean: mean(dataByLineIndex[lineIndex].cpDiffsSigned),
+          matchingMovesMean: mean(dataByLineIndex[lineIndex].matchingMoves),
+          matchingMovesStdDev: stdDev(dataByLineIndex[lineIndex].matchingMoves),
+          cpDataPoints: dataByLineIndex[lineIndex].cpDiffs.length,
+          moveDataPoints: dataByLineIndex[lineIndex].matchingMoves.length,
+        }));
+
+      // Get top outliers (highest CP differences)
+      const topOutliers = allCpDiffs
+        .sort((a, b) => b.cpDiff - a.cpDiff)
+        .slice(0, 20);
+
       setStats(calculatedStats);
+      setLineIndexStats(calculatedLineIndexStats);
+      setCpDiffOutliers(topOutliers);
       setHasExtrapolationCompleted(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -209,8 +338,9 @@ export default function ExtrapolationTestPage() {
     if (hasExtrapolationCompleted) {
       console.log('extrapolations', extrapolations);
       console.log('stats', stats);
+      console.log('lineIndexStats', lineIndexStats);
     }
-  }, [hasExtrapolationCompleted, extrapolations, stats]);
+  }, [hasExtrapolationCompleted, extrapolations, stats, lineIndexStats]);
 
   // Show loading while checking auth
   if (status === "loading") {
@@ -395,6 +525,115 @@ export default function ExtrapolationTestPage() {
             </table>
           </div>
 
+          <div className="overflow-x-auto mb-8">
+            <h2 className="text-2xl font-bold mb-4">Depth-1 Extrapolation by Line Index</h2>
+            <p className="mb-4 text-gray-300">
+              Shows accuracy of depth-1 extrapolations grouped by which line (best=0, 2nd best=1, etc.) was used for extrapolation.
+            </p>
+            <table className="min-w-full border-collapse border border-gray-300">
+              <thead className="bg-gray-600">
+                <tr>
+                  <th className="border border-gray-300 px-4 py-2">Line Index</th>
+                  <th className="border border-gray-300 px-4 py-2">Data Points</th>
+                  <th className="border border-gray-300 px-4 py-2" colSpan={3}>
+                    CP Value Difference (Absolute)
+                  </th>
+                  <th className="border border-gray-300 px-4 py-2">
+                    CP Bias
+                  </th>
+                  <th className="border border-gray-300 px-4 py-2" colSpan={2}>
+                    Matching Moves
+                  </th>
+                </tr>
+                <tr>
+                  <th className="border border-gray-300 px-4 py-2"></th>
+                  <th className="border border-gray-300 px-4 py-2 text-sm">(CP / Moves)</th>
+                  <th className="border border-gray-300 px-4 py-2 text-sm">Mean</th>
+                  <th className="border border-gray-300 px-4 py-2 text-sm">Median</th>
+                  <th className="border border-gray-300 px-4 py-2 text-sm">Std Dev</th>
+                  <th className="border border-gray-300 px-4 py-2 text-sm">Mean (Signed)</th>
+                  <th className="border border-gray-300 px-4 py-2 text-sm">Mean</th>
+                  <th className="border border-gray-300 px-4 py-2 text-sm">Std Dev</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineIndexStats.map((stat) => (
+                  <tr key={stat.lineIndex} className="hover:bg-gray-700">
+                    <td className="border border-gray-300 px-4 py-2 font-semibold text-center">
+                      {stat.lineIndex}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-center">
+                      {stat.cpDataPoints} / {stat.moveDataPoints}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      {stat.cpDiffMean.toFixed(2)}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      {stat.cpDiffMedian.toFixed(2)}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      {stat.cpDiffStdDev.toFixed(2)}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      <span className={stat.cpDiffSignedMean > 0 ? 'text-orange-400' : stat.cpDiffSignedMean < 0 ? 'text-blue-400' : ''}>
+                        {stat.cpDiffSignedMean > 0 ? '+' : ''}{stat.cpDiffSignedMean.toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      {stat.matchingMovesMean.toFixed(2)}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      {stat.matchingMovesStdDev.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="overflow-x-auto mb-8">
+            <h2 className="text-2xl font-bold mb-4">Top CP Difference Outliers (Depth-1)</h2>
+            <p className="mb-4 text-gray-300">
+              Positions with the largest differences between extrapolated and actual engine evaluations.
+            </p>
+            <table className="min-w-full border-collapse border border-gray-300">
+              <thead className="bg-gray-600">
+                <tr>
+                  <th className="border border-gray-300 px-4 py-2">Line Index</th>
+                  <th className="border border-gray-300 px-4 py-2">CP Diff</th>
+                  <th className="border border-gray-300 px-4 py-2">Extrapolated CP</th>
+                  <th className="border border-gray-300 px-4 py-2">Actual CP</th>
+                  <th className="border border-gray-300 px-4 py-2">FEN</th>
+                  <th className="border border-gray-300 px-4 py-2">Game ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cpDiffOutliers.map((outlier, idx) => (
+                  <tr key={idx} className="hover:bg-gray-700">
+                    <td className="border border-gray-300 px-4 py-2 text-center">
+                      {outlier.lineIndex}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right font-semibold text-red-400">
+                      {outlier.cpDiff.toFixed(0)}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      {outlier.extrapolatedCp.toFixed(0)}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      {outlier.actualCp.toFixed(0)}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-xs font-mono">
+                      {outlier.fen}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-xs">
+                      {outlier.gameId}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           <div className="mt-8 space-y-4">
             <h2 className="text-2xl font-bold">Interpretation</h2>
             <div className="space-y-2 text-gray-200">
@@ -416,6 +655,11 @@ export default function ExtrapolationTestPage() {
                 <strong>Matching Moves by Score Type:</strong> Comparison of line accuracy for positions with
                 centipawn scores vs mate scores. This shows whether extrapolation works better for tactical
                 (mate) positions or positional (cp) evaluations.
+              </p>
+              <p>
+                <strong>Line Index Statistics:</strong> Shows whether extrapolation accuracy varies based on which
+                engine line was used. Line 0 is the best move, line 1 is the second-best, etc. This reveals if
+                extrapolation is more reliable for the engine's top choice vs alternative lines.
               </p>
               <p>
                 <strong>Data Points:</strong> Number of comparisons made. Format: (CP comparisons / Total move comparisons / Mate comparisons).
