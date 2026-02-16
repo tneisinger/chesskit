@@ -728,7 +728,7 @@ export default function useChessAnalyzer(
       stockfish.postMessage('uci');
       const numThreads = getDefaultNumThreads();
       stockfish.postMessage(`setoption name Threads value ${numThreads}`);
-      stockfish.postMessage('setoption name Hash value 512');
+      stockfish.postMessage('setoption name Hash value 1024');
       stockfish.postMessage(`setoption name MultiPV value ${numLines}`);
       stockfish.postMessage('isready');
       hasStockfishBeenSetup.current = true;
