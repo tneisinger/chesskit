@@ -815,7 +815,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   useEffect(() => {
     if (hasUserCompletedFlashcard) {
       const reviewQuality = getReviewQuality();
-      if (reviewQuality) {
+      if (reviewQuality != null) {
         saveFlashcardSolveResult(reviewQuality)
       }
     }
