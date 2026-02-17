@@ -288,6 +288,11 @@ const FlashcardCreator = ({
   }, [gameFlashcards]);
 
 
+  if (!hasGameBeenAnalyzed) {
+    return <></>;
+  }
+
+
   if (isCreatingFlashcard) {
     return wrapContent(
       <div className="flex flex-col items-center justify-center">
