@@ -19,7 +19,7 @@ import { Chess as CmChess } from 'cm-chess/src/Chess';
 import usePrevious from '@/hooks/usePrevious';
 import { colorToMove, getLineFromCmMove } from '@/utils/cmchess';
 
-const MAX_THREADS_USAGE = 0.5;
+const MAX_THREADS_USAGE = 0.7;
 
 export enum AnalysisStatus {
   NotStarted = 'Not Started',
