@@ -473,7 +473,7 @@ describe('chess utilities', () => {
       expect(result[0].score.key).toBe('mate');
       expect(result[0].score.value).toBe(0); // Mate in 1 becomes mate in 0
       expect(result[0].extrapolationDepth).toBe(1);
-      expect(result[0].lines.length).toBe(0); // Next line shows mate in 1
+      expect(result[0].lines.length).toBe(0);
     });
 
     it('should extrapolate a position evaluation with negative mate score', () => {
@@ -603,21 +603,28 @@ describe('chess utilities', () => {
 
       expect(result.length).toBe(1);
       expect(result[0].score.key).toBe('mate');
-      expect(result[0].score.value).toBe(2); // Mate in 3 becomes mate in 2
+      expect(result[0].score.value).toBe(2); // Mate in 3 becomes mate in 2 because the mating color moved
+      expect(result[0].lines.length).toBe(1);
 
       const result2 = extrapolatePositionEvaluation(result[0]);
       expect(result2[0].score.key).toBe('mate');
-      expect(result2[0].score.value).toBe(2); // Mate in 2 stays mate in 2
+      expect(result2[0].score.value).toBe(2); // Mate in 2 stays mate in 2 because the mating color did not move
+      expect(result2[0].lines.length).toBe(1);
 
       const result3 = extrapolatePositionEvaluation(result2[0]);
       expect(result3[0].score.key).toBe('mate');
       expect(result3[0].score.value).toBe(1); // Mate in 2 becomes mate in 1
+      expect(result3[0].lines.length).toBe(1);
 
       const result4 = extrapolatePositionEvaluation(result3[0]);
       expect(result4[0].score.key).toBe('mate');
       expect(result4[0].score.value).toBe(1); // Mate in 1 stays mate in 1
+      expect(result4[0].lines.length).toBe(1);
 
       const result5 = extrapolatePositionEvaluation(result4[0]);
+      expect(result5[0].score.key).toBe('mate');
+      expect(result5[0].score.value).toBe(0); // Mate in 1 becomes mate in 0
+      expect(result5[0].lines.length).toBe(0);
     });
 
     it('should handle mate in 2 for black correctly', () => {
@@ -631,19 +638,16 @@ describe('chess utilities', () => {
         ],
       };
       const result = extrapolatePositionEvaluation(pev);
-      console.log(result[0]);
 
       expect(result.length).toBe(1);
       expect(result[0].score.key).toBe('mate');
       expect(result[0].score.value).toBe(-1); // Mate in -2 becomes mate in -1
 
       const result2 = extrapolatePositionEvaluation(result[0]);
-      console.log(result2[0]);
       expect(result2[0].score.key).toBe('mate');
       expect(result2[0].score.value).toBe(-1); // Mate in -1 stays mate in -1
 
       const result3 = extrapolatePositionEvaluation(result2[0]);
-      console.log(result3[0]);
       expect(result3[0].score.key).toBe('mate');
       expect(result3[0].score.value).toBe(0); // Mate in -1 becomes mate in 0
       expect(result3[0].lines.length).toBe(0);
