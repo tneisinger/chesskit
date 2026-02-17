@@ -8,7 +8,7 @@ import SvgIcon, { Svg } from '@/components/svgIcon';
 import useWindowSize from '@/hooks/useWindowSize';
 import Button, { ButtonSize } from '@/components/button';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
-import { getFlashcardStats } from '@/app/flashcards/actions';
+import { useFlashcardContext } from '@/contexts/FlashcardContext';
 
 const screenWidthBreakpoint = 992; // px
 
@@ -38,9 +38,9 @@ export default function Navigation() {
 	const pathname = usePathname();
 	const { width } = useWindowSize();
 	const { data: session, status } = useSession();
+	const { dueCount: dueFlashcardsCount } = useFlashcardContext();
 
   const [isMobile, setIsMobile] = useState(true);
-	const [dueFlashcardsCount, setDueFlashcardsCount] = useState<number>(0);
 
 	const isLoading = status === "loading";
 	const isLoggedIn = !!session;
@@ -57,20 +57,6 @@ export default function Navigation() {
       setIsMobileMenuOpen(false); // Close mobile menu if switching to desktop
     }
   }, [width]);
-
-	// Fetch due flashcards count
-	useEffect(() => {
-		const fetchDueCount = async () => {
-			if (isLoggedIn) {
-				const stats = await getFlashcardStats();
-				setDueFlashcardsCount(stats.due);
-			} else {
-				setDueFlashcardsCount(0);
-			}
-		};
-
-		fetchDueCount();
-	}, [isLoggedIn]);
 
 	const toggleMobileMenu = () => {
 		setIsMobileMenuOpen(!isMobileMenuOpen);

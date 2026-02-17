@@ -20,6 +20,7 @@ import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
 import { reviewFlashcard, updateFlashcardPgn, deleteFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
+import { useFlashcardContext } from '@/contexts/FlashcardContext';
 import { MoveJudgement, PieceColor, ShortMove, Evaluations } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import useChessAnalyzer from '@/hooks/useChessAnalyzer';
@@ -70,6 +71,7 @@ interface Props {
 
 const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [flashcardIndex, setFlashcardIndex] = useState(0);
+  const { refreshDueCount } = useFlashcardContext();
 
   const currentFlashcard = flashcards[flashcardIndex];
 
@@ -239,6 +241,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       if (result.success) {
         // Move to next flashcard or finish
         console.log('Flashcard result saved to db')
+        // Update the badge count in the navigation
+        await refreshDueCount();
         } else {
           // All done - refresh to show updated stats
           router.refresh();
@@ -520,6 +524,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
       if (result.success) {
         setDeleteStatus(DeleteStatus.Success);
+        // Update the badge count in the navigation
+        await refreshDueCount();
       } else {
         console.error('Error deleting flashcard:', result.error);
         setDeleteStatus(DeleteStatus.Failed);
@@ -528,7 +534,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       console.error('Error deleting flashcard:', error);
       setDeleteStatus(DeleteStatus.Failed);
     }
-  }, [currentFlashcard]);
+  }, [currentFlashcard, refreshDueCount]);
 
 
   const giveHint = useCallback(() => {
