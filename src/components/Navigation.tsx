@@ -8,6 +8,7 @@ import SvgIcon, { Svg } from '@/components/svgIcon';
 import useWindowSize from '@/hooks/useWindowSize';
 import Button, { ButtonSize } from '@/components/button';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
+import { getFlashcardStats } from '@/app/flashcards/actions';
 
 const screenWidthBreakpoint = 992; // px
 
@@ -39,6 +40,7 @@ export default function Navigation() {
 	const { data: session, status } = useSession();
 
   const [isMobile, setIsMobile] = useState(true);
+	const [dueFlashcardsCount, setDueFlashcardsCount] = useState<number>(0);
 
 	const isLoading = status === "loading";
 	const isLoggedIn = !!session;
@@ -55,6 +57,20 @@ export default function Navigation() {
       setIsMobileMenuOpen(false); // Close mobile menu if switching to desktop
     }
   }, [width]);
+
+	// Fetch due flashcards count
+	useEffect(() => {
+		const fetchDueCount = async () => {
+			if (isLoggedIn) {
+				const stats = await getFlashcardStats();
+				setDueFlashcardsCount(stats.due);
+			} else {
+				setDueFlashcardsCount(0);
+			}
+		};
+
+		fetchDueCount();
+	}, [isLoggedIn]);
 
 	const toggleMobileMenu = () => {
 		setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -73,6 +89,17 @@ export default function Navigation() {
 
 	const handleSignOut = async () => {
 		await signOut({ callbackUrl: '/' });
+	};
+
+	// Render badge for flashcards link
+	const renderFlashcardBadge = () => {
+		if (!isLoggedIn || dueFlashcardsCount === 0) return null;
+
+		return (
+			<span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+				{dueFlashcardsCount}
+			</span>
+		);
 	};
 
   const showDebugButtons = false;
@@ -118,9 +145,10 @@ export default function Navigation() {
 											isActiveLink(link.href)
 												? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
 												: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
-										}`}
+										} ${link.href === '/flashcards' ? 'relative' : ''}`}
 									>
 										{link.label}
+										{link.href === '/flashcards' && renderFlashcardBadge()}
 									</Link>
 								))}
 							</div>
@@ -216,9 +244,10 @@ export default function Navigation() {
 											isActiveLink(link.href)
 												? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
 												: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
-										}`}
+										} ${link.href === '/flashcards' ? 'relative' : ''}`}
 									>
 										{link.label}
+										{link.href === '/flashcards' && renderFlashcardBadge()}
 									</Link>
 								))}
 							</div>
