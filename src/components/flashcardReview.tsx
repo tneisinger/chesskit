@@ -23,7 +23,8 @@ import { useRouter } from 'next/navigation';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
 import { MoveJudgement, PieceColor, ShortMove, Evaluations } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
-import useChessAnalyzer from '@/hooks/useChessAnalyzer';
+import useFenAnalyzer from '@/hooks/useFenAnalyzer';
+import useCurrentMoveAnalysis from '@/hooks/useCurrentMoveAnalysis';
 import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
 import {
   areCmMovesEqual,
@@ -150,25 +151,27 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   } = useChessboardEngine();
 
   const [evaluations, setEvaluations] = useState<Evaluations>({});
-  const [isCurrentMoveAnalysisOn, setIsCurrentMoveAnalysisOn] = useState(false);
   const [engineDepth, setEngineDepth] = useState(20);
   const [numEngineLines, setNumEngineLines] = useState(2);
 
-  const {
-    engineName,
-    fenBeingAnalyzed,
-    analyzeFen,
-  } = useChessAnalyzer(
+  // Set up FEN analyzer
+  const fenAnalyzer = useFenAnalyzer();
+
+  // Get engine info from fenAnalyzer
+  const { engineName, fenBeingAnalyzed } = fenAnalyzer;
+
+  // Set up current move analysis
+  const currentMoveAnalysis = useCurrentMoveAnalysis(
     evaluations,
     setEvaluations,
-    isCurrentMoveAnalysisOn,
     currentMove,
-    engineDepth,
-    numEngineLines,
+    fenAnalyzer,
+    { depth: engineDepth, numLines: numEngineLines }
   );
 
+
   useEngineArrowCreator(
-    isCurrentMoveAnalysisOn,
+    currentMoveAnalysis.isOn,
     evaluations,
     currentMove,
     (newArrows) => setArrows(newArrows),
@@ -354,9 +357,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) throw new Error('flashcard was undefined');
     if (fc.bestMoves[0] == undefined) throw new Error('fc.bestLines was empty');
-    const pev = await analyzeFen(move.fen);
+    const pev = await fenAnalyzer.analyze(move.fen, { maxDepth: engineDepth, maxSeconds: 30 });
     return judgePevAgainstBestScore(fc.bestMoves[0].score, pev);
-  }, [analyzeFen, flashcards, flashcardIndex]);
+  }, [fenAnalyzer.analyze, flashcards, flashcardIndex]);
 
 
   const handleMoveThatWasNotInFlashcardPgn = useCallback(async () => {
@@ -445,7 +448,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     const fc = flashcards[flashcardIndex];
     setLines(makeLineStatsRecord(fc.pgn));
     setHasUserCompletedFlashcard(false);
-    setIsCurrentMoveAnalysisOn(false);
+    currentMoveAnalysis.setIsOn(false);
     setMoveGrade(null);
     setWrongAnswerCount(0);
     setIsReplay(true);
@@ -583,7 +586,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setBoardFenOverride(FEN.empty);
       setFlashcardIndex((i) => i + 1);
       setCurrentMode(Mode.Practice);
-      setIsCurrentMoveAnalysisOn(false);
+      currentMoveAnalysis.setIsOn(false);
     }
   }, [flashcardIndex, flashcards]);
 
@@ -868,10 +871,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const engineDisplay = (
     <EngineDisplay
-      isEngineOn={isCurrentMoveAnalysisOn}
-      setIsEngineOn={(b) => setIsCurrentMoveAnalysisOn(b)}
+      isEngineOn={currentMoveAnalysis.isOn}
+      setIsEngineOn={(b) => currentMoveAnalysis.setIsOn(b)}
       evaluations={evaluations}
       currentMove={currentMove}
+      latestEvaluation={fenAnalyzer.latestEvaluation}
       engineMaxDepth={engineDepth}
       engineName={engineName ? engineName : undefined}
       isEvaluating={fenBeingAnalyzed != null}
