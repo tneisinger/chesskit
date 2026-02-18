@@ -1,10 +1,10 @@
 import Button from '@/components/button';
 import Spinner from '@/components/spinner';
 import GameChart, { Props as GameChartProps } from '@/components/gameChart';
-import { AnalysisStatus } from '@/hooks/useChessAnalyzer';
+import { AnalysisStatus, Output as PgnAnalyzer } from '@/hooks/usePgnAnalyzer';
 
 interface Props extends GameChartProps {
-  analyzePgn: (pgn: string, analyzeVariations?: boolean) => void;
+  analyzePgn: PgnAnalyzer['analyzePgn'];
   depth: number;
   changeDepth: (newDepth: number) => void;
   numLines: number;
@@ -29,7 +29,7 @@ const GameAnalysis = ({
   width,
 }: Props) => {
   const handleAnalyzeGame = () => {
-    analyzePgn(game.pgn, false); // false means do not analyze variations
+    analyzePgn(game.pgn, { analyzeVariations: false, maxSecondsPerPosition: 60 * 4 });
   }
 
   return (

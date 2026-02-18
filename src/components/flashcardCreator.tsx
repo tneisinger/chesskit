@@ -23,14 +23,14 @@ import {
 } from '@/utils/cmchess';
 import { Flashcard } from "@/db/schema";
 import { createFlashcard, getAllFlashcards, CreateFlashcardInput } from '@/app/flashcards/actions';
-import { Output as ChessAnalyzerOutput } from '@/hooks/useChessAnalyzer';
+import { Output as ForcingLineFinderOutput } from '@/hooks/useForcingLineFinder';
 
 interface Props {
   game: GameData;
   evaluations: Evaluations;
   currentMove: Move | undefined;
   hasGameBeenAnalyzed: boolean;
-  addForcingLinesToCmChess: ChessAnalyzerOutput['addForcingLinesToCmChess'];
+  forcingLineFinder: ForcingLineFinderOutput;
   isCreatingFlashcard: boolean;
   changeIsCreatingFlashcard: (b: boolean) => void;
 }
@@ -40,7 +40,7 @@ const FlashcardCreator = ({
   evaluations,
   currentMove,
   hasGameBeenAnalyzed,
-  addForcingLinesToCmChess,
+  forcingLineFinder,
   isCreatingFlashcard,
   changeIsCreatingFlashcard,
 }: Props) => {
@@ -115,15 +115,17 @@ const FlashcardCreator = ({
     if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
     // Try to get forcing lines.
-    const addedLines = await addForcingLinesToCmChess(
-      cmChess,
-      flashcardMoveOfCmChess,
-      { minDepth: 20, maxLines: 1, maxLineLength: 11, moveFoundCallback: (move) => console.log('MOVE FOUND:', move.san)},
-    );
+    // TODO: Update to use forcingLineFinder.findForcingLines() and manually add moves to cmChess
+    const addedLines: any[] = [];
+    // const addedLines = await addForcingLinesToCmChess(
+    //   cmChess,
+    //   flashcardMoveOfCmChess,
+    //   { minDepth: 20, maxLines: 1, maxLineLength: 11, moveFoundCallback: (move) => console.log('MOVE FOUND:', move.san)},
+    // );
 
-    addedLines.forEach((line) => {
-      console.log(line.map((m) => m.san).join(' '));
-    });
+    // addedLines.forEach((line) => {
+    //   console.log(line.map((m) => m.san).join(' '));
+    // });
 
     // If a forcing line is found, set 'areLinesForcing' to true.
     let areLinesForcing = false;
@@ -163,7 +165,7 @@ const FlashcardCreator = ({
       movePlayedInGame: { san: flashcardMove.san, lan: (flashcardMove.from + flashcardMove.to)},
       gameUrl: game.url,
     }
-  }, [game, getFlashcardMove, evaluations, addForcingLinesToCmChess])
+  }, [game, getFlashcardMove, evaluations])
 
 
   const makeFlashcardPositionHtml = useCallback((): ReactElement => {

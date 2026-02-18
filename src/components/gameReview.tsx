@@ -15,7 +15,10 @@ import EngineDisplay from '@/components/engineDisplay';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
-import useChessAnalyzer, { AnalysisStatus } from '@/hooks/useChessAnalyzer';
+import useFenAnalyzer from '@/hooks/useFenAnalyzer';
+import useCurrentMoveAnalysis from '@/hooks/useCurrentMoveAnalysis';
+import usePgnAnalyzer, { AnalysisStatus } from '@/hooks/usePgnAnalyzer';
+import useForcingLineFinder from '@/hooks/useForcingLineFinder';
 import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
 import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
@@ -29,7 +32,6 @@ enum MobileTab {
 }
 
 interface State {
-  isCurrentMoveAnalysisOn: boolean;
   allowBoardInteraction: boolean;
   boardCursor: Cursor | null;
   markers: Marker[];
@@ -40,7 +42,6 @@ interface State {
 }
 
 type Action =
-  | { type: 'setIsCurrentMoveAnalysisOn'; value: boolean }
   | { type: 'setMarkers'; markers: Marker[] }
   | { type: 'setArrows'; arrows: Arrow[] }
   | { type: 'clearMoveSound' }
@@ -51,11 +52,6 @@ type Action =
 
 function reducer(s: State, a: Action): State {
   switch (a.type) {
-    case 'setIsCurrentMoveAnalysisOn':
-      if (a.value === false) {
-        return { ...s, isCurrentMoveAnalysisOn: a.value, markers: [], arrows: [] };
-      }
-      return { ...s, isCurrentMoveAnalysisOn: a.value };
     case 'setMarkers':
       return { ...s, markers: a.markers };
     case 'setArrows':
@@ -88,7 +84,6 @@ const GameReview = ({ game }: Props) => {
   const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
 
   const initialState: State = {
-    isCurrentMoveAnalysisOn: false,
     allowBoardInteraction: true,
     boardCursor: null,
     markers: [],
@@ -114,31 +109,58 @@ const GameReview = ({ game }: Props) => {
     playMove,
   } = useChessboardEngine();
 
-  // Set up game analyzer
-  const {
-    analyzePgn,
-    pgnAnalysisStatus,
-    pgnAnalysisProgress,
-    engineName,
-    fenBeingAnalyzed,
-    addForcingLinesToCmChess,
-  } = useChessAnalyzer(
+  // Set up FEN analyzer
+  const fenAnalyzer = useFenAnalyzer();
+
+  // Set up current move analysis
+  const currentMoveAnalysis = useCurrentMoveAnalysis(
     evaluations,
     setEvaluations,
-    s.isCurrentMoveAnalysisOn,
     currentMove,
-    depth,
-    numLines,
+    fenAnalyzer,
+    { depth, numLines }
   );
 
+  // Set up PGN analyzer
+  const {
+    analyzePgn,
+    status: pgnAnalysisStatus,
+    progress: pgnAnalysisProgress,
+  } = usePgnAnalyzer(
+    evaluations,
+    setEvaluations,
+    fenAnalyzer,
+    depth,
+    numLines
+  );
+
+  // Set up forcing line finder
+  const forcingLineFinder = useForcingLineFinder(
+    fenAnalyzer,
+    evaluations,
+    setEvaluations
+  );
+
+  // Get engine info from fenAnalyzer
+  const { engineName, fenBeingAnalyzed } = fenAnalyzer;
+
   useEngineArrowCreator(
-    s.isCurrentMoveAnalysisOn,
+    currentMoveAnalysis.isOn,
     evaluations,
     currentMove,
     (newArrows) => dispatch({ type: 'setArrows', arrows: newArrows })
   );
 
   const prevPgnAnalysisStatus = usePrevious(pgnAnalysisStatus);
+  const prevIsCurrentMoveAnalysisOn = usePrevious(currentMoveAnalysis.isOn);
+
+  // Clear markers and arrows when turning off current move analysis
+  useEffect(() => {
+    if (prevIsCurrentMoveAnalysisOn && !currentMoveAnalysis.isOn) {
+      dispatch({ type: 'setMarkers', markers: [] });
+      dispatch({ type: 'setArrows', arrows: [] });
+    }
+  }, [currentMoveAnalysis.isOn, prevIsCurrentMoveAnalysisOn]);
 
   const hasGameBeenAnalyzed = useCallback((): boolean => {
     if (pgnAnalysisStatus === AnalysisStatus.Complete) return true;
@@ -235,8 +257,8 @@ const GameReview = ({ game }: Props) => {
 
   const engineDisplay = (
     <EngineDisplay
-      isEngineOn={s.isCurrentMoveAnalysisOn}
-      setIsEngineOn={(b) => dispatch({ type: 'setIsCurrentMoveAnalysisOn', value: b })}
+      isEngineOn={currentMoveAnalysis.isOn}
+      setIsEngineOn={currentMoveAnalysis.setIsOn}
       evaluations={evaluations}
       currentMove={currentMove}
       engineMaxDepth={depth}
@@ -369,7 +391,7 @@ const GameReview = ({ game }: Props) => {
               evaluations={evaluations}
               currentMove={currentMove}
               hasGameBeenAnalyzed={hasGameBeenAnalyzed()}
-              addForcingLinesToCmChess={addForcingLinesToCmChess}
+              forcingLineFinder={forcingLineFinder}
               isCreatingFlashcard={isCreatingFlashcard}
               changeIsCreatingFlashcard={setIsCreatingFlashcard}
             />
