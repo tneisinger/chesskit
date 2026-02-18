@@ -15,6 +15,7 @@ export interface Props {
   isEngineOn: boolean;
   setIsEngineOn: (isOn: boolean) => void;
   currentMove: Move | undefined;
+  latestEvaluation: PositionEvaluation | null;
   evaluations: Evaluations;
   numLines: number;
   isEvaluating: boolean;
@@ -33,6 +34,7 @@ const EngineDisplay = ({
   isEngineOn,
   setIsEngineOn,
   currentMove,
+  latestEvaluation,
   evaluations,
   engineMaxDepth,
   numLines,
@@ -106,8 +108,23 @@ const EngineDisplay = ({
   }
 
   useEffect(() => {
-    setCurrentEvaluation(evaluations[getFen(currentMove)]);
-  }, [evaluations, currentMove]);
+    const ev = evaluations[getFen(currentMove)];
+
+    if (ev == undefined && latestEvaluation == null) {
+      setCurrentEvaluation(undefined);
+      return;
+    }
+
+    if (ev != undefined) {
+      setCurrentEvaluation(ev);
+      return;
+    }
+
+    if (latestEvaluation && getFen(currentMove) === latestEvaluation.fen) {
+      setCurrentEvaluation(latestEvaluation);
+      return;
+    }
+  }, [evaluations, currentMove, latestEvaluation]);
 
 
   const currentMoveLines: (MultiPV | undefined)[] = new Array(numLines).fill(undefined);

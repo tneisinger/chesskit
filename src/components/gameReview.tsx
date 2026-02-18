@@ -261,6 +261,7 @@ const GameReview = ({ game }: Props) => {
       setIsEngineOn={currentMoveAnalysis.setIsOn}
       evaluations={evaluations}
       currentMove={currentMove}
+      latestEvaluation={fenAnalyzer.latestEvaluation}
       engineMaxDepth={depth}
       engineName={engineName ? engineName : undefined}
       isEvaluating={fenBeingAnalyzed != null}
