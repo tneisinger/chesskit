@@ -12,7 +12,7 @@ import {
   MultiPV,
   Lines,
 } from '@/utils/stockfish';
-import { getFen, judgeLines, lanToShortMove } from '@/utils/chess';
+import { getFen, judgeLines, lanToShortMove, extrapolatePositionEvaluation } from '@/utils/chess';
 import useStockfish from '@/hooks/useStockfish';
 import { parse as parsePGN } from 'pgn-parser';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
@@ -35,6 +35,12 @@ export interface AnalyzeFenOptions {
   clearHash?: boolean; // Send ucinewgame before analyzing to clear hash tables
 }
 
+export interface AnalyzePgnOptions {
+  analyzeVariations?: boolean,
+  maxExtrapolationDepth?: number,
+  maxAbsCpToExtrapolate?: number,
+}
+
 export interface AddForcingLinesOptions {
   minDepth: number;
   moveFoundCallback: (move: Move) => void;
@@ -43,7 +49,7 @@ export interface AddForcingLinesOptions {
 }
 
 export interface Output {
-  analyzePgn: (pgn: string, analyzeVariations?: boolean) => void;
+  analyzePgn: (pgn: string, options?: AnalyzePgnOptions) => void;
   latestEvaluation: PositionEvaluation | null;
   fenBeingAnalyzed: string | null;
   engineName: string | null;
@@ -100,6 +106,16 @@ export default function useChessAnalyzer(
   } | null>(null);
 
   const pendingAnalyzeFenStart = useRef<{ fen: string; depth: number } | null>(null);
+
+  // Store extrapolated evaluations for game analysis
+  const extrapolatedEvalsRef = useRef<Evaluations>({});
+
+  // Store current analyzePgn options
+  const analyzePgnOptionsRef = useRef<Required<AnalyzePgnOptions>>({
+    analyzeVariations: true,
+    maxExtrapolationDepth: 0,
+    maxAbsCpToExtrapolate: 300,
+  });
 
   const changeFenBeingAnalyzed = (fen: string | null) => {
     fenRef.current = fen;
@@ -195,8 +211,21 @@ export default function useChessAnalyzer(
   }, []);
 
   // Start analyzing the PGN
-  const analyzePgn = useCallback((pgn: string, analyzeVariations = true) => {
-    const fens = generateFensFromPgn(pgn, analyzeVariations);
+  const analyzePgn = useCallback((pgn: string, partialOptions?: AnalyzePgnOptions) => {
+    // The default values for the options
+    const defaultOptions: Required<AnalyzePgnOptions> = {
+      analyzeVariations: true,
+      maxExtrapolationDepth: 0,
+      maxAbsCpToExtrapolate: 300,
+    }
+
+    // Merge the defaults with partialOptions
+    const options: Required<AnalyzePgnOptions> = { ...defaultOptions, ...partialOptions };
+
+    // Store options for use during analysis
+    analyzePgnOptionsRef.current = options;
+
+    const fens = generateFensFromPgn(pgn, options.analyzeVariations);
     if (fens.length === 0) {
       console.error('No positions to analyze');
       return;
@@ -212,6 +241,7 @@ export default function useChessAnalyzer(
     setFensToAnalyze(fens);
     setCurrentPositionIndex(0);
     linesRef.current = {};
+    extrapolatedEvalsRef.current = {}; // Clear extrapolated evaluations
     setIsAnalyzingGame(true);
     setPgnAnalysisStatus(AnalysisStatus.Analyzing);
 
@@ -505,6 +535,38 @@ export default function useChessAnalyzer(
     return result;
   }, [evaluations, setEvaluations]);
 
+  // Recursively create and store extrapolated evaluations
+  const createExtrapolations = useCallback((pev: PositionEvaluation, maxDepth: number) => {
+    // Don't extrapolate if maxDepth is 0 or less
+    if (maxDepth < 1) return;
+
+    // Check if we should skip extrapolation based on cp value
+    const options = analyzePgnOptionsRef.current;
+    if (pev.score.key === 'cp' && Math.abs(pev.score.value) > options.maxAbsCpToExtrapolate) {
+      return;
+    }
+
+    // Get the current extrapolation depth (0 if not set)
+    const currentDepth = pev.extrapolationDepth ?? 0;
+
+    // Don't extrapolate if we've reached the max depth
+    if (currentDepth >= maxDepth) return;
+
+    // Extrapolate one level
+    const extrapolatedPevs = extrapolatePositionEvaluation(pev);
+
+    // Store each extrapolated evaluation
+    extrapolatedPevs.forEach((extrapolatedPev) => {
+      // Only store if we don't already have a real evaluation for this FEN
+      if (!(extrapolatedPev.fen in evaluations)) {
+        extrapolatedEvalsRef.current[extrapolatedPev.fen] = extrapolatedPev;
+      }
+
+      // Recursively extrapolate this evaluation
+      createExtrapolations(extrapolatedPev, maxDepth);
+    });
+  }, [evaluations]);
+
   useEffect(() => {
     isAnalyzingGameRef.current = isAnalyzingGame;
   }, [isAnalyzingGame])
@@ -548,6 +610,8 @@ export default function useChessAnalyzer(
     const handleBestMoveInfo = (bestMoveInfo: BestMoveInfo) => {
       const requiredDepth = analyzeFenStateRef.current?.targetDepth ?? evalDepth;
 
+      let completedEvaluation: PositionEvaluation | null = null;
+
       if (bestMoveInfo.bestmove && lastDepth.current >= requiredDepth) {
         const bestMove = parseLanMove(bestMoveInfo.bestmove);
         if (fenRef.current == null) {
@@ -576,8 +640,16 @@ export default function useChessAnalyzer(
           depth: lastDepth.current
         };
 
+        completedEvaluation = evaluation;
+
         addEval(evaluation);
         setLatestEvaluation(evaluation);
+
+        // Create extrapolations if we're analyzing a game
+        if (isAnalyzingGameRef.current) {
+          const maxExtrapolationDepth = analyzePgnOptionsRef.current.maxExtrapolationDepth;
+          createExtrapolations(evaluation, maxExtrapolationDepth);
+        }
 
         // Handle analyzeFen completion
         if (analyzeFenStateRef.current) {
@@ -759,9 +831,26 @@ export default function useChessAnalyzer(
 
     const nextFen = fensToAnalyze[currentPositionIndex];
 
-    // Check if we already have this evaluation at the required depth
+    // Check if we already have a real evaluation at the required depth (prefer real over extrapolated)
     if (nextFen in evaluations && evaluations[nextFen].depth >= evalDepth && nextFen in linesRef.current) {
       // Skip this position, move to next
+      setCurrentPositionIndex((prev) => prev + 1);
+      return;
+    }
+
+    // Check if we have an extrapolated evaluation we can use
+    if (nextFen in extrapolatedEvalsRef.current) {
+      const extrapolatedEval = extrapolatedEvalsRef.current[nextFen];
+      // Use the extrapolated evaluation - add to evaluations state
+      setEvaluations((evs) => {
+        const storedEval = evs[extrapolatedEval.fen];
+        if (storedEval && storedEval.depth > extrapolatedEval.depth) {
+          return evs;
+        }
+        return { ...evs, [extrapolatedEval.fen]: extrapolatedEval };
+      });
+      setLatestEvaluation(extrapolatedEval);
+      // Move to next position
       setCurrentPositionIndex((prev) => prev + 1);
       return;
     }
