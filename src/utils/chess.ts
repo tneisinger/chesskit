@@ -460,11 +460,7 @@ export function makeMoveJudgement(
   const evalBefore = ev[fen1];
   const evalAfter = ev[fen2];
 
-  if (evalBefore && evalAfter
-    && evalBefore.depth >= 20
-    && evalAfter.depth >= 20
-  ) {
-
+  if (evalBefore && evalAfter) {
     const color = getNextToPlay(fen1);
     if (!color) throw new Error(`Failed to get color from fen ${fen1}`);
 
