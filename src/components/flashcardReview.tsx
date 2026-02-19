@@ -173,6 +173,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   useEngineArrowCreator(
     currentMoveAnalysis.isOn,
     evaluations,
+    fenAnalyzer.latestEvaluation,
     currentMove,
     (newArrows) => setArrows(newArrows),
   );
