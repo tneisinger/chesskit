@@ -12,6 +12,7 @@ import {
   MultiPV,
   Lines,
 } from '@/utils/stockfish';
+import { Chess as ChessJS } from 'chess.js';
 
 export interface AnalyzeOptions {
   maxDepth?: number;  // Stop the analysis after getting a best move at this depth
@@ -295,10 +296,23 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
           analysisPromiseRef.current = null;
         }
       } else {
-        // No best move (game over)
+        // No best move (maybe because of checkmate)
         if (analysisPromiseRef.current) {
-          analysisPromiseRef.current.reject(new Error('No best move found (game may be over)'));
-          analysisPromiseRef.current = null;
+
+          // If fenRef is defined and the fen is not a checkmate position, throw an error.
+          if (fenRef.current != null) {
+            const chessJS = new ChessJS();
+            chessJS.load(fenRef.current);
+            if (!chessJS.isCheckmate()) {
+              analysisPromiseRef.current.reject(new Error('No best move found'));
+              analysisPromiseRef.current = null;
+            }
+
+          } else {
+            console.warn('fenRef.current was null');
+            analysisPromiseRef.current.reject(new Error('No best move found'));
+            analysisPromiseRef.current = null;
+          }
         }
       }
 
