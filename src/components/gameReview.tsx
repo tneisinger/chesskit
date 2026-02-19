@@ -78,7 +78,7 @@ interface Props {
 const GameReview = ({ game }: Props) => {
   const windowSize = useWindowSize();
 
-  const [depth, setDepth] = useState(20);
+  const [depth, setDepth] = useState(18);
   const [numLines, setNumLines] = useState(2);
   const [hasGameLoaded, setHasGameLoaded] = useState(false);
   const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);

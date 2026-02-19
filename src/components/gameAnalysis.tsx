@@ -48,8 +48,8 @@ const GameAnalysis = ({
                 <input
                   className='w-28 accent-stone-300'
                   type='range'
-                  min={18}
-                  max={30}
+                  min={16}
+                  max={25}
                   value={depth}
                   onChange={(e) => changeDepth(Number(e.target.value))}
                 />
