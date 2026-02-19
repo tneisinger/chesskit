@@ -907,3 +907,55 @@ export async function findForcingLines(
 
   return result;
 }
+
+
+/**
+  * Get the Move that exists immediately after the input Move, either
+  * in the main line, or in a variation. If it does not exist, return null.
+  * */
+function getNextMoveThatMatchesShortMove(shortMove: ShortMove, move: Move): Move | null {
+  // A helper function that determines if a Move matches the shortMove
+  const doesMoveMatchShortMove = (m: Move): boolean => {
+    return m.from === shortMove.from && m.to === shortMove.to;
+  }
+
+  // Check if the shortMove matches the next move in the main line.
+  if (move.next && doesMoveMatchShortMove(move.next)) {
+    return move.next;
+  }
+
+  // Check if the shortMove matches the first move in any of the variations.
+  move.variations.forEach((variation) => {
+    if (variation.length > 0 && doesMoveMatchShortMove(variation[0])) {
+      return variation[0];
+    }
+  })
+
+  return null;
+}
+
+
+// Given a cmChess and an array of lines (each element being an array of ShortMoves), add the lines to cmChess.
+// This function assumes that all the lines are playable from the position defined by the priorMove.
+export function addShortMoveLinesToCmChess(cmChess: CmChess, lines: ShortMove[][], priorMove: Move): void {
+  lines.forEach((line) => {
+    let moveBefore = priorMove;
+    for (let i = 0; i < line.length; i++) {
+      const shortMove = line[i];
+
+      // Check if this shortMove has already been added.
+      const nextMove = getNextMoveThatMatchesShortMove(shortMove, moveBefore);
+
+      // If nextMove is null, that means that the move hasn't been added yet, so add it.
+      if (nextMove == null) {
+        const moveResult = cmChess.move(shortMove, moveBefore);
+        if (moveResult == undefined) throw new Error('moveResult was undefined');
+        moveBefore = moveResult;
+
+      // If it has already been added, just update 'moveBefore' and continue.
+      } else {
+        moveBefore = nextMove;
+      }
+    }
+  });
+}

@@ -8,6 +8,7 @@ import {
   doHistoriesMatch,
   playForcingLineIntoCmChess,
   getEvaluationsFromMoveForward,
+  addShortMoveLinesToCmChess,
 } from './cmchess';
 import { convertLanLineToSanLine } from './chess';
 import { Evaluations, PieceColor } from '@/types/chess';
@@ -746,7 +747,6 @@ describe('playForcingLineIntoCmChess', () => {
     const move = historyBefore[13];
 
     const result = playForcingLineIntoCmChess(cmChess, move, evaluations, PieceColor.WHITE);
-    result.forEach((m) => console.log(m));
     expect(result.length).toBe(5);
     const historyAfter = [...cmChess.history()];
     expect(historyAfter.length - historyBefore.length).toBe(5);
@@ -1169,5 +1169,205 @@ describe('getEvaluationsFromMoveForward', () => {
     expect(result[history[0].fen]).toBeUndefined();
     expect(result[history[1].fen]).toBeUndefined();
     expect(result[variation[0].fen]).toBeUndefined();
+  });
+});
+
+describe('addShortMoveLinesToCmChess', () => {
+  it('should add a single line of moves to cmChess', () => {
+    const pgn = '1. e4 e5 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+    const priorMove = history[1]; // e5
+
+    const lines: { from: string; to: string }[][] = [
+      [{ from: 'g1', to: 'f3' }, { from: 'b8', to: 'c6' }]
+    ];
+
+    addShortMoveLinesToCmChess(cmchess, lines, priorMove);
+
+    const newHistory = cmchess.history();
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('Nc6');
+  });
+
+  it('should add multiple lines that diverge', () => {
+    const pgn = '1. e4 e5 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+    const priorMove = history[1]; // e5
+
+    const lines: { from: string; to: string }[][] = [
+      [{ from: 'g1', to: 'f3' }, { from: 'b8', to: 'c6' }],
+      [{ from: 'f1', to: 'c4' }, { from: 'g8', to: 'f6' }]
+    ];
+
+    addShortMoveLinesToCmChess(cmchess, lines, priorMove);
+
+    const newHistory = cmchess.history();
+    // First line should be in main line
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('Nc6');
+
+    // Second line should be a variation
+    expect(newHistory[2].variations.length).toBeGreaterThan(0);
+    expect(newHistory[2].variations[0][0].san).toBe('Bc4');
+    expect(newHistory[2].variations[0][1].san).toBe('Nf6');
+  });
+
+  it('should not duplicate moves that already exist', () => {
+    const pgn = '1. e4 e5 2. Nf3 Nc6 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+    const priorMove = history[1]; // e5
+
+    const historyLengthBefore = cmchess.history().length;
+
+    // Try to add a line that already exists
+    const lines: { from: string; to: string }[][] = [
+      [{ from: 'g1', to: 'f3' }, { from: 'b8', to: 'c6' }]
+    ];
+
+    addShortMoveLinesToCmChess(cmchess, lines, priorMove);
+
+    const historyLengthAfter = cmchess.history().length;
+    // Should not have added any new moves
+    expect(historyLengthAfter).toBe(historyLengthBefore);
+  });
+
+  it('should add continuation to existing line', () => {
+    const pgn = '1. e4 e5 2. Nf3 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+    const priorMove = history[1]; // e5
+
+    // Add a line that extends the existing line
+    const lines: { from: string; to: string }[][] = [
+      [{ from: 'g1', to: 'f3' }, { from: 'b8', to: 'c6' }, { from: 'f1', to: 'c4' }]
+    ];
+
+    addShortMoveLinesToCmChess(cmchess, lines, priorMove);
+
+    const newHistory = cmchess.history();
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('Nc6');
+    expect(newHistory[4].san).toBe('Bc4');
+  });
+
+  it('should handle lines with partial overlap', () => {
+    const pgn = '1. e4 e5 2. Nf3 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+    const priorMove = history[1]; // e5
+
+    // First line overlaps with existing Nf3, then continues
+    // Second line diverges from the start
+    const lines: { from: string; to: string }[][] = [
+      [{ from: 'g1', to: 'f3' }, { from: 'b8', to: 'c6' }],
+      [{ from: 'f1', to: 'c4' }, { from: 'g8', to: 'f6' }]
+    ];
+
+    addShortMoveLinesToCmChess(cmchess, lines, priorMove);
+
+    const newHistory = cmchess.history();
+    // First line should extend main line
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('Nc6');
+
+    // Second line should be a variation from move 2
+    expect(newHistory[2].variations.length).toBeGreaterThan(0);
+    expect(newHistory[2].variations[0][0].san).toBe('Bc4');
+    console.log(cmchess.renderPgn());
+  });
+
+  it('should add empty array of lines without error', () => {
+    const pgn = '1. e4 e5 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+    const priorMove = history[1];
+
+    const lines: { from: string; to: string }[][] = [];
+
+    // Should not throw
+    expect(() => addShortMoveLinesToCmChess(cmchess, lines, priorMove)).not.toThrow();
+
+    // History should be unchanged
+    expect(cmchess.history().length).toBe(2);
+  });
+
+  it('should add lines with different first moves as variations', () => {
+    const pgn = '1. e4 e5 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+    const priorMove = history[1]; // e5
+
+    const lines: { from: string; to: string }[][] = [
+      [{ from: 'g1', to: 'f3' }, { from: 'b8', to: 'c6' }],
+      [{ from: 'g1', to: 'f3' }, { from: 'g8', to: 'f6' }], // Same first move, different second
+      [{ from: 'f1', to: 'c4' }, { from: 'b8', to: 'c6' }]  // Different first move
+    ];
+
+    addShortMoveLinesToCmChess(cmchess, lines, priorMove);
+
+    const newHistory = cmchess.history();
+    // First line becomes main line
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('Nc6');
+
+    // Second line should be a variation after Nf3
+    expect(newHistory[3].variations.length).toBeGreaterThan(0);
+    expect(newHistory[3].variations[0][0].san).toBe('Nf6');
+
+    // Third line should be a variation at move 2
+    expect(newHistory[2].variations.length).toBeGreaterThan(0);
+    const bc4Variation = newHistory[2].variations.find(v => v[0].san === 'Bc4');
+    expect(bc4Variation).toBeDefined();
+    expect(bc4Variation![1].san).toBe('Nc6');
+  });
+
+  it('should handle complex branching patterns', () => {
+    const pgn = '1. e4 e5 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+    const priorMove = history[1]; // e5
+
+    const lines: { from: string; to: string }[][] = [
+      [{ from: 'g1', to: 'f3' }, { from: 'b8', to: 'c6' }, { from: 'f1', to: 'b5' }],
+      [{ from: 'g1', to: 'f3' }, { from: 'b8', to: 'c6' }, { from: 'f1', to: 'c4' }],
+      [{ from: 'g1', to: 'f3' }, { from: 'g8', to: 'f6' }],
+    ];
+
+    addShortMoveLinesToCmChess(cmchess, lines, priorMove);
+
+    const newHistory = cmchess.history();
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[3].san).toBe('Nc6');
+    expect(newHistory[4].san).toBe('Bb5');
+
+    // Should have variation for Bc4 after Nc6
+    expect(newHistory[4].variations.length).toBeGreaterThan(0);
+    expect(newHistory[4].variations[0][0].san).toBe('Bc4');
+
+    // Should have variation for Nf6 instead of Nc6
+    expect(newHistory[3].variations.length).toBeGreaterThan(0);
+    expect(newHistory[3].variations[0][0].san).toBe('Nf6');
+  });
+
+  it('should add single-move lines', () => {
+    const pgn = '1. e4 e5 *';
+    const cmchess = loadPgnIntoCmChess(pgn);
+    const history = cmchess.history();
+    const priorMove = history[1]; // e5
+
+    const lines: { from: string; to: string }[][] = [
+      [{ from: 'g1', to: 'f3' }],
+      [{ from: 'f1', to: 'c4' }]
+    ];
+
+    addShortMoveLinesToCmChess(cmchess, lines, priorMove);
+
+    const newHistory = cmchess.history();
+    expect(newHistory[2].san).toBe('Nf3');
+    expect(newHistory[2].variations.length).toBeGreaterThan(0);
+    expect(newHistory[2].variations[0][0].san).toBe('Bc4');
   });
 });
