@@ -14,6 +14,7 @@ import {
   makeMoveJudgement
 } from '@/utils/chess';
 import {
+  addShortMoveLinesToCmChess,
   colorToMove,
   getColor,
   getLineFromCmMove,
@@ -23,14 +24,14 @@ import {
 } from '@/utils/cmchess';
 import { Flashcard } from "@/db/schema";
 import { createFlashcard, getAllFlashcards, CreateFlashcardInput } from '@/app/flashcards/actions';
-import { Output as ForcingLineFinderOutput } from '@/hooks/useForcingLineFinder';
+import { FindForcingLinesOptions, Output as ForcingLineFinder } from '@/hooks/useForcingLineFinder';
 
 interface Props {
   game: GameData;
   evaluations: Evaluations;
   currentMove: Move | undefined;
   hasGameBeenAnalyzed: boolean;
-  forcingLineFinder: ForcingLineFinderOutput;
+  forcingLineFinder: ForcingLineFinder;
   isCreatingFlashcard: boolean;
   changeIsCreatingFlashcard: (b: boolean) => void;
 }
@@ -115,22 +116,13 @@ const FlashcardCreator = ({
     if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
     // Try to get forcing lines.
-    // TODO: Update to use forcingLineFinder.findForcingLines() and manually add moves to cmChess
-    const addedLines: any[] = [];
-    // const addedLines = await addForcingLinesToCmChess(
-    //   cmChess,
-    //   flashcardMoveOfCmChess,
-    //   { minDepth: 20, maxLines: 1, maxLineLength: 11, moveFoundCallback: (move) => console.log('MOVE FOUND:', move.san)},
-    // );
+    const options: FindForcingLinesOptions = { minDepth: 18, maxLines: 2, maxLineLength: 11 };
+    const forcingLines = await forcingLineFinder.findForcingLines(flashcardMove.fen, options);
 
-    // addedLines.forEach((line) => {
-    //   console.log(line.map((m) => m.san).join(' '));
-    // });
-
-    // If a forcing line is found, set 'areLinesForcing' to true.
     let areLinesForcing = false;
-    if (addedLines.length > 0) {
+    if (forcingLines.length > 0) {
       areLinesForcing = true;
+      addShortMoveLinesToCmChess(cmChess, forcingLines, flashcardMoveOfCmChess);
     }
 
     // When there are no forcing lines, add the good moves from evaluations to cmChess.
