@@ -151,7 +151,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   } = useChessboardEngine();
 
   const [evaluations, setEvaluations] = useState<Evaluations>({});
-  const [engineDepth, setEngineDepth] = useState(20);
+  const [engineDepth, setEngineDepth] = useState(18);
   const [numEngineLines, setNumEngineLines] = useState(2);
 
   // Set up FEN analyzer
