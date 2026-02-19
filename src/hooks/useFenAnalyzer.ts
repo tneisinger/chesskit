@@ -52,6 +52,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   const linesRef = useRef<Lines>({});
   const hasStockfishBeenSetup = useRef<boolean>(false);
   const isAnalyzingRef = useRef<boolean>(false);
+  const numLinesRef = useRef<number>(1);
 
   // Promise resolution/rejection for current analysis
   const analysisPromiseRef = useRef<{
@@ -158,7 +159,9 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       lastAddedEval.current = null;
 
       // Set MultiPV
+      if (opts.numLines == undefined) throw new Error('numLines was undefined');
       stockfish.postMessage(`setoption name MultiPV value ${opts.numLines}`);
+      numLinesRef.current = opts.numLines;
 
       // Wait for stockfish to be ready, then start analysis
       pendingAnalysisStart.current = { fen, options: opts };
@@ -257,6 +260,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
             analysisPromiseRef.current.reject(new Error('Analysis stopped before reaching required depth'));
             analysisPromiseRef.current = null;
           }
+          isAnalyzingRef.current = false;
           setIsAnalyzing(false);
           fenRef.current = null;
           return;
@@ -270,6 +274,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
             analysisPromiseRef.current.reject(new Error('FEN reference was null'));
             analysisPromiseRef.current = null;
           }
+          isAnalyzingRef.current = false;
           setIsAnalyzing(false);
           return;
         }
@@ -280,6 +285,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
             analysisPromiseRef.current.reject(new Error('No evaluation data available'));
             analysisPromiseRef.current = null;
           }
+          isAnalyzingRef.current = false;
           setIsAnalyzing(false);
           fenRef.current = null;
           return;
@@ -316,6 +322,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
         }
       }
 
+      isAnalyzingRef.current = false;
       setIsAnalyzing(false);
       setFenBeingAnalyzed(null);
       fenRef.current = null;
@@ -326,9 +333,9 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       if (fenRef.current == null) return;
       saveLine(info, fenRef.current);
 
-      // If this is the best line, save the evaluation
-      if (info.multipv === 1 && info.score && info.depth != undefined) {
-        saveEvaluation(info.depth, info.score.key, info.score.value);
+      // If this is the last multipv line, save the evaluation
+      if (info.multipv === numLinesRef.current && info.score && info.depth != undefined) {
+        saveEvaluation(info.depth);
       }
     };
 
@@ -355,7 +362,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       }
     };
 
-    const saveEvaluation = (evalDepth: number, scoreKey: "cp" | "mate", scoreValue: number) => {
+    const saveEvaluation = (evalDepth: number) => {
       // If lastDepth is 0, that means evaluation just started
       // In that case, if the new 'depth' value is not 1, then this message
       // from Stockfish must be residual from a previous run
@@ -371,7 +378,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       const evaluation: PositionEvaluation = {
         depth: evalDepth,
         fen: fenRef.current,
-        score: { key: scoreKey, value: scoreValue },
+        score: { key: lines[0].score.key, value: lines[0].score.value },
         lines,
       };
 
