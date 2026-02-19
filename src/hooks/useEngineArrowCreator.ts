@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
 import { Arrow } from '@/components/cmChessboard';
-import { Evaluations, MoveJudgement } from '@/types/chess';
+import { Evaluations, MoveJudgement, PositionEvaluation } from '@/types/chess';
 import { getFen, judgeLines, lanToShortMove } from '@/utils/chess';
 import { colorToMove } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
@@ -9,6 +9,7 @@ import { Move } from 'cm-chess/src/Chess';
 export default function useEngineArrowCreator(
   isCurrentMoveAnalysisOn: boolean,
   evaluations: Evaluations,
+  latestEvaluation: PositionEvaluation | null,
   currentMove: Move | undefined,
   changeEngineArrows: (newArrows: Arrow[]) => void,
 ) {
@@ -19,8 +20,17 @@ export default function useEngineArrowCreator(
     if (!isCurrentMoveAnalysisOn) return;
 
     // If we don't have an evaluation for this position, do nothing.
-    const ev = evaluations[getFen(currentMove)];
-    if (ev == undefined) return;
+    let ev = evaluations[getFen(currentMove)];
+    if (ev == undefined && latestEvaluation == null) {
+      return;
+    }
+
+    // If there is not an evaluation in 'evaluations', but there is a 'latestEvaluation'
+    // with a matching fen, use the latestEvaluation.
+    if (ev == undefined && latestEvaluation != null
+      && latestEvaluation.fen === getFen(currentMove)) {
+        ev = latestEvaluation;
+    }
 
     const lineJudgements = judgeLines(colorToMove(currentMove), ev.lines);
 
@@ -63,5 +73,5 @@ export default function useEngineArrowCreator(
 
     // change the engineArrows
     changeEngineArrows(newArrows);
-  }, [isCurrentMoveAnalysisOn, evaluations, currentMove])
+  }, [isCurrentMoveAnalysisOn, evaluations, latestEvaluation, currentMove])
 }

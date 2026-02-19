@@ -147,6 +147,7 @@ const GameReview = ({ game }: Props) => {
   useEngineArrowCreator(
     currentMoveAnalysis.isOn,
     evaluations,
+    fenAnalyzer.latestEvaluation,
     currentMove,
     (newArrows) => dispatch({ type: 'setArrows', arrows: newArrows })
   );
