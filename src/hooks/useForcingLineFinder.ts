@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Evaluations, PositionEvaluation, MoveJudgement, PieceColor } from '@/types/chess';
 import { Output as FenAnalyzerOutput } from '@/hooks/useFenAnalyzer';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
-import { judgeLines, lanToShortMove } from '@/utils/chess';
+import { isMoveJudgementWorseThan, judgeLines, lanToShortMove } from '@/utils/chess';
 import { ShortMove } from '@/types/chess';
 
 export interface FindForcingLinesOptions {
@@ -50,8 +50,6 @@ export default function useForcingLineFinder(
 
     try {
       let numLinesCreated = 0;
-      const badJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake, MoveJudgement.Inaccurate];
-      const opponentBadJudgements = [MoveJudgement.Blunder, MoveJudgement.Mistake];
 
       // Helper to get or fetch evaluation
       const getEvaluation = async (fenToAnalyze: string): Promise<PositionEvaluation | null> => {
@@ -112,7 +110,7 @@ export default function useForcingLineFinder(
         const lineJudgements = judgeLines(nextMoveColor, evaluation.lines);
 
         // If the second best move is bad, the best move is forcing
-        if (badJudgements.includes(lineJudgements[1])) {
+        if (isMoveJudgementWorseThan(MoveJudgement.Good, lineJudgements[1])) {
           const firstMoveLan = evaluation.lines[0].lanLine.trim().split(' ')[0];
           const shortMove = lanToShortMove(firstMoveLan);
           addForcingMove(shortMove);
@@ -138,8 +136,8 @@ export default function useForcingLineFinder(
         let numMovesPlayed = 0;
 
         for (let i = 0; i < lineMoves.length; i++) {
-          // Skip bad moves
-          if (opponentBadJudgements.includes(moveJudgements[i])) continue;
+          // For the opponent, skip moves that are worse than an inaccuracy
+          if (isMoveJudgementWorseThan(MoveJudgement.Inaccurate, moveJudgements[i])) continue;
 
           // Stop if we've found enough lines
           if (numMovesPlayed > 0 && numLinesCreated >= maxLines) break;
@@ -159,7 +157,7 @@ export default function useForcingLineFinder(
           const lineJudgements = judgeLines(newColor, lineMoveEvaluation.lines);
 
           // If the second best line is bad, there's only one good move
-          if (badJudgements.includes(lineJudgements[1])) {
+          if (isMoveJudgementWorseThan(MoveJudgement.Good, lineJudgements[1])) {
             result.push(lineMove);
             addForcingMove(lineMove);
             numMovesPlayed++;
