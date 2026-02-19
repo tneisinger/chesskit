@@ -32,6 +32,11 @@ export default function useEngineArrowCreator(
         ev = latestEvaluation;
     }
 
+    if (ev == undefined) {
+      console.warn('ev was undefined');
+      return;
+    }
+
     const lineJudgements = judgeLines(colorToMove(currentMove), ev.lines);
 
     const newArrows: Arrow[] = [];
