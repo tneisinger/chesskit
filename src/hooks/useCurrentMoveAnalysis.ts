@@ -93,6 +93,12 @@ export default function useCurrentMoveAnalysis(
 
   // When isOn is true and currentMove changes, analyze the position
   useEffect(() => {
+    // If isOn has changed from false to true, analyze.
+    if (isOn && prevIsOn === false) {
+      analyzeCurrentMove();
+      return;
+    }
+
     // If currentMove hasn't actually changed, do nothing.
     if (areCmMovesEqual(currentMove, previousMove)) return;
 
@@ -101,7 +107,7 @@ export default function useCurrentMoveAnalysis(
     } else {
       currentFenRef.current = null;
     }
-  }, [isOn, currentMove, previousMove, analyzeCurrentMove]);
+  }, [isOn, prevIsOn, currentMove, previousMove, analyzeCurrentMove]);
 
   // Compute derived values
   const currentMoveFen = currentMove ? getFen(currentMove) : null;
