@@ -25,6 +25,7 @@ import {
 import { Flashcard } from "@/db/schema";
 import { createFlashcard, getAllFlashcards, CreateFlashcardInput } from '@/app/flashcards/actions';
 import { FindForcingLinesOptions, Output as ForcingLineFinder } from '@/hooks/useForcingLineFinder';
+import { useFlashcardContext } from '@/contexts/FlashcardContext';
 
 interface Props {
   game: GameData;
@@ -51,6 +52,8 @@ const FlashcardCreator = ({
 
   // Flashcards created in this session
   const [createdFlashcards, setCreatedFlashcards] = useState<CreateFlashcardInput[]>([]);
+
+  const { refreshDueCount } = useFlashcardContext();
 
 
   // Returns true if the given move represents a position that is flashcard worthy.
@@ -264,6 +267,7 @@ const FlashcardCreator = ({
       const result = await createFlashcard(flashcardData);
 
       if (result.success) {
+        await refreshDueCount();
         setCreatedFlashcards((fcs) => [...fcs, flashcardData]);
       } else {
         setError(result.error || 'Failed to create flashcard');
