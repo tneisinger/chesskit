@@ -70,12 +70,19 @@ export default function GameReviewPage() {
         />
       </div>
       <div className="py-2 flex flex-row gap-4 items-center justify-between">
-        <DeleteGamesControlPanel
-          selectedGameIds={selectedGameIds}
-          changeSelectedGameIds={setSelectedGameIds}
-          games={userGames}
-          onGamesDeleted={loadGames}
-        />
+        <div className="flex flex-row">
+          <DeleteGamesControlPanel
+            selectedGameIds={selectedGameIds}
+            changeSelectedGameIds={setSelectedGameIds}
+            games={userGames}
+            onGamesDeleted={loadGames}
+          />
+        </div>
+        {selectedGameIds.length > 0 && (
+          <span className="text-sm italic">
+            {selectedGameIds.length} game{selectedGameIds.length > 1 ? 's' : ''} selected
+          </span>
+        )}
         <Button href="/game-review/add-games">Add Games</Button>
       </div>
     </div>
