@@ -235,6 +235,24 @@ const FlashcardCreator = ({
   }, [getFlashcardMove, createdFlashcards]);
 
 
+  const makeForcingLineSearchInfo = useCallback((): ReactElement => {
+    const wrapContent = (content: ReactElement): ReactElement => {
+      return <p className="text-sm mt-2 text-center">{content}</p>;
+    }
+
+    if (forcingLineFinder.isSearching) {
+      if (forcingLineFinder.forcingMoves.length === 0) {
+        return wrapContent(<>Looking for forcing moves</>);
+      } else {
+      const len = forcingLineFinder.forcingMoves.length;
+        return wrapContent( <>{len} forcing move{len === 1 ? '' : 's'} found so far</>);
+      }
+    }
+
+    return <></>;
+  }, [forcingLineFinder]);
+
+
   useEffect(() => {
     const getGameFlashcards = async () => {
       try {
@@ -292,6 +310,7 @@ const FlashcardCreator = ({
       <div className="flex flex-col items-center justify-center">
         <p>Creating Flashcard</p>
         <Spinner white />
+        {makeForcingLineSearchInfo()}
       </div>
     );
   }
