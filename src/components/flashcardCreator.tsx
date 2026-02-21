@@ -281,10 +281,6 @@ const FlashcardCreator = ({
     }
   };
 
-  useEffect(() => {
-    if (gameFlashcards) console.log(gameFlashcards.length);
-  }, [gameFlashcards]);
-
 
   if (!hasGameBeenAnalyzed) {
     return <></>;
