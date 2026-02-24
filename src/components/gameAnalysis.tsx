@@ -56,22 +56,6 @@ const GameAnalysis = ({
                 <span>{depth}</span>
               </div>
             </div>
-            <div>
-              <label htmlFor='numLinesSelect' className='ml-4 mr-2 self-center'>
-                Lines:
-              </label>
-              <div className='flex flex-col items-center'>
-                <input
-                  type='range'
-                  className='w-20 accent-stone-300'
-                  min={2}
-                  max={4}
-                  value={numLines}
-                  onChange={(e) => changeNumLines(Number(e.target.value))}
-                />
-                <span>{numLines}</span>
-              </div>
-            </div>
           </div>
         </div>
       )}
