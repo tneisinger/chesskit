@@ -110,7 +110,7 @@ const GameReview = ({ game }: Props) => {
   } = useChessboardEngine();
 
   // Set up FEN analyzer
-  const fenAnalyzer = useFenAnalyzer();
+  const fenAnalyzer = useFenAnalyzer({ hashSize: 1024 });
 
   // Set up current move analysis
   const currentMoveAnalysis = useCurrentMoveAnalysis(
