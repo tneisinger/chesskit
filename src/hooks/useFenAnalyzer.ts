@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { PositionEvaluation } from '@/types/chess';
+import { PositionEvaluation, ShortMove } from '@/types/chess';
 import useStockfish from '@/hooks/useStockfish';
 import {
   parseInfoLine,
@@ -238,6 +238,8 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     };
 
     const handleBestMoveInfo = (bestMoveInfo: BestMoveInfo) => {
+      if (fenRef.current == null) throw new Error('fenRef was null when handling best move info');
+
       // Clear timeout
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -252,74 +254,72 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
 
       const requiredDepth = currentOptionsRef.current?.maxDepth;
 
-      if (bestMoveInfo.bestmove) {
-        // Check if we've reached required depth (if specified)
-        if (requiredDepth !== undefined && lastDepth.current < requiredDepth) {
-          // Not deep enough yet - this shouldn't happen with 'go depth', but handle it
-          if (analysisPromiseRef.current) {
-            analysisPromiseRef.current.reject(new Error('Analysis stopped before reaching required depth'));
-            analysisPromiseRef.current = null;
-          }
-          isAnalyzingRef.current = false;
-          setIsAnalyzing(false);
-          fenRef.current = null;
-          return;
-        }
+      // If we haven't reached the requiredDepth, it could be that the position is a checkmate.
+      // In that case, bestMove will be undefined at depth 0.
+      // Use chessJS to check for checkmate
+      const chessjs = new ChessJS();
+      chessjs.load(fenRef.current);
+      const isCheckmate = chessjs.isCheckmate();
 
-        const bestMove = parseLanMove(bestMoveInfo.bestmove);
-
-        if (fenRef.current == null) {
-          console.error('fenRef was null');
-          if (analysisPromiseRef.current) {
-            analysisPromiseRef.current.reject(new Error('FEN reference was null'));
-            analysisPromiseRef.current = null;
-          }
-          isAnalyzingRef.current = false;
-          setIsAnalyzing(false);
-          return;
-        }
-
-        if (!lastAddedEval.current) {
-          console.error('lastAddedEval should be defined');
-          if (analysisPromiseRef.current) {
-            analysisPromiseRef.current.reject(new Error('No evaluation data available'));
-            analysisPromiseRef.current = null;
-          }
-          isAnalyzingRef.current = false;
-          setIsAnalyzing(false);
-          fenRef.current = null;
-          return;
-        }
-
-        const evaluation: PositionEvaluation = {
-          ...lastAddedEval.current,
-          bestMove,
-          depth: lastDepth.current
-        };
+      // If we did not reach the required depth in a non-checkmate position...
+      if (requiredDepth !== undefined && lastDepth.current < requiredDepth && !isCheckmate) {
 
         if (analysisPromiseRef.current) {
-          analysisPromiseRef.current.resolve(evaluation);
+          analysisPromiseRef.current.reject(new Error('Analysis stopped before reaching required depth'));
           analysisPromiseRef.current = null;
         }
-      } else {
-        // No best move (maybe because of checkmate)
+        isAnalyzingRef.current = false;
+        setIsAnalyzing(false);
+        fenRef.current = null;
+        return;
+      }
+
+      if (fenRef.current == null) {
+        console.error('fenRef was null');
         if (analysisPromiseRef.current) {
-
-          // If fenRef is defined and the fen is not a checkmate position, throw an error.
-          if (fenRef.current != null) {
-            const chessJS = new ChessJS();
-            chessJS.load(fenRef.current);
-            if (!chessJS.isCheckmate()) {
-              analysisPromiseRef.current.reject(new Error('No best move found'));
-              analysisPromiseRef.current = null;
-            }
-
-          } else {
-            console.warn('fenRef.current was null');
-            analysisPromiseRef.current.reject(new Error('No best move found'));
-            analysisPromiseRef.current = null;
-          }
+          analysisPromiseRef.current.reject(new Error('FEN reference was null'));
+          analysisPromiseRef.current = null;
         }
+        isAnalyzingRef.current = false;
+        setIsAnalyzing(false);
+        return;
+      }
+
+      if (!lastAddedEval.current) {
+        console.error('lastAddedEval should be defined');
+        if (analysisPromiseRef.current) {
+          analysisPromiseRef.current.reject(new Error('No evaluation data available'));
+          analysisPromiseRef.current = null;
+        }
+        isAnalyzingRef.current = false;
+        setIsAnalyzing(false);
+        fenRef.current = null;
+        return;
+      }
+
+      // If there's a best move, add it to the evaluation. If not, we might still have an
+      // evaluation (e.g. in checkmate positions), so resolve with what we have.
+      const bestMove = bestMoveInfo.bestmove ? parseLanMove(bestMoveInfo.bestmove) : undefined;
+
+      let depth = lastDepth.current;
+
+      // If the position is a checkmate, lastDepth.current will probably be zero because stockfish
+      // doesn't bother evaluating at any depth if the position is a checkmate. But a depth of zero
+      // does not acurately reflect the quality of the evaluation. If the position is checkmate,
+      // we should consider the evaluation very good (of high depth). In that case, set depth to 100.
+      if (isCheckmate) depth = 100;
+
+      const evaluation: PositionEvaluation = {
+        ...lastAddedEval.current,
+        bestMove,
+        depth,
+      };
+
+      saveEvaluation(depth, bestMove);
+
+      if (analysisPromiseRef.current) {
+        analysisPromiseRef.current.resolve(evaluation);
+        analysisPromiseRef.current = null;
       }
 
       isAnalyzingRef.current = false;
@@ -333,23 +333,28 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       if (fenRef.current == null) return;
       saveLine(info, fenRef.current);
 
-      // If this is the last multipv line, save the evaluation
-      if (info.multipv === numLinesRef.current && info.score && info.depth != undefined) {
+      // For mate-0 positions, Stockfish only sends one line regardless of MultiPV setting
+      // because there are no legal moves. Detect this and treat it as the final line.
+      const isMate0 = info.depth === 0 && info.score?.key === 'mate' && info.score?.value === 0;
+
+      // If this is the last multipv line, or if it's a mate-0 position, save the evaluation
+      if ((info.multipv === numLinesRef.current || isMate0) && info.score && info.depth != undefined) {
         saveEvaluation(info.depth);
       }
     };
 
     const saveLine = (info: StockfishInfo, fen: string) => {
       if (info.depth == undefined) return;
-      if (info.multipv == undefined) return;
       if (info.score == undefined) return;
-      if (info.pv == undefined) return;
+      // For mate-0 positions, multipv and pv may be undefined
+      // Default multipv to 1 and pv to empty array
+      const multipv = info.multipv ?? 1;
 
       const evalerLine: MultiPV = {
         depth: info.depth,
-        multipv: info.multipv,
+        multipv: multipv,
         score: info.score,
-        lanLine: info.pv.split(' '),
+        lanLine: info.pv ? info.pv.split(' ') : [],
       };
 
       // Update linesRef
@@ -362,12 +367,19 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       }
     };
 
-    const saveEvaluation = (evalDepth: number) => {
+    const saveEvaluation = (evalDepth: number, bestMove?: ShortMove) => {
       // If lastDepth is 0, that means evaluation just started
       // In that case, if the new 'depth' value is not 1, then this message
       // from Stockfish must be residual from a previous run
+      // EXCEPT: For mate-0 positions, Stockfish sends depth 0 with a mate score
       if (lastDepth.current === 0 && evalDepth !== 1) {
-        return;
+        // Check if we have valid lines (might be a mate-0 position with depth 0)
+        if (fenRef.current == null) return;
+        const lines = getLinesForFen(fenRef.current);
+        if (lines.length === 0 || (evalDepth !== 0 || lines[0].score.key !== 'mate')) {
+          return;
+        }
+        // It's a mate-0 evaluation at depth 0, allow it to proceed
       }
 
       lastDepth.current = evalDepth;
@@ -380,6 +392,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
         fen: fenRef.current,
         score: { key: lines[0].score.key, value: lines[0].score.value },
         lines,
+        bestMove,
       };
 
       lastAddedEval.current = evaluation;
