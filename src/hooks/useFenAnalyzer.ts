@@ -34,6 +34,7 @@ export interface Output {
   engineName: string | null;
   fenBeingAnalyzed: string | null;
   modifyStockfishSettings: (settings: StockfishSettings) => void;
+  availableThreads: number | null;
 }
 
 export default function useFenAnalyzer(initialSettings?: StockfishSettings): Output {
@@ -102,7 +103,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     }
 
     // Fall back to threadsPercentage calculation
-    if (!recommendation) return 1;
+    if (!recommendation || settings.threadsPercentage == undefined) return 1;
     return Math.max(1, Math.floor(recommendation.threads * settings.threadsPercentage));
   }, [recommendation, settings.threadsPercentage, settings.numThreads]);
 
@@ -478,5 +479,6 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     engineName,
     fenBeingAnalyzed,
     modifyStockfishSettings,
+    availableThreads: recommendation?.threads ?? null,
   };
 }
