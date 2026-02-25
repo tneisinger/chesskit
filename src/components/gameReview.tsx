@@ -18,6 +18,7 @@ import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import useFenAnalyzer from '@/hooks/useFenAnalyzer';
 import useCurrentMoveAnalysis from '@/hooks/useCurrentMoveAnalysis';
 import usePgnAnalyzer, { AnalysisStatus } from '@/hooks/usePgnAnalyzer';
+import usePgnAnalyzerParallel from '@/hooks/usePgnAnalyzerParallel';
 import useForcingLineFinder from '@/hooks/useForcingLineFinder';
 import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
 import IconButton from '@/components/iconButton';
@@ -126,10 +127,11 @@ const GameReview = ({ game }: Props) => {
     analyzePgn,
     status: pgnAnalysisStatus,
     progress: pgnAnalysisProgress,
-  } = usePgnAnalyzer(
+  } = usePgnAnalyzerParallel(
+    8, // Number of useFenAnalyzer instances to use
     evaluations,
     setEvaluations,
-    fenAnalyzer,
+    {numThreads: 1, hashSize: 128}, // settings for each instance
     depth,
     numLines
   );
