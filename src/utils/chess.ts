@@ -901,10 +901,7 @@ export function makeMoveJudgements(
 
   // Check evsArray starts with the starting position.
   const firstPly = getPlyFromFen(evsArray[0].fen);
-  if (firstPly !== 0) {
-    // If the first position is not ply 0, ensure it is ply 1.
-    if (firstPly !== 1) throw new Error('Evaluations is missing evaluation for move 1');
-
+  if (firstPly === 1) {
     // If the first position is not the starting position, we need to
     // add the starting position evaluation to the front of the array.
     const startEval = getBookPosition(FEN.start)!.eval;
