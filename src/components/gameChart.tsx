@@ -94,8 +94,12 @@ function makeChartData(
       }
       result.push({ ...partial, chartCp, cp: posEvaluation.score.value });
     } else if (posEvaluation.score.key === 'mate') {
+
       // Represent mate as CHART_MAX_CP with sign indicating who is mating
-      const sign = posEvaluation.score.value > 0 ? 1 : -1;
+      let sign = 1;
+      if (posEvaluation.score.value < 0) sign = -1;
+      if (posEvaluation.score.value === 0 && activeColor === PieceColor.WHITE) sign = -1;
+
       result.push({ ...partial, chartCp: sign * CHART_MAX_CP, mate: posEvaluation.score.value });
     } else {
       // No evaluation available so set cp to 0
@@ -195,7 +199,6 @@ function fillChartDataWithEmptyPoints(
         chartCp: 0,
       }
     }
-
 
     result.push(emptyPoint);
   }
