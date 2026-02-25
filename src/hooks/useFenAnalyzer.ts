@@ -24,6 +24,7 @@ export interface StockfishSettings {
   threadsPercentage?: number;  // Percentage of available threads to use (0-1), default 0.5
   numThreads?: number;  // Absolute number of threads to use, overrides threadsPercentage if provided
   hashSize?: number;  // Hash table size in MB, default 512
+  id?: string;
 }
 
 export interface Output {
@@ -48,6 +49,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     threadsPercentage: initialSettings?.threadsPercentage ?? 0.5,
     numThreads: initialSettings?.numThreads,
     hashSize: initialSettings?.hashSize ?? 512,
+    id: initialSettings?.id ?? '',
   });
 
   const fenRef = useRef<string | null>(null);
@@ -82,12 +84,13 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     if (settings.numThreads !== undefined) {
       // Validate minimum
       if (settings.numThreads < 1) {
-        throw new Error('numThreads must be at least 1');
+        throw new Error(`Stockfish ${settings.id} numThreads must be at least 1`);
       }
 
       // If we have recommendation, validate against max available threads
       if (recommendation) {
         if (settings.numThreads > recommendation.threads) {
+          console.warn(`stockfish ${settings.id}:`);
           console.warn(
             `numThreads (${settings.numThreads}) exceeds available threads (${recommendation.threads}). Using ${recommendation.threads} threads instead.`
           );
@@ -133,7 +136,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       if (newSettings.numThreads !== undefined) {
         // Validate minimum
         if (newSettings.numThreads < 1) {
-          throw new Error('numThreads must be at least 1');
+          throw new Error(`Stockfish ${settings.id} numThreads must be at least 1`);
         }
 
         let threadsToUse = newSettings.numThreads;
@@ -182,16 +185,17 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       maxDepth: options?.maxDepth,
       maxSeconds: options?.maxSeconds,
     };
+    console.log('Stockfish ', settings.id, ': ', 'analyze() called');
 
     return new Promise((resolve, reject) => {
       // Check if already analyzing
       if (isAnalyzingRef.current) {
-        reject(new Error('Already analyzing a position. Call stop() first.'));
+        reject(new Error(`Stockfish ${settings.id} Already analyzing a position. Call stop() first.`));
         return;
       }
 
       if (!stockfish) {
-        reject(new Error('Stockfish is not initialized'));
+        reject(new Error(`Stockfish ${settings.id} is not initialized`));
         return;
       }
 
@@ -209,7 +213,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       lastAddedEval.current = null;
 
       // Set MultiPV
-      if (opts.numLines == undefined) throw new Error('numLines was undefined');
+      if (opts.numLines == undefined) throw new Error(`Stockfish ${settings.id} numLines was undefined`);
       stockfish.postMessage(`setoption name MultiPV value ${opts.numLines}`);
       numLinesRef.current = opts.numLines;
 
@@ -237,7 +241,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   useEffect(() => {
     const handleStockfishMessage = (event: MessageEvent) => {
       const line = typeof event === 'object' ? event.data : event;
-      console.log('Stockfish:', line);
+      console.log('Stockfish ', settings.id, ': ', line);
 
       const name = parseName(line);
       if (name) {
@@ -251,7 +255,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
           pendingAnalysisStart.current = null;
 
           stockfish.postMessage(`position fen ${fen}`);
-          console.log(`position fen ${fen}`);
+          console.log(`Stockfish ${settings.id}: position fen ${fen}`);
 
           // Determine which go command to send
           if (options.maxDepth === undefined && options.maxSeconds === undefined) {
@@ -268,7 +272,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
             stockfish.postMessage(`go depth ${options.maxDepth}`);
             timeoutRef.current = setTimeout(() => {
               if (isAnalyzingRef.current) {
-                console.warn('stopping due to maxSeconds limit');
+                console.warn(`stockfish ${settings.id} stopping due to maxSeconds limit`);
                 isStoppingDueToMaxSecondsRef.current = true;
                 stop();
               }
@@ -291,7 +295,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     };
 
     const handleBestMoveInfo = (bestMoveInfo: BestMoveInfo) => {
-      if (fenRef.current == null) throw new Error('fenRef was null when handling best move info');
+      if (fenRef.current == null) throw new Error(`Stockfish ${settings.id} fenRef was null when handling best move info`);
 
       // Clear timeout
       if (timeoutRef.current) {
@@ -303,6 +307,15 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       if (stopPromiseRef.current) {
         stopPromiseRef.current.resolve();
         stopPromiseRef.current = null;
+      }
+
+      // Check if we have any unsaved lines and save them
+      // This handles the last depth when bestmove arrives
+      if (fenRef.current in linesRef.current) {
+        const rawLines = linesRef.current[fenRef.current];
+        if (rawLines.length > 0 && rawLines[0].depth > lastDepth.current) {
+          saveEvaluation(rawLines[0].depth);
+        }
       }
 
       const requiredDepth = currentOptionsRef.current?.maxDepth;
@@ -323,22 +336,17 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
         if (isStoppingDueToMaxSecondsRef.current) {
           // do nothing
         } else {
-          // This is an error case, reject the promise
-          if (analysisPromiseRef.current) {
-            analysisPromiseRef.current.reject(new Error('Analysis stopped before reaching required depth'));
-            analysisPromiseRef.current = null;
-          }
-          isAnalyzingRef.current = false;
-          setIsAnalyzing(false);
-          fenRef.current = null;
-          return;
+          console.warn(`Stockfish ${settings.id} Analysis stopped before reaching required depth`)
+          console.warn('requiredDepth:', requiredDepth);
+          console.warn('lastDepth.current:', lastDepth.current);
+          console.warn(`Stockfish ${settings.id} lastAddedEval: ${lastAddedEval.current}`);
         }
       }
 
       if (fenRef.current == null) {
-        console.error('fenRef was null');
+        console.error(`stockfish ${settings.id} fenRef was null`);
         if (analysisPromiseRef.current) {
-          analysisPromiseRef.current.reject(new Error('FEN reference was null'));
+          analysisPromiseRef.current.reject(new Error(`Stockfish ${settings.id} FEN reference was null`));
           analysisPromiseRef.current = null;
         }
         isAnalyzingRef.current = false;
@@ -347,9 +355,9 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       }
 
       if (!lastAddedEval.current) {
-        console.error('lastAddedEval should be defined');
+        console.error(`stockfish ${settings.id} lastAddedEval should be defined`);
         if (analysisPromiseRef.current) {
-          analysisPromiseRef.current.reject(new Error('No evaluation data available'));
+          analysisPromiseRef.current.reject(new Error(`Stockfish ${settings.id} No evaluation data available`));
           analysisPromiseRef.current = null;
         }
         isAnalyzingRef.current = false;
@@ -392,14 +400,23 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
 
     const handleStockfishInfo = (info: StockfishInfo) => {
       if (fenRef.current == null) return;
+
+      // If Stockfish has moved to a new depth, save evaluation for the previous depth
+      // This handles cases where fewer lines are sent than MultiPV setting
+      if (info.depth !== undefined && info.depth > lastDepth.current && fenRef.current) {
+        if (fenRef.current in linesRef.current) {
+          const rawLines = linesRef.current[fenRef.current];
+          // If we have unsaved lines from a previous depth, save them now
+          if (rawLines.length > 0 && rawLines[0].depth !== lastDepth.current) {
+            saveEvaluation(rawLines[0].depth);
+          }
+        }
+      }
+
       saveLine(info, fenRef.current);
 
-      // For mate-0 positions, Stockfish only sends one line regardless of MultiPV setting
-      // because there are no legal moves. Detect this and treat it as the final line.
-      const isMate0 = info.depth === 0 && info.score?.key === 'mate' && info.score?.value === 0;
-
-      // If this is the last multipv line, or if it's a mate-0 position, save the evaluation
-      if ((info.multipv === numLinesRef.current || isMate0) && info.score && info.depth != undefined) {
+      // If this is the last expected multipv line, save immediately
+      if (info.multipv === numLinesRef.current && info.score && info.depth != undefined) {
         saveEvaluation(info.depth);
       }
     };
