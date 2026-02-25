@@ -22,6 +22,7 @@ export interface AnalyzeOptions {
 
 export interface StockfishSettings {
   threadsPercentage?: number;  // Percentage of available threads to use (0-1), default 0.5
+  numThreads?: number;  // Absolute number of threads to use, overrides threadsPercentage if provided
   hashSize?: number;  // Hash table size in MB, default 512
 }
 
@@ -42,8 +43,9 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   const [latestEvaluation, setLatestEvaluation] = useState<PositionEvaluation | null>(null);
   const [engineName, setEngineName] = useState<string | null>(null);
   const [fenBeingAnalyzed, setFenBeingAnalyzed] = useState<string | null>(null);
-  const [settings, setSettings] = useState<Required<StockfishSettings>>({
+  const [settings, setSettings] = useState<StockfishSettings>({
     threadsPercentage: initialSettings?.threadsPercentage ?? 0.5,
+    numThreads: initialSettings?.numThreads,
     hashSize: initialSettings?.hashSize ?? 512,
   });
 
@@ -75,9 +77,34 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   const pendingAnalysisStart = useRef<{ fen: string; options: AnalyzeOptions } | null>(null);
 
   const getDefaultNumThreads = useCallback((): number => {
+    // If numThreads is explicitly set, use it (takes precedence over threadsPercentage)
+    if (settings.numThreads !== undefined) {
+      // Validate minimum
+      if (settings.numThreads < 1) {
+        throw new Error('numThreads must be at least 1');
+      }
+
+      // If we have recommendation, validate against max available threads
+      if (recommendation) {
+        if (settings.numThreads > recommendation.threads) {
+          console.warn(
+            `numThreads (${settings.numThreads}) exceeds available threads (${recommendation.threads}). Using ${recommendation.threads} threads instead.`
+          );
+          return recommendation.threads;
+        }
+      } else {
+        // No recommendation available yet, but numThreads is set
+        // Use the specified value (user knows what they want)
+        return settings.numThreads;
+      }
+
+      return settings.numThreads;
+    }
+
+    // Fall back to threadsPercentage calculation
     if (!recommendation) return 1;
     return Math.max(1, Math.floor(recommendation.threads * settings.threadsPercentage));
-  }, [recommendation, settings.threadsPercentage]);
+  }, [recommendation, settings.threadsPercentage, settings.numThreads]);
 
   const getLinesForFen = useCallback((fen: string): PositionEvaluation['lines'] => {
     let result: PositionEvaluation['lines'] = [];
@@ -95,15 +122,35 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   const modifyStockfishSettings = useCallback((newSettings: StockfishSettings) => {
     setSettings((prev) => ({
       threadsPercentage: newSettings.threadsPercentage ?? prev.threadsPercentage,
+      numThreads: newSettings.numThreads !== undefined ? newSettings.numThreads : prev.numThreads,
       hashSize: newSettings.hashSize ?? prev.hashSize,
     }));
 
     // Apply settings to stockfish if it's ready
     if (stockfish && hasStockfishBeenSetup.current) {
-      if (newSettings.threadsPercentage !== undefined && recommendation) {
+      // Handle thread settings (numThreads takes precedence over threadsPercentage)
+      if (newSettings.numThreads !== undefined) {
+        // Validate minimum
+        if (newSettings.numThreads < 1) {
+          throw new Error('numThreads must be at least 1');
+        }
+
+        let threadsToUse = newSettings.numThreads;
+
+        // Validate against max available threads if we have recommendation
+        if (recommendation && newSettings.numThreads > recommendation.threads) {
+          console.warn(
+            `numThreads (${newSettings.numThreads}) exceeds available threads (${recommendation.threads}). Using ${recommendation.threads} threads instead.`
+          );
+          threadsToUse = recommendation.threads;
+        }
+
+        stockfish.postMessage(`setoption name Threads value ${threadsToUse}`);
+      } else if (newSettings.threadsPercentage !== undefined && recommendation) {
         const numThreads = Math.max(1, Math.floor(recommendation.threads * newSettings.threadsPercentage));
         stockfish.postMessage(`setoption name Threads value ${numThreads}`);
       }
+
       if (newSettings.hashSize !== undefined) {
         stockfish.postMessage(`setoption name Hash value ${newSettings.hashSize}`);
       }
