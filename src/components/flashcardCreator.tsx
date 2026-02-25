@@ -119,7 +119,7 @@ const FlashcardCreator = ({
     if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
     // Try to get forcing lines.
-    const options: FindForcingLinesOptions = { minDepth: 18, maxLines: 2, maxLineLength: 11 };
+    const options: FindForcingLinesOptions = { minDepth: 18, maxLines: 1, maxLineLength: 11 };
     const forcingLines = await forcingLineFinder.findForcingLines(flashcardMove.fen, options);
 
     let areLinesForcing = false;
