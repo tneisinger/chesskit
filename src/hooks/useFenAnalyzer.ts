@@ -67,6 +67,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
 
   // Timeout for maxSeconds
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isStoppingDueToMaxSecondsRef = useRef<boolean>(false);
 
   // Current analysis options
   const currentOptionsRef = useRef<AnalyzeOptions | null>(null);
@@ -156,6 +157,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       linesRef.current = {};
       currentOptionsRef.current = opts;
       analysisPromiseRef.current = { resolve, reject };
+      isStoppingDueToMaxSecondsRef.current = false;
       lastAddedEval.current = null;
 
       // Set MultiPV
@@ -201,6 +203,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
           pendingAnalysisStart.current = null;
 
           stockfish.postMessage(`position fen ${fen}`);
+          console.log(`position fen ${fen}`);
 
           // Determine which go command to send
           if (options.maxDepth === undefined && options.maxSeconds === undefined) {
@@ -217,6 +220,8 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
             stockfish.postMessage(`go depth ${options.maxDepth}`);
             timeoutRef.current = setTimeout(() => {
               if (isAnalyzingRef.current) {
+                console.warn('stopping due to maxSeconds limit');
+                isStoppingDueToMaxSecondsRef.current = true;
                 stop();
               }
             }, options.maxSeconds * 1000);
@@ -264,14 +269,22 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       // If we did not reach the required depth in a non-checkmate position...
       if (requiredDepth !== undefined && lastDepth.current < requiredDepth && !isCheckmate) {
 
-        if (analysisPromiseRef.current) {
-          analysisPromiseRef.current.reject(new Error('Analysis stopped before reaching required depth'));
-          analysisPromiseRef.current = null;
+        // If we didn't reach the required depth because we reached the maxSeconds time limit,
+        // then we should still resolve with the best move found so far (if any). But if we stopped
+        // for any other reason before reaching the required depth, that's an error and we should reject.
+        if (isStoppingDueToMaxSecondsRef.current) {
+          // do nothing
+        } else {
+          // This is an error case, reject the promise
+          if (analysisPromiseRef.current) {
+            analysisPromiseRef.current.reject(new Error('Analysis stopped before reaching required depth'));
+            analysisPromiseRef.current = null;
+          }
+          isAnalyzingRef.current = false;
+          setIsAnalyzing(false);
+          fenRef.current = null;
+          return;
         }
-        isAnalyzingRef.current = false;
-        setIsAnalyzing(false);
-        fenRef.current = null;
-        return;
       }
 
       if (fenRef.current == null) {
