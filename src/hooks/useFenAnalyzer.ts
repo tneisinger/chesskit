@@ -25,6 +25,7 @@ export interface StockfishSettings {
   numThreads?: number;  // Absolute number of threads to use, overrides threadsPercentage if provided
   hashSize?: number;  // Hash table size in MB, default 512
   id?: string;
+  initializeImmediately?: boolean;
 }
 
 export interface Output {
@@ -36,10 +37,19 @@ export interface Output {
   fenBeingAnalyzed: string | null;
   modifyStockfishSettings: (settings: StockfishSettings) => void;
   availableThreads: number | null;
+  setupWorker: () => void;
+  terminateWorker: () => void;
 }
 
 export default function useFenAnalyzer(initialSettings?: StockfishSettings): Output {
-  const { stockfish, recommendation } = useStockfish();
+  const {
+    stockfish,
+    recommendation,
+    setupWorker: setupStockfishWorker,
+    terminateWorker: terminateStockfishWorker
+  } = useStockfish({
+    initializeImmediately: initialSettings?.initializeImmediately ?? true
+  });
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [latestEvaluation, setLatestEvaluation] = useState<PositionEvaluation | null>(null);
@@ -161,9 +171,53 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     }
   }, [stockfish, recommendation]);
 
+  const setupWorker = useCallback(() => {
+    setupStockfishWorker();
+  }, [setupStockfishWorker]);
+
+  const terminateWorker = useCallback(() => {
+    // Clear any ongoing analysis
+    if (isAnalyzingRef.current) {
+      // Clear timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+
+      // Reject pending analysis
+      if (analysisPromiseRef.current) {
+        analysisPromiseRef.current.reject(
+          new Error(`Stockfish ${settings.id} Worker terminated during analysis`)
+        );
+        analysisPromiseRef.current = null;
+      }
+
+      isAnalyzingRef.current = false;
+      setIsAnalyzing(false);
+    }
+
+    // Reset setup flag so worker can be re-initialized
+    hasStockfishBeenSetup.current = false;
+
+    // Clear state
+    setLatestEvaluation(null);
+    setFenBeingAnalyzed(null);
+    fenRef.current = null;
+    lastDepth.current = 0;
+    linesRef.current = {};
+
+    // Terminate the stockfish worker
+    terminateStockfishWorker();
+  }, [terminateStockfishWorker, settings.id]);
+
   const stop = useCallback((): Promise<void> => {
-    return new Promise((resolve) => {
-      if (!isAnalyzingRef.current || !stockfish) {
+    return new Promise((resolve, reject) => {
+      if (!stockfish) {
+        reject(new Error(`Stockfish ${settings.id} Worker is not initialized. Call setupWorker() first.`));
+        return;
+      }
+
+      if (!isAnalyzingRef.current) {
         resolve();
         return;
       }
@@ -177,7 +231,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       stopPromiseRef.current = { resolve };
       stockfish.postMessage('stop');
     });
-  }, [stockfish]);
+  }, [stockfish, settings.id]);
 
   const analyze = useCallback((fen: string, options?: AnalyzeOptions): Promise<PositionEvaluation> => {
     const opts: AnalyzeOptions = {
@@ -185,7 +239,6 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       maxDepth: options?.maxDepth,
       maxSeconds: options?.maxSeconds,
     };
-    console.log('Stockfish ', settings.id, ': ', 'analyze() called');
 
     return new Promise((resolve, reject) => {
       // Check if already analyzing
@@ -195,7 +248,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       }
 
       if (!stockfish) {
-        reject(new Error(`Stockfish ${settings.id} is not initialized`));
+        reject(new Error(`Stockfish ${settings.id} Worker is not initialized. Call setupWorker() first.`));
         return;
       }
 
@@ -241,7 +294,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   useEffect(() => {
     const handleStockfishMessage = (event: MessageEvent) => {
       const line = typeof event === 'object' ? event.data : event;
-      console.log('Stockfish ', settings.id, ': ', line);
+      // console.log('Stockfish ', settings.id, ': ', line);
 
       const name = parseName(line);
       if (name) {
@@ -255,7 +308,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
           pendingAnalysisStart.current = null;
 
           stockfish.postMessage(`position fen ${fen}`);
-          console.log(`Stockfish ${settings.id}: position fen ${fen}`);
+          // console.log(`Stockfish ${settings.id}: position fen ${fen}`);
 
           // Determine which go command to send
           if (options.maxDepth === undefined && options.maxSeconds === undefined) {
@@ -497,5 +550,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     fenBeingAnalyzed,
     modifyStockfishSettings,
     availableThreads: recommendation?.threads ?? null,
+    setupWorker,
+    terminateWorker,
   };
 }

@@ -26,6 +26,8 @@ export interface Output {
   currentPosition: number;
   totalPositions: number;
   pgnEvaluations: Evaluations;
+  setupWorkers: () => void;
+  terminateWorkers: () => void;
 }
 
 // No longer needed - using queue-based approach
@@ -134,6 +136,40 @@ export default function usePgnAnalyzerParallel(
   // No longer needed - using queue instead of chunks
   // splitIntoChunks removed
 
+  const setupWorkers = useCallback(() => {
+    // Reset state
+    isAnalyzingRef.current = false;
+    queueRef.current = [];
+    instanceBusyRef.current = [];
+    setStatus(AnalysisStatus.NotStarted);
+    setTotalPositions(0);
+    setCompletedPositions(0);
+    setPgnEvaluations({});
+    currentOptionsRef.current = null;
+
+    // Set up only the number of instances we're actually using
+    for (let i = 0; i < numInstances; i++) {
+      analyzers[i].setupWorker();
+    }
+  }, [numInstances, analyzers]);
+
+  const terminateWorkers = useCallback(() => {
+    // Terminate all analyzer instances
+    for (let i = 0; i < MAX_INSTANCES; i++) {
+      analyzers[i].terminateWorker();
+    }
+
+    // Reset state
+    isAnalyzingRef.current = false;
+    queueRef.current = [];
+    instanceBusyRef.current = [];
+    // setStatus(AnalysisStatus.NotStarted);
+    setTotalPositions(0);
+    setCompletedPositions(0);
+    setPgnEvaluations({});
+    currentOptionsRef.current = null;
+  }, [analyzers]);
+
   const cancel = useCallback(() => {
     if (!isAnalyzingRef.current) return;
 
@@ -154,6 +190,13 @@ export default function usePgnAnalyzerParallel(
   }, [numInstances, analyzers]);
 
   const analyzePgn = useCallback((pgn: string, partialOptions?: AnalyzePgnOptions) => {
+    // Check if workers are initialized by checking if any of the workers we'll use have availableThreads set
+    // availableThreads is set when the stockfish worker is initialized
+    const allWorkersReady = analyzers.slice(0, numInstances).every(a => a.availableThreads !== null);
+    if (!allWorkersReady) {
+      throw new Error('Workers are not initialized. Call setupWorkers() first.');
+    }
+
     // Set up default options
     const defaultOptions: Required<AnalyzePgnOptions> = {
       analyzeVariations: true,
@@ -298,5 +341,7 @@ export default function usePgnAnalyzerParallel(
     currentPosition: completedPositions,
     totalPositions,
     pgnEvaluations,
+    setupWorkers,
+    terminateWorkers,
   };
 }

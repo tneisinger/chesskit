@@ -17,8 +17,7 @@ import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import useFenAnalyzer from '@/hooks/useFenAnalyzer';
 import useCurrentMoveAnalysis from '@/hooks/useCurrentMoveAnalysis';
-import usePgnAnalyzer, { AnalysisStatus } from '@/hooks/usePgnAnalyzer';
-import usePgnAnalyzerParallel from '@/hooks/usePgnAnalyzerParallel';
+import usePgnAnalyzerParallel, { AnalysisStatus } from '@/hooks/usePgnAnalyzerParallel';
 import useForcingLineFinder from '@/hooks/useForcingLineFinder';
 import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
 import IconButton from '@/components/iconButton';
@@ -111,7 +110,7 @@ const GameReview = ({ game }: Props) => {
   } = useChessboardEngine();
 
   // Set up FEN analyzer
-  const fenAnalyzer = useFenAnalyzer({ hashSize: 1024 });
+  const fenAnalyzer = useFenAnalyzer({ hashSize: 1024, initializeImmediately: false });
 
   // Set up current move analysis
   const currentMoveAnalysis = useCurrentMoveAnalysis(
@@ -123,15 +122,11 @@ const GameReview = ({ game }: Props) => {
   );
 
   // Set up PGN analyzer
-  const {
-    analyzePgn,
-    status: pgnAnalysisStatus,
-    progress: pgnAnalysisProgress,
-  } = usePgnAnalyzerParallel(
+  const pgnAnalyzer = usePgnAnalyzerParallel(
     8, // Number of useFenAnalyzer instances to use
     evaluations,
     setEvaluations,
-    {numThreads: 1, hashSize: 128}, // settings for each instance
+    {numThreads: 1, hashSize: 128, initializeImmediately: false }, // settings for each instance
     depth,
     numLines
   );
@@ -154,7 +149,7 @@ const GameReview = ({ game }: Props) => {
     (newArrows) => dispatch({ type: 'setArrows', arrows: newArrows })
   );
 
-  const prevPgnAnalysisStatus = usePrevious(pgnAnalysisStatus);
+  const prevPgnAnalysisStatus = usePrevious(pgnAnalyzer.status);
   const prevIsCurrentMoveAnalysisOn = usePrevious(currentMoveAnalysis.isOn);
 
   // Clear markers and arrows when turning off current move analysis
@@ -166,20 +161,24 @@ const GameReview = ({ game }: Props) => {
   }, [currentMoveAnalysis.isOn, prevIsCurrentMoveAnalysisOn]);
 
   const hasGameBeenAnalyzed = useCallback((): boolean => {
-    if (pgnAnalysisStatus === AnalysisStatus.Complete) return true;
+    if (pgnAnalyzer.status === AnalysisStatus.Complete) return true;
     if (game.engineAnalysis != undefined) return true;
     return false;
-  }, [pgnAnalysisStatus, game]);
+  }, [pgnAnalyzer.status, game]);
 
 
   // When pgn analysis completes, save the results to the db
   useEffect(() => {
     if (prevPgnAnalysisStatus == AnalysisStatus.Analyzing &&
-        pgnAnalysisStatus == AnalysisStatus.Complete &&
+        pgnAnalyzer.status == AnalysisStatus.Complete &&
         Object.keys(evaluations).length > 0
     ) {
       // Save a copy of evaluations that only contains evaluations of the game
       setGameEvaluation({...evaluations});
+
+      // Terminate the pgnAnalyzer workers and setup the fenAnalyzer worker
+      pgnAnalyzer.terminateWorkers();
+      fenAnalyzer.setupWorker();
 
       // Save analysis results to db
       if (game.id) {
@@ -196,7 +195,8 @@ const GameReview = ({ game }: Props) => {
           });
       }
     }
-  }, [pgnAnalysisStatus, prevPgnAnalysisStatus, game.id, evaluations])
+  }, [pgnAnalyzer.status, prevPgnAnalysisStatus, game.id, evaluations,
+      pgnAnalyzer.terminateWorkers, fenAnalyzer.setupWorker])
 
   // When we get the game...
   useEffect(() => {
@@ -207,6 +207,7 @@ const GameReview = ({ game }: Props) => {
         setEvaluations(game.engineAnalysis);
         setGameEvaluation(game.engineAnalysis);
       }
+
       setHasGameLoaded(true);
     } else {
       setHasGameLoaded(false);
@@ -214,12 +215,23 @@ const GameReview = ({ game }: Props) => {
   }, [game]);
 
 
+  // If we have engineAnalysis for the game, setup the fenAnalyzer.
+  // Otherwise, setup the pgnAnalyzer so the game can be analyzed.
+  useEffect(() => {
+    if (game.engineAnalysis) {
+      fenAnalyzer.setupWorker();
+    } else {
+      pgnAnalyzer.setupWorkers();
+    }
+  }, []);
+
+
   // While analyzing game, update gameEvaluations every time evaluations changes.
   useEffect(() => {
-    if (pgnAnalysisStatus === AnalysisStatus.Analyzing) {
+    if (pgnAnalyzer.status === AnalysisStatus.Analyzing) {
       setGameEvaluation(evaluations);
     }
-  }, [evaluations, pgnAnalysisStatus]);
+  }, [evaluations, pgnAnalyzer.status]);
 
 
   // Calculate board size
@@ -374,13 +386,13 @@ const GameReview = ({ game }: Props) => {
             {hasGameLoaded && (
               <GameAnalysis
                 game={game}
-                analyzePgn={analyzePgn}
+                analyzePgn={pgnAnalyzer.analyzePgn}
                 depth={depth}
                 changeDepth={setDepth}
                 numLines={numLines}
                 changeNumLines={setNumLines}
-                pgnAnalysisStatus={pgnAnalysisStatus}
-                pgnAnalysisProgress={pgnAnalysisProgress}
+                pgnAnalysisStatus={pgnAnalyzer.status}
+                pgnAnalysisProgress={pgnAnalyzer.progress}
                 gameEvaluation={gameEvaluation}
                 currentMove={currentMove}
                 changeCurrentMove={setCurrentMove}
