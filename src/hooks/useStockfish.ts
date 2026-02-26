@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { detectStockfishFlavor, logStockfishDetection, type StockfishRecommendation } from '@/utils/stockfishDetector';
 
+const LOGGING_ENABLED = false;
+
 export interface UseStockfishResult {
   stockfish: Worker | undefined;
   isLoading: boolean;
@@ -62,7 +64,7 @@ export default function useStockfish(options: Options = defaultOptions): UseStoc
   // Terminate worker function
   const terminateWorker = useCallback(() => {
     if (stockfishRef.current) {
-      console.log('Manually terminating Stockfish worker');
+      if (LOGGING_ENABLED) console.log('Manually terminating Stockfish worker');
       stockfishRef.current.terminate();
       stockfishRef.current = undefined;
       setStockfish(undefined);
@@ -90,7 +92,7 @@ export default function useStockfish(options: Options = defaultOptions): UseStoc
         setRecommendation(detected);
 
         // Log the detection result
-        logStockfishDetection(detected);
+        if (LOGGING_ENABLED) logStockfishDetection(detected);
 
         // Try to load the recommended engine
         try {
@@ -109,7 +111,7 @@ export default function useStockfish(options: Options = defaultOptions): UseStoc
             stockfishRef.current = worker;
             setStockfish(worker);
             setIsLoading(false);
-            console.log(`✓ Stockfish ${detected.flavor} loaded successfully`);
+            if (LOGGING_ENABLED) console.log(`✓ Stockfish ${detected.flavor} loaded successfully`);
           } else {
             // Component unmounted before loading completed
             worker.terminate();
@@ -119,7 +121,7 @@ export default function useStockfish(options: Options = defaultOptions): UseStoc
           console.error(`Failed to load ${detected.flavor}:`, loadError);
 
           if (detected.fileName !== 'stockfish-17.1-asm.js') {
-            console.log('Attempting to load ASM-JS fallback...');
+            if (LOGGING_ENABLED) console.log('Attempting to load ASM-JS fallback...');
 
             try {
               const fallbackWorker = new Worker('/stockfish/stockfish-17.1-asm.js');
@@ -135,7 +137,7 @@ export default function useStockfish(options: Options = defaultOptions): UseStoc
                 stockfishRef.current = fallbackWorker;
                 setStockfish(fallbackWorker);
                 setIsLoading(false);
-                console.log('✓ Stockfish ASM-JS fallback loaded successfully');
+                if (LOGGING_ENABLED) console.log('✓ Stockfish ASM-JS fallback loaded successfully');
               } else {
                 fallbackWorker.terminate();
               }
@@ -172,7 +174,7 @@ export default function useStockfish(options: Options = defaultOptions): UseStoc
       // Terminate the worker if it exists
       // Use ref to avoid stale closure
       if (stockfishRef.current) {
-        console.log('Terminating Stockfish worker on unmount');
+        if (LOGGING_ENABLED) console.log('Terminating Stockfish worker on unmount');
         stockfishRef.current.terminate();
         stockfishRef.current = undefined;
       }
