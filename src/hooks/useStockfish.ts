@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { detectStockfishFlavor, logStockfishDetection, type StockfishRecommendation } from '@/utils/stockfishDetector';
 
 export interface UseStockfishResult {
@@ -6,6 +6,16 @@ export interface UseStockfishResult {
   isLoading: boolean;
   error: string | null;
   recommendation: StockfishRecommendation | null;
+  setupWorker: () => void;
+  terminateWorker: () => void;
+}
+
+export interface Options {
+  initializeImmediately?: boolean;
+}
+
+const defaultOptions: Options = {
+  initializeImmediately: true,
 }
 
 /**
@@ -30,16 +40,44 @@ export interface UseStockfishResult {
  *   stockfish.postMessage('position startpos');
  * }
  */
-export default function useStockfish(): UseStockfishResult {
+export default function useStockfish(options: Options = defaultOptions): UseStockfishResult {
   const [stockfish, setStockfish] = useState<Worker | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<StockfishRecommendation | null>(null);
+
+  // Trigger counter: increments to trigger worker initialization
+  const [loadTrigger, setLoadTrigger] = useState(() =>
+    (options.initializeImmediately ?? true) ? 1 : 0
+  );
 
   // Use ref to avoid stale closure in cleanup function
   const stockfishRef = useRef<Worker | undefined>(undefined);
 
+  // Setup worker function - can be called multiple times to recreate worker
+  const setupWorker = useCallback(() => {
+    setLoadTrigger(prev => prev + 1);
+  }, []);
+
+  // Terminate worker function
+  const terminateWorker = useCallback(() => {
+    if (stockfishRef.current) {
+      console.log('Manually terminating Stockfish worker');
+      stockfishRef.current.terminate();
+      stockfishRef.current = undefined;
+      setStockfish(undefined);
+      setIsLoading(false);
+      setError(null);
+    }
+  }, []);
+
   useEffect(() => {
+    // Don't load if trigger is 0 (lazy initialization)
+    if (loadTrigger === 0) return;
+
+    // Don't load if already loading or worker exists
+    if (isLoading || stockfishRef.current) return;
+
     let mounted = true;
 
     const loadEngine = async () => {
@@ -134,18 +172,20 @@ export default function useStockfish(): UseStockfishResult {
       // Terminate the worker if it exists
       // Use ref to avoid stale closure
       if (stockfishRef.current) {
-        console.log('Terminating Stockfish worker');
+        console.log('Terminating Stockfish worker on unmount');
         stockfishRef.current.terminate();
         stockfishRef.current = undefined;
       }
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, [loadTrigger]); // Re-run when loadTrigger changes
 
   return {
     stockfish,
     isLoading,
     error,
     recommendation,
+    setupWorker,
+    terminateWorker,
   };
 }
 
