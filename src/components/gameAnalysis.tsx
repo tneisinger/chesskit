@@ -1,7 +1,7 @@
 import Button from '@/components/button';
 import Spinner from '@/components/spinner';
 import GameChart, { Props as GameChartProps } from '@/components/gameChart';
-import { AnalysisStatus, Output as PgnAnalyzer } from '@/hooks/usePgnAnalyzer';
+import { AnalyzerStatus, Output as PgnAnalyzer } from '@/hooks/usePgnAnalyzerParallel';
 
 interface Props extends GameChartProps {
   analyzePgn: PgnAnalyzer['analyzePgn'];
@@ -9,8 +9,9 @@ interface Props extends GameChartProps {
   changeDepth: (newDepth: number) => void;
   numLines: number;
   changeNumLines: (newNumLines: number) => void;
-  pgnAnalysisStatus: AnalysisStatus;
+  pgnAnalyzerStatus: AnalyzerStatus;
   pgnAnalysisProgress: number;
+  isGameEvaluationComplete: boolean;
 }
 
 const GameAnalysis = ({
@@ -20,8 +21,9 @@ const GameAnalysis = ({
   changeDepth,
   numLines,
   changeNumLines,
-  pgnAnalysisStatus,
+  pgnAnalyzerStatus,
   pgnAnalysisProgress,
+  isGameEvaluationComplete,
   gameEvaluation,
   currentMove,
   changeCurrentMove,
@@ -34,9 +36,9 @@ const GameAnalysis = ({
 
   return (
     <div className="bg-radial from-stone-600 to-stone-800 rounded-md" style={{ width, height: '100%' }}>
-      {Object.keys(gameEvaluation).length < 1 && pgnAnalysisStatus == AnalysisStatus.NotStarted && (
+      {Object.keys(gameEvaluation).length < 1 && pgnAnalyzerStatus == AnalyzerStatus.Idle && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
-          <Button onClick={handleAnalyzeGame} disabled={pgnAnalysisStatus !== AnalysisStatus.NotStarted}>
+          <Button onClick={handleAnalyzeGame} disabled={pgnAnalyzerStatus !== AnalyzerStatus.Idle}>
             Analyze Game
           </Button>
           <div className='flex flex-row gap-8'>
@@ -59,7 +61,7 @@ const GameAnalysis = ({
           </div>
         </div>
       )}
-      {pgnAnalysisStatus === AnalysisStatus.Analyzing && (
+      {pgnAnalyzerStatus === AnalyzerStatus.Analyzing && (
         <div className="relative h-full">
           <div className='absolute z-2 flex flex-col h-full w-full justify-center items-center gap-4'>
             <p className="text-lg font-bold">Analyzing Game</p>
@@ -83,7 +85,7 @@ const GameAnalysis = ({
           </div>
         </div>
       )}
-      {(pgnAnalysisStatus === AnalysisStatus.Complete || game.engineAnalysis != undefined) && (
+      {isGameEvaluationComplete && (
         <GameChart
           game={game}
           gameEvaluation={gameEvaluation}

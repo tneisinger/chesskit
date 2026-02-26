@@ -17,7 +17,7 @@ import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import useFenAnalyzer from '@/hooks/useFenAnalyzer';
 import useCurrentMoveAnalysis from '@/hooks/useCurrentMoveAnalysis';
-import usePgnAnalyzerParallel, { AnalysisStatus } from '@/hooks/usePgnAnalyzerParallel';
+import usePgnAnalyzerParallel, { AnalyzerStatus } from '@/hooks/usePgnAnalyzerParallel';
 import useForcingLineFinder from '@/hooks/useForcingLineFinder';
 import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
 import IconButton from '@/components/iconButton';
@@ -97,6 +97,7 @@ const GameReview = ({ game }: Props) => {
 
   const [gameEvaluation, setGameEvaluation] = useState<Evaluations>({});
   const [evaluations, setEvaluations] = useState<Evaluations>({});
+  const [isGameEvaluationComplete, setIsGameEvaluationComplete] = useState(false);
 
 
   // Set up chessboard engine
@@ -149,7 +150,7 @@ const GameReview = ({ game }: Props) => {
     (newArrows) => dispatch({ type: 'setArrows', arrows: newArrows })
   );
 
-  const prevPgnAnalysisStatus = usePrevious(pgnAnalyzer.status);
+  const prevAnalyzerStatus = usePrevious(pgnAnalyzer.status);
   const prevIsCurrentMoveAnalysisOn = usePrevious(currentMoveAnalysis.isOn);
 
   // Clear markers and arrows when turning off current move analysis
@@ -160,21 +161,16 @@ const GameReview = ({ game }: Props) => {
     }
   }, [currentMoveAnalysis.isOn, prevIsCurrentMoveAnalysisOn]);
 
-  const hasGameBeenAnalyzed = useCallback((): boolean => {
-    if (pgnAnalyzer.status === AnalysisStatus.Complete) return true;
-    if (game.engineAnalysis != undefined) return true;
-    return false;
-  }, [pgnAnalyzer.status, game]);
-
 
   // When pgn analysis completes, save the results to the db
   useEffect(() => {
-    if (prevPgnAnalysisStatus == AnalysisStatus.Analyzing &&
-        pgnAnalyzer.status == AnalysisStatus.Complete &&
+    if (prevAnalyzerStatus == AnalyzerStatus.Analyzing &&
+        pgnAnalyzer.status == AnalyzerStatus.Idle &&
         Object.keys(evaluations).length > 0
     ) {
       // Save a copy of evaluations that only contains evaluations of the game
       setGameEvaluation({...evaluations});
+      setIsGameEvaluationComplete(true);
 
       // Terminate the pgnAnalyzer workers and setup the fenAnalyzer worker
       pgnAnalyzer.terminateWorkers();
@@ -195,7 +191,7 @@ const GameReview = ({ game }: Props) => {
           });
       }
     }
-  }, [pgnAnalyzer.status, prevPgnAnalysisStatus, game.id, evaluations,
+  }, [pgnAnalyzer.status, prevAnalyzerStatus, game.id, evaluations,
       pgnAnalyzer.terminateWorkers, fenAnalyzer.setupWorker])
 
   // When we get the game...
@@ -206,6 +202,7 @@ const GameReview = ({ game }: Props) => {
       if (game.engineAnalysis) {
         setEvaluations(game.engineAnalysis);
         setGameEvaluation(game.engineAnalysis);
+        setIsGameEvaluationComplete(true);
       }
 
       setHasGameLoaded(true);
@@ -228,7 +225,7 @@ const GameReview = ({ game }: Props) => {
 
   // While analyzing game, update gameEvaluations every time evaluations changes.
   useEffect(() => {
-    if (pgnAnalyzer.status === AnalysisStatus.Analyzing) {
+    if (pgnAnalyzer.status === AnalyzerStatus.Analyzing) {
       setGameEvaluation(evaluations);
     }
   }, [evaluations, pgnAnalyzer.status]);
@@ -282,7 +279,7 @@ const GameReview = ({ game }: Props) => {
       isEvaluating={fenBeingAnalyzed != null}
       maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
       numLines={numLines}
-      isSwitchDisabled={!hasGameBeenAnalyzed()}
+      isSwitchDisabled={!isGameEvaluationComplete}
       switchDisabledTooltip='Analyze the game to unlock the engine'
       showMoveJudgements={false}
       colorLineScores={true}
@@ -391,8 +388,9 @@ const GameReview = ({ game }: Props) => {
                 changeDepth={setDepth}
                 numLines={numLines}
                 changeNumLines={setNumLines}
-                pgnAnalysisStatus={pgnAnalyzer.status}
+                pgnAnalyzerStatus={pgnAnalyzer.status}
                 pgnAnalysisProgress={pgnAnalyzer.progress}
+                isGameEvaluationComplete={isGameEvaluationComplete}
                 gameEvaluation={gameEvaluation}
                 currentMove={currentMove}
                 changeCurrentMove={setCurrentMove}
@@ -406,7 +404,7 @@ const GameReview = ({ game }: Props) => {
               game={game}
               evaluations={evaluations}
               currentMove={currentMove}
-              hasGameBeenAnalyzed={hasGameBeenAnalyzed()}
+              hasGameBeenAnalyzed={isGameEvaluationComplete}
               forcingLineFinder={forcingLineFinder}
               isCreatingFlashcard={isCreatingFlashcard}
               changeIsCreatingFlashcard={setIsCreatingFlashcard}

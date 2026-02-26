@@ -4,10 +4,10 @@ import useFenAnalyzer, { StockfishSettings } from '@/hooks/useFenAnalyzer';
 import { parse as parsePGN } from 'pgn-parser';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
 
-export enum AnalysisStatus {
-  NotStarted = 'Not Started',
+export enum AnalyzerStatus {
+  Uninitialized = 'Uninitialized',
+  Idle = 'Idle',
   Analyzing = 'Analyzing',
-  Complete = 'Complete',
 }
 
 export interface AnalyzePgnOptions {
@@ -21,7 +21,7 @@ export interface AnalyzePgnOptions {
 export interface Output {
   analyzePgn: (pgn: string, options?: AnalyzePgnOptions) => void;
   cancel: () => void;
-  status: AnalysisStatus;
+  status: AnalyzerStatus;
   progress: number;
   currentPosition: number;
   totalPositions: number;
@@ -58,11 +58,11 @@ export default function usePgnAnalyzerParallel(
     useFenAnalyzer({...stockfishSettings, id: '8'}),
   ];
 
-  const availableThreads = analyzers[0].availableThreads ?? 1;
+  const availableThreads = analyzers[0].availableThreads;
 
   // Warn if numInstances exceeds available threads
   useEffect(() => {
-    if (numInstances > availableThreads) {
+    if (availableThreads != null && numInstances > availableThreads) {
       console.warn(
         `Requested ${numInstances} analyzer instances but only ${availableThreads} threads are available. ` +
         `This may cause performance degradation.`
@@ -70,7 +70,7 @@ export default function usePgnAnalyzerParallel(
     }
   }, [numInstances, availableThreads]);
 
-  const [status, setStatus] = useState(AnalysisStatus.NotStarted);
+  const [status, setStatus] = useState(AnalyzerStatus.Uninitialized);
   const [pgnEvaluations, setPgnEvaluations] = useState<Evaluations>({});
   const [totalPositions, setTotalPositions] = useState(0);
   const [completedPositions, setCompletedPositions] = useState(0);
@@ -133,24 +133,13 @@ export default function usePgnAnalyzerParallel(
     }
   }, []);
 
-  // No longer needed - using queue instead of chunks
-  // splitIntoChunks removed
 
   const setupWorkers = useCallback(() => {
-    // Reset state
-    isAnalyzingRef.current = false;
-    queueRef.current = [];
-    instanceBusyRef.current = [];
-    setStatus(AnalysisStatus.NotStarted);
-    setTotalPositions(0);
-    setCompletedPositions(0);
-    setPgnEvaluations({});
-    currentOptionsRef.current = null;
-
     // Set up only the number of instances we're actually using
     for (let i = 0; i < numInstances; i++) {
       analyzers[i].setupWorker();
     }
+    setStatus(AnalyzerStatus.Idle);
   }, [numInstances, analyzers]);
 
   const terminateWorkers = useCallback(() => {
@@ -159,11 +148,11 @@ export default function usePgnAnalyzerParallel(
       analyzers[i].terminateWorker();
     }
 
-    // Reset state
+    // reset state
     isAnalyzingRef.current = false;
     queueRef.current = [];
     instanceBusyRef.current = [];
-    // setStatus(AnalysisStatus.NotStarted);
+    setStatus(AnalyzerStatus.Uninitialized);
     setTotalPositions(0);
     setCompletedPositions(0);
     setPgnEvaluations({});
@@ -183,7 +172,7 @@ export default function usePgnAnalyzerParallel(
     isAnalyzingRef.current = false;
     queueRef.current = [];
     instanceBusyRef.current = [];
-    setStatus(AnalysisStatus.NotStarted);
+    setStatus(AnalyzerStatus.Idle);
     setTotalPositions(0);
     setCompletedPositions(0);
     currentOptionsRef.current = null;
@@ -227,8 +216,7 @@ export default function usePgnAnalyzerParallel(
     if (options.threadsPerInstance > 0) {
       threadsPerInstance = options.threadsPerInstance;
     } else {
-      // Divide equally
-      threadsPerInstance = Math.max(1, Math.floor(availableThreads / numInstances));
+      threadsPerInstance = 1;
     }
 
     // Configure each analyzer instance with thread allocation
@@ -247,7 +235,7 @@ export default function usePgnAnalyzerParallel(
     setCompletedPositions(0);
     setPgnEvaluations({});
     isAnalyzingRef.current = true;
-    setStatus(AnalysisStatus.Analyzing);
+    setStatus(AnalyzerStatus.Analyzing);
   }, [
     generateFensFromPgn,
     defaultDepth,
@@ -261,7 +249,7 @@ export default function usePgnAnalyzerParallel(
   // Process positions using queue-based work distribution
   useEffect(() => {
     if (!isAnalyzingRef.current) return;
-    if (status !== AnalysisStatus.Analyzing) return;
+    if (status !== AnalyzerStatus.Analyzing) return;
 
     const options = currentOptionsRef.current;
     if (!options) return;
@@ -271,7 +259,7 @@ export default function usePgnAnalyzerParallel(
     if (queueRef.current.length === 0 && allInstancesIdle) {
       // Analysis complete
       isAnalyzingRef.current = false;
-      setStatus(AnalysisStatus.Complete);
+      setStatus(AnalyzerStatus.Idle);
       return;
     }
 
