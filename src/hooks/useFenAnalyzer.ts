@@ -363,10 +363,10 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       }
 
       // Check if we have any unsaved lines and save them
-      // This handles the last depth when bestmove arrives
-      if (fenRef.current in linesRef.current) {
+      // This handles the last depth when bestmove arrives (including mate-0 at depth 0)
+      if (!lastAddedEval.current && fenRef.current in linesRef.current) {
         const rawLines = linesRef.current[fenRef.current];
-        if (rawLines.length > 0 && rawLines[0].depth > lastDepth.current) {
+        if (rawLines.length > 0) {
           saveEvaluation(rawLines[0].depth);
         }
       }
