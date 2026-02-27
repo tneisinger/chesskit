@@ -386,6 +386,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       const chessjs = new ChessJS();
       chessjs.load(fenRef.current);
       const isCheckmate = chessjs.isCheckmate();
+      const legalMoves = chessjs.moves();
 
       // If we did not reach the required depth in a non-checkmate position...
       if (requiredDepth !== undefined && lastDepth.current < requiredDepth && !isCheckmate) {
@@ -394,6 +395,12 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
         // then we should still resolve with the best move found so far (if any). But if we stopped
         // for any other reason before reaching the required depth, that's an error and we should reject.
         if (isStoppingDueToMaxSecondsRef.current) {
+          // do nothing
+        } else if (legalMoves.length < numLinesRef.current && lastDepth.current === requiredDepth - 1) {
+          // If there are fewer legal moves than the number of lines requested, and the lastDepth is one
+          // less than the requiredDepth, then this is not an error because Stockfish will not be able to
+          // provide the requested number of lines at any depth. In this case, we can still resolve with
+          // the best move found so far (if any).
           // do nothing
         } else {
           console.warn(`Stockfish ${settings.id} Analysis stopped before reaching required depth`)
