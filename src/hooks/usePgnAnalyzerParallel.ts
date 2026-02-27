@@ -30,9 +30,6 @@ export interface Output {
   terminateWorkers: () => void;
 }
 
-// No longer needed - using queue-based approach
-// interface InstanceState removed
-
 const MAX_INSTANCES = 8;
 
 export default function usePgnAnalyzerParallel(
