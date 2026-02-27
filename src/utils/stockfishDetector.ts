@@ -52,7 +52,7 @@ function supportsCrossOriginIsolation(): boolean {
 /**
  * Gets the number of threads available on the user's device
  */
-function getThreadCount(): number {
+export function getThreadCount(): number {
 	if (typeof navigator !== "undefined" && navigator.hardwareConcurrency) {
 		return navigator.hardwareConcurrency;
 	}
