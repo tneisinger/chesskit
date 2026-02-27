@@ -24,7 +24,7 @@ import { useFlashcardContext } from '@/contexts/FlashcardContext';
 import { MoveJudgement, PieceColor, ShortMove, Evaluations } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import useFenAnalyzer from '@/hooks/useFenAnalyzer';
-import useCurrentMoveAnalysis from '@/hooks/useCurrentMoveAnalysis';
+import useCurrentMoveAnalyzer from '@/hooks/useCurrentMoveAnalyzer';
 import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
 import {
   areCmMovesEqual,
@@ -154,26 +154,24 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [engineDepth, setEngineDepth] = useState(18);
   const [numEngineLines, setNumEngineLines] = useState(2);
 
-  // Set up FEN analyzer
-  const fenAnalyzer = useFenAnalyzer();
 
-  // Get engine info from fenAnalyzer
-  const { engineName, fenBeingAnalyzed } = fenAnalyzer;
+  const fenAnalyzer = useFenAnalyzer({ numThreads: 8, hashSize: 1024, initializeImmediately: false });
 
-  // Set up current move analysis
-  const currentMoveAnalysis = useCurrentMoveAnalysis(
+
+  const currentMoveAnalyzer = useCurrentMoveAnalyzer(
+    8, // Number of useFenAnalyzer instances to use
     evaluations,
     setEvaluations,
     currentMove,
-    fenAnalyzer,
-    { depth: engineDepth, numLines: numEngineLines }
+    {numThreads: 1, hashSize: 128, initializeImmediately: false }, // settings for each instance
+    { depth: 18, numLines: 2 }
   );
 
 
   useEngineArrowCreator(
-    currentMoveAnalysis.isOn,
+    currentMoveAnalyzer.isOn,
     evaluations,
-    fenAnalyzer.latestEvaluation,
+    currentMoveAnalyzer.latestEvaluations,
     currentMove,
     (newArrows) => setArrows(newArrows),
   );
@@ -181,6 +179,20 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const previousMove = usePrevious(currentMove);
   const previousLines = usePrevious(lines);
   const previousMoveGrade = usePrevious(moveGrade);
+  const previousMode = usePrevious(currentMode);
+
+
+  const setupCurrentMoveAnalyzer = useCallback(async (): Promise<void> => {
+    fenAnalyzer.terminateWorker();
+    await currentMoveAnalyzer.setupWorkers();
+  }, [fenAnalyzer.terminateWorker, currentMoveAnalyzer.setupWorkers]);
+
+
+  const setupFenAnalyzer = useCallback(async (): Promise<void> => {
+    currentMoveAnalyzer.terminateWorkers();
+    fenAnalyzer.setupWorker();
+  }, [currentMoveAnalyzer.terminateWorkers, fenAnalyzer.setupWorker]);
+
 
   const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
     // By default, indicate that the move was wrong.
@@ -355,12 +367,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const gradeMove = useCallback(async (move: Move): Promise<MoveJudgement> => {
+    await setupFenAnalyzer();
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) throw new Error('flashcard was undefined');
     if (fc.bestMoves[0] == undefined) throw new Error('fc.bestLines was empty');
-    const pev = await fenAnalyzer.analyze(move.fen, { maxDepth: engineDepth, maxSeconds: 30 });
+    const pev = await fenAnalyzer.analyze(move.fen, { maxDepth: engineDepth, maxSeconds: 60 });
+    await setupCurrentMoveAnalyzer();
     return judgePevAgainstBestScore(fc.bestMoves[0].score, pev);
-  }, [fenAnalyzer.analyze, flashcards, flashcardIndex]);
+  }, [fenAnalyzer.analyze, flashcards, flashcardIndex, setupFenAnalyzer, setupCurrentMoveAnalyzer]);
 
 
   const handleMoveThatWasNotInFlashcardPgn = useCallback(async () => {
@@ -449,7 +463,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     const fc = flashcards[flashcardIndex];
     setLines(makeLineStatsRecord(fc.pgn));
     setHasUserCompletedFlashcard(false);
-    currentMoveAnalysis.setIsOn(false);
+    currentMoveAnalyzer.setIsOn(false);
     setMoveGrade(null);
     setWrongAnswerCount(0);
     setIsReplay(true);
@@ -587,7 +601,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setBoardFenOverride(FEN.empty);
       setFlashcardIndex((i) => i + 1);
       setCurrentMode(Mode.Practice);
-      currentMoveAnalysis.setIsOn(false);
+      currentMoveAnalyzer.setIsOn(false);
     }
   }, [flashcardIndex, flashcards]);
 
@@ -770,6 +784,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     };
   }, [wrongAnswerCount]);
 
+
   useEffect(() => {
     // If currentMove hasn't changed, do nothing
     if (areCmMovesEqual(currentMove, previousMove)) return;
@@ -826,6 +841,23 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [hasUserCompletedFlashcard])
 
 
+  // Whenever we go into edit mode, setup the currentMoveAnalyzer
+  useEffect(() => {
+    if (previousMode !== currentMode && currentMode === Mode.Edit) {
+      setupCurrentMoveAnalyzer();
+    }
+  }, [previousMode, currentMode, setupCurrentMoveAnalyzer])
+
+
+  // Terminate the workers when the component unmounts
+  useEffect(() => {
+    return () => {
+      currentMoveAnalyzer.terminateWorkers();
+      fenAnalyzer.terminateWorker();
+    }
+  }, [])
+
+
   // Determine the board size
   const maxBoardSize = 600;
   const windowSize = useWindowSize();
@@ -872,16 +904,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const engineDisplay = (
     <EngineDisplay
-      isEngineOn={currentMoveAnalysis.isOn}
-      setIsEngineOn={(b) => currentMoveAnalysis.setIsOn(b)}
+      currentMoveAnalyzer={currentMoveAnalyzer}
       evaluations={evaluations}
       currentMove={currentMove}
-      latestEvaluation={fenAnalyzer.latestEvaluation}
-      engineMaxDepth={engineDepth}
-      engineName={engineName ? engineName : undefined}
-      isEvaluating={fenBeingAnalyzed != null}
       maxLineLengthPx={rightColumnWidth}
-      numLines={numEngineLines}
       isSwitchDisabled={currentMode === Mode.Practice}
       switchDisabledTooltip='Complete the flashcard to unlock the engine'
       showMoveJudgements={false}

@@ -15,8 +15,7 @@ import EngineDisplay from '@/components/engineDisplay';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import useWindowSize from '@/hooks/useWindowSize';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
-import useFenAnalyzer from '@/hooks/useFenAnalyzer';
-import useCurrentMoveAnalysis from '@/hooks/useCurrentMoveAnalysis';
+import useCurrentMoveAnalyzer from '@/hooks/useCurrentMoveAnalyzer';
 import usePgnAnalyzerParallel, { AnalyzerStatus } from '@/hooks/usePgnAnalyzerParallel';
 import useForcingLineFinderParallel from '@/hooks/useForcingLineFinderParallel';
 import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
@@ -110,17 +109,16 @@ const GameReview = ({ game }: Props) => {
     playMove,
   } = useChessboardEngine();
 
-  // Set up FEN analyzer
-  const fenAnalyzer = useFenAnalyzer({ hashSize: 1024, initializeImmediately: false });
 
-  // Set up current move analysis
-  const currentMoveAnalysis = useCurrentMoveAnalysis(
+  const currentMoveAnalyzer = useCurrentMoveAnalyzer(
+    8, // Number of useFenAnalyzer instances to use
     evaluations,
     setEvaluations,
     currentMove,
-    fenAnalyzer,
-    { depth, numLines }
+    {numThreads: 1, hashSize: 128, initializeImmediately: false }, // settings for each instance
+    { depth: 18, numLines: 2 }
   );
+
 
   // Set up PGN analyzer
   const pgnAnalyzer = usePgnAnalyzerParallel(
@@ -140,27 +138,47 @@ const GameReview = ({ game }: Props) => {
     {numThreads: 1, hashSize: 128, initializeImmediately: false }, // settings for each instance
   );
 
-  // Get engine info from fenAnalyzer
-  const { engineName, fenBeingAnalyzed } = fenAnalyzer;
 
   useEngineArrowCreator(
-    currentMoveAnalysis.isOn,
+    currentMoveAnalyzer.isOn,
     evaluations,
-    fenAnalyzer.latestEvaluation,
+    currentMoveAnalyzer.latestEvaluations,
     currentMove,
     (newArrows) => dispatch({ type: 'setArrows', arrows: newArrows })
   );
 
   const prevAnalyzerStatus = usePrevious(pgnAnalyzer.status);
-  const prevIsCurrentMoveAnalysisOn = usePrevious(currentMoveAnalysis.isOn);
+  const prevIsCurrentMoveAnalyzerOn = usePrevious(currentMoveAnalyzer.isOn);
+
+
+  const setupForcingLineFinder = useCallback(async (): Promise<void> => {
+    currentMoveAnalyzer.terminateWorkers();
+    pgnAnalyzer.terminateWorkers();
+    await forcingLineFinder.setupWorkers();
+  }, [currentMoveAnalyzer.terminateWorkers, pgnAnalyzer.terminateWorkers, forcingLineFinder.setupWorkers]);
+
+
+  const setupCurrentMoveAnalyzer = useCallback(async (): Promise<void> => {
+    forcingLineFinder.terminateWorkers();
+    pgnAnalyzer.terminateWorkers();
+    await currentMoveAnalyzer.setupWorkers();
+  }, [forcingLineFinder.terminateWorkers, pgnAnalyzer.terminateWorkers, currentMoveAnalyzer.setupWorkers]);
+
+
+  const setupPgnAnalyzer = useCallback((): void => {
+    currentMoveAnalyzer.terminateWorkers();
+    forcingLineFinder.terminateWorkers();
+    pgnAnalyzer.setupWorkers();
+  }, [currentMoveAnalyzer.terminateWorkers, forcingLineFinder.terminateWorkers, pgnAnalyzer.setupWorkers]);
+
 
   // Clear markers and arrows when turning off current move analysis
   useEffect(() => {
-    if (prevIsCurrentMoveAnalysisOn && !currentMoveAnalysis.isOn) {
+    if (prevIsCurrentMoveAnalyzerOn && !currentMoveAnalyzer.isOn) {
       dispatch({ type: 'setMarkers', markers: [] });
       dispatch({ type: 'setArrows', arrows: [] });
     }
-  }, [currentMoveAnalysis.isOn, prevIsCurrentMoveAnalysisOn]);
+  }, [currentMoveAnalyzer.isOn, prevIsCurrentMoveAnalyzerOn]);
 
 
   // When pgn analysis completes, save the results to the db
@@ -173,9 +191,7 @@ const GameReview = ({ game }: Props) => {
       setGameEvaluation({...evaluations});
       setIsGameEvaluationComplete(true);
 
-      // Terminate the pgnAnalyzer workers and setup the fenAnalyzer worker
-      pgnAnalyzer.terminateWorkers();
-      fenAnalyzer.setupWorker();
+      setupCurrentMoveAnalyzer();
 
       // Save analysis results to db
       if (game.id) {
@@ -192,8 +208,7 @@ const GameReview = ({ game }: Props) => {
           });
       }
     }
-  }, [pgnAnalyzer.status, prevAnalyzerStatus, game.id, evaluations,
-      pgnAnalyzer.terminateWorkers, fenAnalyzer.setupWorker])
+  }, [pgnAnalyzer.status, prevAnalyzerStatus, game.id, evaluations, setupCurrentMoveAnalyzer])
 
   // When we get the game...
   useEffect(() => {
@@ -213,13 +228,23 @@ const GameReview = ({ game }: Props) => {
   }, [game]);
 
 
-  // If we have engineAnalysis for the game, setup the fenAnalyzer.
+  // If we have engineAnalysis for the game, setup the currentMoveAnalyer.
   // Otherwise, setup the pgnAnalyzer so the game can be analyzed.
   useEffect(() => {
     if (game.engineAnalysis) {
-      fenAnalyzer.setupWorker();
+      setupCurrentMoveAnalyzer();
     } else {
-      pgnAnalyzer.setupWorkers();
+      setupPgnAnalyzer();
+    }
+  }, []);
+
+
+  // Terminate all workers when component unmounts to prevent memory leaks and unnecessary computations
+  useEffect(() => {
+    return () => {
+      currentMoveAnalyzer.terminateWorkers();
+      pgnAnalyzer.terminateWorkers();
+      forcingLineFinder.terminateWorkers();
     }
   }, []);
 
@@ -270,16 +295,10 @@ const GameReview = ({ game }: Props) => {
 
   const engineDisplay = (
     <EngineDisplay
-      isEngineOn={currentMoveAnalysis.isOn}
-      setIsEngineOn={currentMoveAnalysis.setIsOn}
+      currentMoveAnalyzer={currentMoveAnalyzer}
       evaluations={evaluations}
       currentMove={currentMove}
-      latestEvaluation={fenAnalyzer.latestEvaluation}
-      engineMaxDepth={depth}
-      engineName={engineName ? engineName : undefined}
-      isEvaluating={fenBeingAnalyzed != null}
       maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
-      numLines={numLines}
       isSwitchDisabled={!isGameEvaluationComplete}
       switchDisabledTooltip='Analyze the game to unlock the engine'
       showMoveJudgements={false}
@@ -406,7 +425,8 @@ const GameReview = ({ game }: Props) => {
               evaluations={evaluations}
               currentMove={currentMove}
               hasGameBeenAnalyzed={isGameEvaluationComplete}
-              fenAnalyzer={fenAnalyzer}
+              setupForcingLineFinder={setupForcingLineFinder}
+              setupCurrentMoveAnalyzer={setupCurrentMoveAnalyzer}
               forcingLineFinder={forcingLineFinder}
               isCreatingFlashcard={isCreatingFlashcard}
               changeIsCreatingFlashcard={setIsCreatingFlashcard}

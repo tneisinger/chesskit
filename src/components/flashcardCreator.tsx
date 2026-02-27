@@ -25,7 +25,6 @@ import {
 import { Flashcard } from "@/db/schema";
 import { createFlashcard, getAllFlashcards, CreateFlashcardInput } from '@/app/flashcards/actions';
 import { FindForcingLineOptions, Output as ForcingLineFinder, AnalyzerStatus } from '@/hooks/useForcingLineFinderParallel';
-import { Output as FenAnalyzer } from '@/hooks/useFenAnalyzer';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
 
 interface Props {
@@ -34,7 +33,8 @@ interface Props {
   currentMove: Move | undefined;
   hasGameBeenAnalyzed: boolean;
   forcingLineFinder: ForcingLineFinder;
-  fenAnalyzer: FenAnalyzer;
+  setupForcingLineFinder: () => Promise<void>;
+  setupCurrentMoveAnalyzer: () => Promise<void>;
   isCreatingFlashcard: boolean;
   changeIsCreatingFlashcard: (b: boolean) => void;
 }
@@ -45,7 +45,8 @@ const FlashcardCreator = ({
   currentMove,
   hasGameBeenAnalyzed,
   forcingLineFinder,
-  fenAnalyzer,
+  setupForcingLineFinder,
+  setupCurrentMoveAnalyzer,
   isCreatingFlashcard,
   changeIsCreatingFlashcard,
 }: Props) => {
@@ -121,8 +122,8 @@ const FlashcardCreator = ({
     if (flashcardMoveOfCmChess == undefined) throw new Error('lastMove was undefined');
     if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
-    fenAnalyzer.terminateWorker();
-    await forcingLineFinder.setupWorkers();
+    // Setup the forcingLineFinder, which involves shutting down the currentMoveAnalyzer.
+    await setupForcingLineFinder();
 
     // Try to get forcing lines.
     const options: FindForcingLineOptions = { minDepth: 18, maxLineLength: 11 };
@@ -131,8 +132,8 @@ const FlashcardCreator = ({
     console.log('forcingLine')
     console.log(forcingLine);
 
-    forcingLineFinder.terminateWorkers();
-    fenAnalyzer.setupWorker();
+    // Now that we are done finding forcing moves, re-setup the currentMoveAnalyzer
+    await setupCurrentMoveAnalyzer();
 
     let areLinesForcing = false;
     if (forcingLine.length > 0) {
@@ -171,7 +172,7 @@ const FlashcardCreator = ({
       movePlayedInGame: { san: flashcardMove.san, lan: (flashcardMove.from + flashcardMove.to)},
       gameUrl: game.url,
     }
-  }, [game, getFlashcardMove, evaluations, fenAnalyzer, forcingLineFinder])
+  }, [game, getFlashcardMove, evaluations, setupCurrentMoveAnalyzer, setupForcingLineFinder, forcingLineFinder])
 
 
   const makeFlashcardPositionHtml = useCallback((): ReactElement => {

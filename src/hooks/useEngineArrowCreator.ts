@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
 import { Arrow } from '@/components/cmChessboard';
-import { Evaluations, MoveJudgement, PositionEvaluation } from '@/types/chess';
+import { Evaluations, MoveJudgement } from '@/types/chess';
 import { getFen, judgeLines, lanToShortMove } from '@/utils/chess';
 import { colorToMove } from '@/utils/cmchess';
 import { Move } from 'cm-chess/src/Chess';
@@ -9,7 +9,7 @@ import { Move } from 'cm-chess/src/Chess';
 export default function useEngineArrowCreator(
   isCurrentMoveAnalysisOn: boolean,
   evaluations: Evaluations,
-  latestEvaluation: PositionEvaluation | null,
+  latestEvaluations: Evaluations,
   currentMove: Move | undefined,
   changeEngineArrows: (newArrows: Arrow[]) => void,
 ) {
@@ -18,6 +18,8 @@ export default function useEngineArrowCreator(
   useEffect(() => {
     // If currentMove analysis is not on, do nothing.
     if (!isCurrentMoveAnalysisOn) return;
+
+    const latestEvaluation = currentMove ? latestEvaluations[getFen(currentMove)] : null;
 
     // If we don't have an evaluation for this position, do nothing.
     let ev = evaluations[getFen(currentMove)];
@@ -78,5 +80,5 @@ export default function useEngineArrowCreator(
 
     // change the engineArrows
     changeEngineArrows(newArrows);
-  }, [isCurrentMoveAnalysisOn, evaluations, latestEvaluation, currentMove])
+  }, [isCurrentMoveAnalysisOn, evaluations, latestEvaluations, currentMove])
 }

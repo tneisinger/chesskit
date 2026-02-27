@@ -8,19 +8,14 @@ import EvalerLine from '@/components/evalerLine';
 import { useCallback, useEffect, useState } from 'react';
 import { colorToMove } from '@/utils/cmchess';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { AnalyzerStatus, Output as CurrentMoveAnalyzer } from '@/hooks/useCurrentMoveAnalyzer';
 
 const showDevButtons = false;
 
 export interface Props {
-  isEngineOn: boolean;
-  setIsEngineOn: (isOn: boolean) => void;
+  currentMoveAnalyzer: CurrentMoveAnalyzer;
   currentMove: Move | undefined;
-  latestEvaluation: PositionEvaluation | null;
   evaluations: Evaluations;
-  numLines: number;
-  isEvaluating: boolean;
-  engineMaxDepth: number;
-  engineName?: string;
   isSwitchDisabled?: boolean;
   maxLineLengthPx: number;
   includeOnOffSwitch?: boolean;
@@ -31,17 +26,11 @@ export interface Props {
 }
 
 const EngineDisplay = ({
-  isEngineOn,
-  setIsEngineOn,
+  currentMoveAnalyzer,
   currentMove,
-  latestEvaluation,
   evaluations,
-  engineMaxDepth,
-  numLines,
-  engineName = 'Engine loading...',
   isSwitchDisabled = false,
   maxLineLengthPx,
-  isEvaluating,
   includeOnOffSwitch = true,
   switchDisabledMsg,
   switchDisabledTooltip,
@@ -51,7 +40,7 @@ const EngineDisplay = ({
   const [currentEvaluation, setCurrentEvaluation] = useState<PositionEvaluation | undefined>(undefined);
 
   const makeMoveJudgementString = useCallback((mj?: MoveJudgement): string => {
-    if (!isEngineOn) return '';
+    if (!currentMoveAnalyzer.isOn) return '';
 
     if (currentMove && isBookPosition(currentMove.fen)) {
       return `${currentMove.san} is a book move`;
@@ -61,10 +50,10 @@ const EngineDisplay = ({
       return `${currentMove.san} is ${mj}`;
     }
 
-    if (isEvaluating) return 'evaluating...';
+    if (currentMoveAnalyzer.status === AnalyzerStatus.Analyzing) return 'evaluating...';
 
     return '';
-  }, [isEngineOn, currentMove, isEvaluating]);
+  }, [currentMoveAnalyzer.isOn, currentMove, currentMoveAnalyzer.status]);
 
   const moveJudgementColor = useCallback((mj?: MoveJudgement): string | undefined => {
     const fen = currentMove ? currentMove.fen : undefined;
@@ -87,20 +76,20 @@ const EngineDisplay = ({
   }, [currentMove, evaluations]);
 
   const makeDepthString = useCallback((): string => {
-    if (!isEngineOn) return '';
-    const renderString = (d: number) => `Depth ${d}/${engineMaxDepth}`;
+    if (!currentMoveAnalyzer.isOn) return '';
+    const renderString = (d: number) => `Depth ${d}/${currentMoveAnalyzer.depth}`;
 
     if (currentEvaluation == undefined) return renderString(0);
 
     // Sometimes stockfish will return an evaluation at depth 20 before it is done evaluating.
     // We know it is done evaluating when it gives us a bestMove. Don't display a depth equal
     // to the engineMaxDepth until we have a bestMove.
-    if (currentEvaluation.depth === engineMaxDepth && currentEvaluation.bestMove == undefined) {
+    if (currentEvaluation.depth === currentMoveAnalyzer.depth && currentEvaluation.bestMove == undefined) {
       return renderString(currentEvaluation.depth - 1);
     }
 
     return renderString(currentEvaluation.depth);
-  }, [isEngineOn, engineMaxDepth, currentEvaluation]);
+  }, [currentMoveAnalyzer.isOn, currentMoveAnalyzer.depth, currentEvaluation]);
 
 
   const debug = () => {
@@ -109,6 +98,8 @@ const EngineDisplay = ({
 
   useEffect(() => {
     const ev = evaluations[getFen(currentMove)];
+
+    const latestEvaluation = currentMove ? currentMoveAnalyzer.latestEvaluations[getFen(currentMove)] : null;
 
     if (ev == undefined && latestEvaluation == null) {
       setCurrentEvaluation(undefined);
@@ -124,11 +115,11 @@ const EngineDisplay = ({
       setCurrentEvaluation(latestEvaluation);
       return;
     }
-  }, [evaluations, currentMove, latestEvaluation]);
+  }, [evaluations, currentMove, currentMoveAnalyzer.latestEvaluations]);
 
 
-  const currentMoveLines: (MultiPV | undefined)[] = new Array(numLines).fill(undefined);
-  if (isEngineOn && currentEvaluation && currentEvaluation.lines) {
+  const currentMoveLines: (MultiPV | undefined)[] = new Array(currentMoveAnalyzer.numLines).fill(undefined);
+  if (currentMoveAnalyzer.isOn && currentEvaluation && currentEvaluation.lines) {
     currentEvaluation.lines.forEach((line, i) => {
       currentMoveLines[i] = {
         depth: currentEvaluation.depth,
@@ -166,10 +157,10 @@ const EngineDisplay = ({
       <div className="flex flex-col flex-1 justify-center bg-stone-700 rounded-sm">
         <div className="flex flex-row items-center justify-between min-h-10 px-2">
           <span className="text-xl w-12 text-right">
-            {isEngineOn && makeEvaluationString(currentEvaluation)}
+            {currentMoveAnalyzer.isOn && makeEvaluationString(currentEvaluation)}
           </span>
           <div className="text-center text-[12px]/4 h-8 flex flex-col justify-center items-center">
-            <div>{engineName}</div>
+            <div>{currentMoveAnalyzer.engineName}</div>
             <div>{makeDepthString()}</div>
           </div>
           <div className="w-14 h-7">
@@ -180,8 +171,8 @@ const EngineDisplay = ({
                     <Tooltip.Trigger onClick={(e) => e.preventDefault()} asChild>
                       <div>
                         <Switch
-                          onChange={(checked) => setIsEngineOn(checked)}
-                          checked={isEngineOn}
+                          onChange={(checked) => currentMoveAnalyzer.setIsOn(checked)}
+                          checked={currentMoveAnalyzer.isOn}
                           disabled={isSwitchDisabled}
                         />
                       </div>
@@ -200,20 +191,20 @@ const EngineDisplay = ({
                 </Tooltip.Provider>
               ) : (
                 <Switch
-                  onChange={(checked) => setIsEngineOn(checked)}
-                  checked={isEngineOn}
+                  onChange={(checked) => currentMoveAnalyzer.setIsOn(checked)}
+                  checked={currentMoveAnalyzer.isOn}
                   disabled={isSwitchDisabled}
                 />
               )
             )}
           </div>
         </div>
-        {(!isEngineOn && isSwitchDisabled && switchDisabledMsg) && (
+        {(!currentMoveAnalyzer.isOn && isSwitchDisabled && switchDisabledMsg) && (
           <div className="flex flex-col flex-1 min-h-9 items-center justify-center text-center text-sm">
             <span>{switchDisabledMsg}</span>
           </div>
         )}
-        {isEngineOn && showMoveJudgements && (
+        {currentMoveAnalyzer.isOn && showMoveJudgements && (
           <div>
             <span style={{ color: moveJudgementColor(mj) }}>
               {makeMoveJudgementString(mj)}
@@ -221,7 +212,7 @@ const EngineDisplay = ({
           </div>
         )}
       </div>
-      {isEngineOn && (
+      {currentMoveAnalyzer.isOn && (
         <div className="flex flex-col flex-1 justify-evenly">
           {currentMoveLines.map((line, i) => {
             let key = i.toString();
