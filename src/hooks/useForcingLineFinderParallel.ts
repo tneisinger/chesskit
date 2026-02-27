@@ -3,7 +3,6 @@ import useFenAnalyzer, { StockfishSettings, AnalyzeInterruptedError } from '@/ho
 import { Evaluations, PositionEvaluation } from "@/types/chess";
 import { ShortMove } from '@/types/chess';
 import { getThreadCount } from '@/utils/stockfishDetector';
-import { Chess as ChessJS } from 'chess.js';
 import { convertLanLineToFens, convertLanLineToShortMoves, doesOnlyOneGoodMoveExist } from '@/utils/chess';
 
 const MAX_INSTANCES = 8;
@@ -84,6 +83,12 @@ export default function useForcingLineFinderParallel(
     reject: (reason: any) => void;
   } | null>(null);
 
+
+  // This ref is used to indicate that we're in the process of terminating workers,
+  // so we can ignore expected errors from that process
+  const isTerminatingWorkersRef = useRef(false);
+
+
   const generateFens = useCallback((pev: PositionEvaluation, maxLineLength: number): FenWithIndex[] => {
     if (pev.lines.length < 1) throw new Error('PositionEvaluation must have at least one line to generate FENs from');
     const allFens = convertLanLineToFens(pev.lines[0].lanLine, pev.fen);
@@ -120,10 +125,12 @@ export default function useForcingLineFinderParallel(
     }
     await Promise.all(promises);
     workersSetupRef.current = true;
+    isTerminatingWorkersRef.current = false;
     setStatus(AnalyzerStatus.Idle);
   }, [numInstances, analyzers]);
 
   const terminateWorkers = useCallback(() => {
+    isTerminatingWorkersRef.current = true;
     // Terminate all analyzer instances
     for (let i = 0; i < MAX_INSTANCES; i++) {
       try {
@@ -155,6 +162,8 @@ export default function useForcingLineFinderParallel(
     originalPevRef.current = null;
     setLocalEvaluations([]);
     setForcingMoves([]);
+    // Don't reset isTerminatingWorkersRef here - keep it true until workers are set up again
+    // This prevents race conditions where analyze promises reject after terminateWorkers completes
   }, [analyzers]);
 
   const cancel = useCallback(() => {
@@ -330,8 +339,11 @@ export default function useForcingLineFinderParallel(
           instanceBusyRef.current[i] = false;
         })
         .catch((error) => {
-          console.error(`Error analyzing position (instance ${i}):`, error);
+          if (isTerminatingWorkersRef.current && error instanceof AnalyzeInterruptedError) {
+            return // Expected error when terminating workers during analysis, so we can ignore it
+          }
 
+          console.error(`Error analyzing position (instance ${i}):`, error);
           // Mark instance as not busy even on error
           instanceBusyRef.current[i] = false;
         });
