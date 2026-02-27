@@ -14,6 +14,13 @@ import {
 } from '@/utils/stockfish';
 import { Chess as ChessJS } from 'chess.js';
 
+export class AnalyzeInterruptedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AnalyzeInterruptedError';
+  }
+}
+
 export interface AnalyzeOptions {
   maxDepth?: number;  // Stop the analysis after getting a best move at this depth
   maxSeconds?: number;  // The maximum number of seconds to spend analyzing
@@ -187,7 +194,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       // Reject pending analysis
       if (analysisPromiseRef.current) {
         analysisPromiseRef.current.reject(
-          new Error(`Stockfish ${settings.id} Worker terminated during analysis`)
+          new AnalyzeInterruptedError(`Stockfish ${settings.id} Worker terminated during analysis`)
         );
         analysisPromiseRef.current = null;
       }
