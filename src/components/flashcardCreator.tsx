@@ -24,7 +24,8 @@ import {
 } from '@/utils/cmchess';
 import { Flashcard } from "@/db/schema";
 import { createFlashcard, getAllFlashcards, CreateFlashcardInput } from '@/app/flashcards/actions';
-import { FindForcingLinesOptions, Output as ForcingLineFinder } from '@/hooks/useForcingLineFinder';
+import { FindForcingLineOptions, Output as ForcingLineFinder, AnalyzerStatus } from '@/hooks/useForcingLineFinderParallel';
+import { Output as FenAnalyzer } from '@/hooks/useFenAnalyzer';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
 
 interface Props {
@@ -33,6 +34,7 @@ interface Props {
   currentMove: Move | undefined;
   hasGameBeenAnalyzed: boolean;
   forcingLineFinder: ForcingLineFinder;
+  fenAnalyzer: FenAnalyzer;
   isCreatingFlashcard: boolean;
   changeIsCreatingFlashcard: (b: boolean) => void;
 }
@@ -43,6 +45,7 @@ const FlashcardCreator = ({
   currentMove,
   hasGameBeenAnalyzed,
   forcingLineFinder,
+  fenAnalyzer,
   isCreatingFlashcard,
   changeIsCreatingFlashcard,
 }: Props) => {
@@ -118,19 +121,27 @@ const FlashcardCreator = ({
     if (flashcardMoveOfCmChess == undefined) throw new Error('lastMove was undefined');
     if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
+    fenAnalyzer.terminateWorker();
+    await forcingLineFinder.setupWorkers();
+
     // Try to get forcing lines.
-    const options: FindForcingLinesOptions = { minDepth: 18, maxLines: 1, maxLineLength: 11 };
-    const forcingLines = await forcingLineFinder.findForcingLines(flashcardMove.fen, options);
+    const options: FindForcingLineOptions = { minDepth: 18, maxLineLength: 11 };
+    const evaluation = evaluations[flashcardMove.fen];
+    const forcingLine = await forcingLineFinder.findForcingLine(evaluation, options);
+    console.log('forcingLine')
+    console.log(forcingLine);
+
+    forcingLineFinder.terminateWorkers();
+    fenAnalyzer.setupWorker();
 
     let areLinesForcing = false;
-    if (forcingLines.length > 0) {
+    if (forcingLine.length > 0) {
       areLinesForcing = true;
-      addShortMoveLinesToCmChess(cmChess, forcingLines, flashcardMoveOfCmChess);
+      addShortMoveLinesToCmChess(cmChess, [forcingLine], flashcardMoveOfCmChess);
     }
 
     // When there are no forcing lines, add the good moves from evaluations to cmChess.
     if (!areLinesForcing) {
-      const evaluation = evaluations[flashcardMove.fen];
       if (evaluation == undefined) throw new Error('evaluation was undefined');
       const lineJudgements = judgeLines(colorToMove(flashcardMove), evaluation.lines);
       const lineMoves = evaluation.lines.map((line) => lanToShortMove(line.lanLine.trim().split(' ')[0]));
@@ -160,7 +171,7 @@ const FlashcardCreator = ({
       movePlayedInGame: { san: flashcardMove.san, lan: (flashcardMove.from + flashcardMove.to)},
       gameUrl: game.url,
     }
-  }, [game, getFlashcardMove, evaluations])
+  }, [game, getFlashcardMove, evaluations, fenAnalyzer, forcingLineFinder])
 
 
   const makeFlashcardPositionHtml = useCallback((): ReactElement => {
@@ -240,7 +251,7 @@ const FlashcardCreator = ({
       return <p className="text-sm mt-2 text-center">{content}</p>;
     }
 
-    if (forcingLineFinder.isSearching) {
+    if (forcingLineFinder.status === AnalyzerStatus.Analyzing) {
       if (forcingLineFinder.forcingMoves.length === 0) {
         return wrapContent(<>Looking for forcing moves</>);
       } else {

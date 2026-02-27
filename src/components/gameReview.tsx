@@ -18,7 +18,7 @@ import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import useFenAnalyzer from '@/hooks/useFenAnalyzer';
 import useCurrentMoveAnalysis from '@/hooks/useCurrentMoveAnalysis';
 import usePgnAnalyzerParallel, { AnalyzerStatus } from '@/hooks/usePgnAnalyzerParallel';
-import useForcingLineFinder from '@/hooks/useForcingLineFinder';
+import useForcingLineFinderParallel from '@/hooks/useForcingLineFinderParallel';
 import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
 import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
@@ -133,10 +133,11 @@ const GameReview = ({ game }: Props) => {
   );
 
   // Set up forcing line finder
-  const forcingLineFinder = useForcingLineFinder(
-    fenAnalyzer,
+  const forcingLineFinder = useForcingLineFinderParallel(
+    8,
     evaluations,
-    setEvaluations
+    setEvaluations,
+    {numThreads: 1, hashSize: 128, initializeImmediately: false }, // settings for each instance
   );
 
   // Get engine info from fenAnalyzer
@@ -405,6 +406,7 @@ const GameReview = ({ game }: Props) => {
               evaluations={evaluations}
               currentMove={currentMove}
               hasGameBeenAnalyzed={isGameEvaluationComplete}
+              fenAnalyzer={fenAnalyzer}
               forcingLineFinder={forcingLineFinder}
               isCreatingFlashcard={isCreatingFlashcard}
               changeIsCreatingFlashcard={setIsCreatingFlashcard}
