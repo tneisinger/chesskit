@@ -1079,3 +1079,28 @@ export function isMoveJudgementBetterThan(mj: MoveJudgement, mjBeingChecked: Mov
 export function isMoveJudgementAtLeast(mj: MoveJudgement, mjBeingChecked: MoveJudgement) {
   return getMoveJudgementIndex(mjBeingChecked) <= getMoveJudgementIndex(mj);
 }
+
+export function convertLanLineToFens(lanLine: string, startingFen?: string): string[] {
+  const result: string[] = [];
+  const chessjs = new ChessJS();
+  if (startingFen != undefined) chessjs.load(startingFen);
+
+  const lanMoves = lanLine.split(' ').filter((move) => move.trim() !== '');
+
+  lanMoves.forEach((lanMove) => {
+    const move = chessjs.move(lanToShortMove(lanMove));
+    if (move == undefined) throw new Error(`Failed to play move ${lanMove}`);
+    result.push(chessjs.fen())
+  })
+
+  return result;
+}
+
+export function doesOnlyOneGoodMoveExist(pev: PositionEvaluation): boolean {
+  if (pev.lines.length < 2) {
+    throw new Error(`Expected at least 2 lines to compare, but got ${pev.lines.length}`);
+  }
+  const { activeColor } = getFenParts(pev.fen);
+  const judgements = judgeLines(activeColor, pev.lines);
+  return isMoveJudgementWorseThan(MoveJudgement.Inaccurate, judgements[1]);
+}
