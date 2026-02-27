@@ -228,22 +228,22 @@ export function sanToShortMove(san: string, fen: string): ShortMove {
   return history[history.length - 1] as ShortMove;
 }
 
-// export function sanToLan(san: string, fen: string): string {
-//   const chessjs = new ChessJS();
-//   chessjs.load(fen);
-//   performMove(san, chessjs);
-//   const history = chessjs.history({ verbose: true });
-//   const shortMove: ShortMove = (history[history.length - 1] as ShortMove);
-//   return shortMoveToLan(shortMove);
-// }
+export function sanToLan(san: string, fen: string): string {
+  const chessjs = new ChessJS();
+  chessjs.load(fen);
+  performMove(san, chessjs);
+  const history = chessjs.history({ verbose: true });
+  const shortMove: ShortMove = (history[history.length - 1] as ShortMove);
+  return shortMoveToLan(shortMove);
+}
 
-// export function lanToSan(lan: string, fen: string): string {
-//   const chessjs = new ChessJS();
-//   chessjs.load(fen);
-//   performMove(lanToShortMove(lan), chessjs);
-//   const history = chessjs.history() as string[];
-//   return history[history.length - 1];
-// }
+export function lanToSan(lan: string, fen: string): string {
+  const chessjs = new ChessJS();
+  chessjs.load(fen);
+  performMove(lanToShortMove(lan), chessjs);
+  const history = chessjs.history() as string[];
+  return history[history.length - 1];
+}
 
 export function lanToShortMove(lan: string): ShortMove {
   const move = parseLanMove(lan);
@@ -1097,9 +1097,32 @@ export function convertLanLineToFens(lanLine: string, startingFen?: string): str
 }
 
 export function doesOnlyOneGoodMoveExist(pev: PositionEvaluation): boolean {
-  if (pev.lines.length < 2) {
-    throw new Error(`Expected at least 2 lines to compare, but got ${pev.lines.length}`);
+  if (pev.lines.length < 1) {
+    throw new Error('Expected at least 1 line in pev.lines, but got 0');
   }
+
+  // If there is only one line, it could be that there is only one legal move in the position.
+  // Check if there is only one legal move.
+  if (pev.lines.length === 1) {
+    const chessjs = new ChessJS();
+    chessjs.load(pev.fen);
+
+    const legalMoves = chessjs.moves();
+    if (legalMoves.length !== 1) {
+      throw new Error(`Expected at least 2 lines to compare, but got ${pev.lines.length}`);
+    }
+
+    const firsMoveOfLine = pev.lines[0].lanLine.split(' ')[0];
+    const onlyLegalMove = sanToLan(legalMoves[0], pev.fen);
+    if (firsMoveOfLine !== onlyLegalMove) {
+      throw new Error(`The only legal move was ${onlyLegalMove}, but the first move of the line was ${firsMoveOfLine}`);
+    }
+
+    // If we get here, there is only one legal move and it is the first move of the only line, so
+    // return true.
+    return true;
+  }
+
   const { activeColor } = getFenParts(pev.fen);
   const judgements = judgeLines(activeColor, pev.lines);
   return isMoveJudgementWorseThan(MoveJudgement.Inaccurate, judgements[1]);
