@@ -3,7 +3,12 @@ import useFenAnalyzer, { StockfishSettings, AnalyzeInterruptedError } from '@/ho
 import { Evaluations, PositionEvaluation } from "@/types/chess";
 import { ShortMove } from '@/types/chess';
 import { getThreadCount } from '@/utils/stockfishDetector';
-import { convertLanLineToFens, convertLanLineToShortMoves, doesOnlyOneGoodMoveExist } from '@/utils/chess';
+import {
+  convertLanLineToFens,
+  convertLanLineToShortMoves,
+  doesOnlyOneGoodMoveExist,
+  lanToShortMove
+} from '@/utils/chess';
 
 const MAX_INSTANCES = 8;
 
@@ -284,6 +289,16 @@ export default function useForcingLineFinderParallel(
       if (originalPev && findForcingLinePromiseRef.current) {
         const forcingIndices = findForcingIndices(localEvaluations);
         const shortMoves = buildShortMovesFromIndices(originalPev, forcingIndices);
+
+        // If we didn't find any forcing moves but the original position has only one good move, return just that move
+        if (shortMoves.length < 1 && doesOnlyOneGoodMoveExist(originalPev)) {
+          const firstMoveLan = originalPev.lines[0].lanLine.trim().split(' ')[0];
+          const result = [lanToShortMove(firstMoveLan)];
+          setForcingMoves(result);
+          findForcingLinePromiseRef.current.resolve(result);
+          findForcingLinePromiseRef.current = null;
+          return;
+        }
 
         setForcingMoves(shortMoves);
         findForcingLinePromiseRef.current.resolve(shortMoves);
