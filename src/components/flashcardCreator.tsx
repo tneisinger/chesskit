@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, ReactElement } from "react";
+import { useState, useCallback, useEffect, useRef, ReactElement } from "react";
 import { GameData, Evaluations, MoveJudgement } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
@@ -26,6 +26,7 @@ import { Flashcard } from "@/db/schema";
 import { createFlashcard, getAllFlashcards, CreateFlashcardInput } from '@/app/flashcards/actions';
 import { FindForcingLineOptions, Output as ForcingLineFinder, AnalyzerStatus } from '@/hooks/useForcingLineFinderParallel';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
+import usePrevious from "@/hooks/usePrevious";
 
 interface Props {
   game: GameData;
@@ -56,6 +57,10 @@ const FlashcardCreator = ({
 
   // Flashcards created in this session
   const [createdFlashcards, setCreatedFlashcards] = useState<CreateFlashcardInput[]>([]);
+
+  const previousMove = usePrevious(currentMove);
+
+  const flashcardMoveAwaitingConfirmRef = useRef<Move | null>(null);
 
   const { refreshDueCount } = useFlashcardContext();
 
@@ -177,7 +182,7 @@ const FlashcardCreator = ({
 
   const makeFlashcardPositionHtml = useCallback((): ReactElement => {
     const flashcardMove = getFlashcardMove();
-    if (flashcardMove == null) throw new Error('flashcardMove was null');
+    if (flashcardMove == null) return <></>;
     if (flashcardMove.next == undefined) throw new Error('flashcardMove.next was undefined');
     const mj = getMoveJudgement(flashcardMove.next, convertEvaluationsToGameEvals(evaluations));
     const color = getMoveJudgementColor(mj);
@@ -278,6 +283,22 @@ const FlashcardCreator = ({
     getGameFlashcards();
   }, [game]);
 
+
+  // When the user navigates to a different move, if we were awaiting them to confirm creating a
+  // flashcard for the previous move, check if we should still be awaiting confirmation for the new move.
+  // If not, reset the confirmation state.
+  useEffect(() => {
+    if (currentMove === previousMove) return;
+    if (!awaitingUserConfirm) return;
+
+    const flashcardMove = getFlashcardMove();
+    if (flashcardMove == null || flashcardMove !== flashcardMoveAwaitingConfirmRef.current) {
+      setAwaitingUserConfirm(false);
+      flashcardMoveAwaitingConfirmRef.current = null;
+    }
+  }, [previousMove, currentMove, awaitingUserConfirm, getFlashcardMove]);
+
+
   const wrapContent = (content: ReactElement): ReactElement => {
     return (
       <div className="w-full p-5 flex flex-col items-center gap-4 bg-background-page rounded-md">
@@ -308,6 +329,7 @@ const FlashcardCreator = ({
     } finally {
       changeIsCreatingFlashcard(false);
       setAwaitingUserConfirm(false);
+      flashcardMoveAwaitingConfirmRef.current = null;
     }
   };
 
@@ -328,7 +350,7 @@ const FlashcardCreator = ({
   }
 
 
-  if (awaitingUserConfirm) {
+  if (awaitingUserConfirm && flashcardMoveAwaitingConfirmRef.current != null) {
     return wrapContent(
       <>
         <h2 className="text-xl font-semibold mb-0 text-center">Create Flashcard?</h2>
@@ -356,7 +378,10 @@ const FlashcardCreator = ({
             </Button>
             <Button
               type="button"
-              onClick={() => setAwaitingUserConfirm(false)}
+              onClick={() => {
+                setAwaitingUserConfirm(false);
+                flashcardMoveAwaitingConfirmRef.current = null;
+              }}
               disabled={isCreatingFlashcard}
             >
               Cancel
@@ -384,7 +409,12 @@ const FlashcardCreator = ({
         <div className="w-full h-full p-5 flex flex-col items-center gap-4 bg-background-page rounded-md">
           <Button
             buttonStyle={shouldHighlightFlashcardBtn() ? ButtonStyle.Primary : ButtonStyle.Normal}
-            onClick={() => setAwaitingUserConfirm(true)}
+            onClick={() => {
+              const flashcardMove = getFlashcardMove();
+              if (flashcardMove == null) throw new Error('flashcardMove was null');
+              setAwaitingUserConfirm(true);
+              flashcardMoveAwaitingConfirmRef.current = flashcardMove;
+            }}
             disabled={shouldDisableFlashcardBtn()}
           >
             Create Flashcard
