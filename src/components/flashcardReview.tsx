@@ -842,9 +842,15 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   // Whenever we go into edit mode, setup the currentMoveAnalyzer
+  // When we leave edit mode, terminate the currentMoveAnalyzer workers and turn it off
   useEffect(() => {
-    if (previousMode !== currentMode && currentMode === Mode.Edit) {
-      setupCurrentMoveAnalyzer();
+    if (previousMode !== currentMode) {
+      if (currentMode === Mode.Edit) {
+        setupCurrentMoveAnalyzer();
+      } else {
+        currentMoveAnalyzer.setIsOn(false);
+        currentMoveAnalyzer.terminateWorkers();
+      }
     }
   }, [previousMode, currentMode, setupCurrentMoveAnalyzer])
 
