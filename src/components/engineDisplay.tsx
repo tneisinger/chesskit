@@ -38,6 +38,7 @@ const EngineDisplay = ({
   colorLineScores = false,
 }: Props) => {
   const [currentEvaluation, setCurrentEvaluation] = useState<PositionEvaluation | undefined>(undefined);
+  const [engineNameOrStatus, setEngineNameOrStatus] = useState<string>('engine uninitialized');
 
   const makeMoveJudgementString = useCallback((mj?: MoveJudgement): string => {
     if (!currentMoveAnalyzer.isOn) return '';
@@ -92,6 +93,14 @@ const EngineDisplay = ({
   }, [currentMoveAnalyzer.isOn, currentMoveAnalyzer.depth, currentEvaluation]);
 
 
+  const isSwitchDisabledInternal = useCallback((): boolean => {
+    if (isSwitchDisabled) return true;
+    if (currentMoveAnalyzer.status === AnalyzerStatus.Uninitialized) return true;
+    if (currentMoveAnalyzer.status === AnalyzerStatus.Initializing) return true;
+    return false;
+  }, [isSwitchDisabled, currentMoveAnalyzer.status]);
+
+
   const debug = () => {
     console.log('debug');
   }
@@ -116,6 +125,23 @@ const EngineDisplay = ({
       return;
     }
   }, [evaluations, currentMove, currentMoveAnalyzer.latestEvaluations]);
+
+
+  useEffect(() => {
+    if (currentMoveAnalyzer.engineName == null) {
+      if (currentMoveAnalyzer.status === AnalyzerStatus.Uninitialized) {
+        setEngineNameOrStatus('Engine uninitialized');
+      } else if (currentMoveAnalyzer.status === AnalyzerStatus.Initializing) {
+        setEngineNameOrStatus('Engine Loading...');
+      } else if (currentMoveAnalyzer.status === AnalyzerStatus.Idle) {
+        setEngineNameOrStatus('Engine Ready');
+      }
+    }
+
+    if (currentMoveAnalyzer.engineName) {
+      setEngineNameOrStatus(currentMoveAnalyzer.engineName);
+    }
+  }, [currentMoveAnalyzer.status, currentMoveAnalyzer.engineName]);
 
 
   const currentMoveLines: (MultiPV | undefined)[] = new Array(currentMoveAnalyzer.numLines).fill(undefined);
@@ -160,7 +186,7 @@ const EngineDisplay = ({
             {currentMoveAnalyzer.isOn && makeEvaluationString(currentEvaluation)}
           </span>
           <div className="text-center text-[12px]/4 h-8 flex flex-col justify-center items-center">
-            <div>{currentMoveAnalyzer.engineName}</div>
+            <div>{engineNameOrStatus}</div>
             <div>{makeDepthString()}</div>
           </div>
           <div className="w-14 h-7">
@@ -173,7 +199,7 @@ const EngineDisplay = ({
                         <Switch
                           onChange={(checked) => currentMoveAnalyzer.setIsOn(checked)}
                           checked={currentMoveAnalyzer.isOn}
-                          disabled={isSwitchDisabled}
+                          disabled={isSwitchDisabledInternal()}
                         />
                       </div>
                     </Tooltip.Trigger>
@@ -193,7 +219,7 @@ const EngineDisplay = ({
                 <Switch
                   onChange={(checked) => currentMoveAnalyzer.setIsOn(checked)}
                   checked={currentMoveAnalyzer.isOn}
-                  disabled={isSwitchDisabled}
+                  disabled={isSwitchDisabledInternal()}
                 />
               )
             )}
