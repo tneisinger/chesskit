@@ -49,22 +49,25 @@ const MoveDisplay: React.FC<MoveDisplayProps> = ({
     }
   }, [isSelected]);
 
-  const classes = [];
+  const innerSpanClasses = [];
+  const outerSpanClasses = [];
 
   if (isSelected) {
-    classes.push('bg-[#3692e7]');
+    innerSpanClasses.push('bg-[#3692e7]');
+    outerSpanClasses.push('bg-[#3692e7]');
   } else {
-    classes.push('hover:bg-neutral-600');
+    innerSpanClasses.push('hover:bg-neutral-600');
+    outerSpanClasses.push('hover:bg-neutral-600');
   }
 
   if (isKeyMove) {
-    classes.push('border border-red-600');
+    outerSpanClasses.push('border border-red-600');
   }
 
   let content = (
     <span
       ref={ref}
-      className={['py-0.5 px-1 rounded cursor-pointer', ...classes].join(' ')}
+      className={['py-0.5 px-1 rounded cursor-pointer', ...innerSpanClasses].join(' ')}
       onClick={() => changeCurrentMove(move)}
     >
       {move.san}
@@ -74,7 +77,7 @@ const MoveDisplay: React.FC<MoveDisplayProps> = ({
   if (!isInVariation) {
     content = (
       <span
-        className={['flex-[0_0_41%] py-0.5 pl-2 cursor-pointer', ...classes].join(' ')}
+        className={['flex-[0_0_41%] py-0.5 pl-2 cursor-pointer', ...outerSpanClasses].join(' ')}
         onClick={() => changeCurrentMove(move)}
       >
         {content}
