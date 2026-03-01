@@ -889,6 +889,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       useMobileLayout={false}
       showVariations={true}
       contextMenu={makeContextMenu()}
+      keyMoves={[history[currentFlashcard.positionIdx - 1]]}
     />
   );
 
