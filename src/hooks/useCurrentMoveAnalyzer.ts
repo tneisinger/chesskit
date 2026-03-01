@@ -10,6 +10,7 @@ const MAX_INSTANCES = 8;
 
 export enum AnalyzerStatus {
   Uninitialized = 'Uninitialized',
+  Initializing = 'Initializing',
   Idle = 'Idle',
   Analyzing = 'Analyzing',
 }
@@ -88,6 +89,7 @@ export default function useCurrentMoveAnalyzer(
   }, [evaluations, depth]);
 
   const setupWorkers = useCallback(async () => {
+    setStatus(AnalyzerStatus.Initializing);
     // Set up only the number of instances we're actually using
     const promises = [];
     for (let i = 0; i < numInstances; i++) {
@@ -95,8 +97,6 @@ export default function useCurrentMoveAnalyzer(
     }
     await Promise.all(promises);
     workersSetupRef.current = true;
-    setStatus(AnalyzerStatus.Idle);
-    setEngineName(analyzers[0].engineName);
   }, [numInstances, analyzers]);
 
   const terminateWorkers = useCallback(async () => {
@@ -345,6 +345,20 @@ export default function useCurrentMoveAnalyzer(
       currentMoveAnalysisRef.current = null;
     }
   }, [isOn, prevIsOn, currentMove, previousMove, analyzeCurrentMove]);
+
+
+  // Set the engineName based on the first analyzer that reports an engineName.
+  // This assumes all analyzers are the same engine, which should be true in our use case.
+  // Also, if we're initializing and get an engineName, switch to Idle since we're ready to analyze.
+  useEffect(() => {
+    if (!engineName && analyzers[0].engineName) {
+      setEngineName(analyzers[0].engineName);
+      if (status === AnalyzerStatus.Initializing) {
+        setStatus(AnalyzerStatus.Idle);
+      }
+    }
+  }, [engineName, analyzers[0].engineName, status]);
+
 
   return {
     setupWorkers,
