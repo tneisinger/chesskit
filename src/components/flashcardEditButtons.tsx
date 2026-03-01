@@ -26,7 +26,7 @@ const FlashcardEditButtons = ({
               buttonSize={ButtonSize.Small}
               buttonStyle={ButtonStyle.Primary}
             >
-              Save
+              Save Changes
             </Button>
           </span>
           <span>
