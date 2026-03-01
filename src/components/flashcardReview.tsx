@@ -255,8 +255,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       const result = await reviewFlashcard(currentFlashcard.id, quality);
 
       if (result.success) {
-        // Move to next flashcard or finish
-        console.log('Flashcard result saved to db')
         // Update the badge count in the navigation
         await refreshDueCount();
         } else {
@@ -621,7 +619,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         handler: (move: Move) => promoteMoveVariation(move)
       },
     });
-  }, [areLinesForcing, currentFlashcard]);
+  }, [areLinesForcing, currentFlashcard, deleteMoves, promoteToMainLine, promoteMoveVariation]);
 
 
   // Whenever lines changes, update the numIncompleteLines and totalLines refs
