@@ -14,6 +14,7 @@ import {
 } from '@/utils/stockfish';
 import { Chess as ChessJS } from 'chess.js';
 import { BookPositions } from '@/types/bookPositions';
+import { getBookPosition } from '@/utils/bookPositionsContext';
 
 export class AnalyzeInterruptedError extends Error {
   constructor(message: string) {
@@ -150,6 +151,10 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       numThreads: newSettings.numThreads !== undefined ? newSettings.numThreads : prev.numThreads,
       hashSize: newSettings.hashSize ?? prev.hashSize,
       id: newSettings.id ?? prev.id,
+      initializeImmediately: newSettings.initializeImmediately ?? prev.initializeImmediately,
+      bookPositions: newSettings.bookPositions ?? prev.bookPositions,
+      evaluations: newSettings.evaluations ?? prev.evaluations,
+      setEvaluations: newSettings.setEvaluations ?? prev.setEvaluations,
     }));
 
     // Apply settings to stockfish if it's ready
@@ -247,7 +252,6 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
 
 
   const checkForExistingEvaluation = useCallback((fen: string, maxDepth?: number): PositionEvaluation | null => {
-
     // Only check for existing evaluation if maxDepth is defined
     if (maxDepth == undefined) return null;
 
@@ -255,8 +259,11 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     let existingEval = null;
     if (initialSettings?.evaluations && initialSettings.evaluations[fen] != undefined) {
       existingEval = initialSettings.evaluations[fen];
-    } else if (initialSettings?.bookPositions && initialSettings.bookPositions[fen] != undefined) {
-      existingEval = initialSettings.bookPositions[fen].pev;
+    } else if (initialSettings?.bookPositions) {
+      console.log('Checking for book position evaluation for fen:', fen);
+      const bookPosition = getBookPosition(fen, initialSettings.bookPositions);
+      console.log('Book position found:', bookPosition);
+      if (bookPosition) existingEval = bookPosition.pev;
     }
     return existingEval;
   }, [initialSettings?.evaluations, initialSettings?.bookPositions]);
@@ -273,6 +280,9 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       // Check if we already have an evaluation at the required depth (only if maxDepth is defined)
       const existingEval = checkForExistingEvaluation(fen, opts.maxDepth);
       if (existingEval && opts.maxDepth != undefined && existingEval.depth >= opts.maxDepth) {
+        if (initialSettings && initialSettings.setEvaluations) {
+          initialSettings.setEvaluations((evs) => ({ ...evs, [existingEval.fen]: existingEval }));
+        }
         // Return the existing evaluation without analyzing
         resolve(existingEval);
         return;
@@ -311,7 +321,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       pendingAnalysisStart.current = { fen, options: opts };
       stockfish.postMessage('isready');
     });
-  }, [stockfish, checkForExistingEvaluation, settings.id]);
+  }, [stockfish, checkForExistingEvaluation, settings.id, initialSettings]);
 
   // Cleanup on unmount
   useEffect(() => {
