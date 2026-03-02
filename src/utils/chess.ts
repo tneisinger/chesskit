@@ -427,7 +427,12 @@ export function wasBestMovePlayed(
   // try to load fen1 into chessjs. If this fails, chessjs will throw an error.
   chessjs.load(fen1);
 
-  if (!chessjs.move(eval1.bestMove)) {
+  try {
+    chessjs.move(eval1.bestMove);
+  } catch (error) {
+    console.warn('eval1');
+    console.warn(eval1);
+    console.warn('fen1:', fen1);
     throw new Error(`Failed to play bestMove ${eval1.bestMove}`);
   }
 
