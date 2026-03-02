@@ -72,7 +72,7 @@ export function makeAltFensWithEnPassantSquares(fen: string): string[] {
 
 }
 
-function makeKey(fen: string): string {
+export function makeKey(fen: string): string {
   const [placement, color, castling, enpassant] = fen.split(' ');
   return `${placement} ${color} ${castling} ${enpassant}`;
 }
