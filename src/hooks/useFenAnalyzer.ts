@@ -260,9 +260,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     if (initialSettings?.evaluations && initialSettings.evaluations[fen] != undefined) {
       existingEval = initialSettings.evaluations[fen];
     } else if (initialSettings?.bookPositions) {
-      console.log('Checking for book position evaluation for fen:', fen);
       const bookPosition = getBookPosition(fen, initialSettings.bookPositions);
-      console.log('Book position found:', bookPosition);
       if (bookPosition) existingEval = bookPosition.pev;
     }
     return existingEval;
