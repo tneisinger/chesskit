@@ -25,6 +25,7 @@ import usePrevious from '@/hooks/usePrevious';
 import { updateGameAnalysis } from '@/app/game-review/actions';
 import FlashcardCreator from './flashcardCreator';
 import { useBookPositions } from '@/contexts/BookPositionsContext';
+import { StockfishSettings } from '@/hooks/useFenAnalyzer';
 
 enum MobileTab {
   Moves = 'Moves',
@@ -114,10 +115,19 @@ const GameReview = ({ game }: Props) => {
   } = useChessboardEngine();
 
 
+  const fenAnalyzerSettings: StockfishSettings = {
+    numThreads: 1,
+    hashSize: 128,
+    initializeImmediately: false,
+    evaluations,
+    setEvaluations,
+  }
+
+
   const currentMoveAnalyzer = useCurrentMoveAnalyzer(
     8, // Number of useFenAnalyzer instances to use
     currentMove,
-    {numThreads: 1, hashSize: 128, initializeImmediately: false, evaluations, setEvaluations }, // settings for each instance
+    fenAnalyzerSettings, // settings for each instance
     { depth: 18, numLines: 2 }
   );
 
@@ -125,7 +135,7 @@ const GameReview = ({ game }: Props) => {
   // Set up PGN analyzer
   const pgnAnalyzer = usePgnAnalyzerParallel(
     8, // Number of useFenAnalyzer instances to use
-    {numThreads: 1, hashSize: 128, initializeImmediately: false, evaluations, setEvaluations }, // settings for each instance
+    fenAnalyzerSettings, // settings for each instance
     depth,
     numLines
   );
@@ -133,7 +143,7 @@ const GameReview = ({ game }: Props) => {
   // Set up forcing line finder
   const forcingLineFinder = useForcingLineFinderParallel(
     8,
-    {numThreads: 1, hashSize: 128, initializeImmediately: false, evaluations, setEvaluations }, // settings for each instance
+    fenAnalyzerSettings, // settings for each instance
   );
 
 
