@@ -155,15 +155,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [numEngineLines, setNumEngineLines] = useState(2);
 
 
-  const fenAnalyzer = useFenAnalyzer({ numThreads: 8, hashSize: 1024, initializeImmediately: false });
+  const fenAnalyzer = useFenAnalyzer({ numThreads: 8, hashSize: 1024, initializeImmediately: false, evaluations, setEvaluations });
 
 
   const currentMoveAnalyzer = useCurrentMoveAnalyzer(
     8, // Number of useFenAnalyzer instances to use
-    evaluations,
-    setEvaluations,
     currentMove,
-    {numThreads: 1, hashSize: 128, initializeImmediately: false }, // settings for each instance
+    {numThreads: 1, hashSize: 128, initializeImmediately: false, evaluations, setEvaluations }, // settings for each instance
     { depth: 18, numLines: 2 }
   );
 

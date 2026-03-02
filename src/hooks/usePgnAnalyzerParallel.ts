@@ -34,8 +34,6 @@ const MAX_INSTANCES = 8;
 
 export default function usePgnAnalyzerParallel(
   numInstances: number,
-  evaluations: Evaluations,
-  setEvaluations: React.Dispatch<React.SetStateAction<Evaluations>>,
   stockfishSettings?: StockfishSettings,
   defaultDepth: number = 20,
   defaultNumLines: number = 2
@@ -272,9 +270,11 @@ export default function usePgnAnalyzerParallel(
       const nextFen = queueRef.current.shift()!;
 
       // Check if we already have this evaluation at the required depth
-      if (nextFen in evaluations && evaluations[nextFen].depth >= options.depth) {
+      if (stockfishSettings?.evaluations &&
+          nextFen in stockfishSettings.evaluations &&
+          stockfishSettings.evaluations[nextFen].depth >= options.depth) {
         // Use existing evaluation
-        setPgnEvaluations((prev) => ({ ...prev, [nextFen]: evaluations[nextFen] }));
+        setPgnEvaluations((prev) => ({ ...prev, [nextFen]: stockfishSettings.evaluations![nextFen] }));
         setCompletedPositions((prev) => prev + 1);
         // Don't mark as busy, just continue to next iteration
         continue;
@@ -297,8 +297,8 @@ export default function usePgnAnalyzerParallel(
       analyzers[i]
         .analyze(nextFen, analyzeOptions)
         .then((evaluation) => {
-          // Add to both evaluations stores
-          setEvaluations((evs) => ({ ...evs, [nextFen]: evaluation }));
+          // useFenAnalyzer now handles saving to evaluations store
+          // Just add to pgnEvaluations for tracking this PGN's analysis
           setPgnEvaluations((prev) => ({ ...prev, [nextFen]: evaluation }));
           setCompletedPositions((prev) => prev + 1);
 
@@ -313,7 +313,8 @@ export default function usePgnAnalyzerParallel(
           instanceBusyRef.current[i] = false;
         });
     }
-  }, [status, completedPositions, numInstances, analyzers, evaluations, setEvaluations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, completedPositions, numInstances]);
 
   const progress =
     totalPositions > 0 ? Math.round((completedPositions / totalPositions) * 100) : 0;

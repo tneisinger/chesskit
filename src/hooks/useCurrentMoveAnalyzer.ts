@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Evaluations, PositionEvaluation } from '@/types/chess';
+import { Evaluations } from '@/types/chess';
 import { Move } from 'cm-chess/src/Chess';
 import useFenAnalyzer, { StockfishSettings, AnalyzeInterruptedError } from '@/hooks/useFenAnalyzer';
 import { getFen } from '@/utils/chess';
@@ -40,8 +40,6 @@ interface InstanceInfo {
 
 export default function useCurrentMoveAnalyzer(
   numInstances: number,
-  evaluations: Evaluations,
-  setEvaluations: React.Dispatch<React.SetStateAction<Evaluations>>,
   currentMove: Move | undefined,
   stockfishSettings?: StockfishSettings,
   options?: UseCurrentMoveAnalyzerOptions
@@ -83,10 +81,11 @@ export default function useCurrentMoveAnalyzer(
   const previousMove = usePrevious(currentMove);
 
   const doWeAlreadyHaveEvaluation = useCallback((fen: string): boolean => {
-    const fenEval = evaluations[fen];
+    if (!stockfishSettings?.evaluations) return false;
+    const fenEval = stockfishSettings.evaluations[fen];
     if (fenEval && fenEval.depth >= depth) return true;
     return false;
-  }, [evaluations, depth]);
+  }, [depth]);
 
   const setupWorkers = useCallback(async () => {
     setStatus(AnalyzerStatus.Initializing);
@@ -97,7 +96,12 @@ export default function useCurrentMoveAnalyzer(
     }
     await Promise.all(promises);
     workersSetupRef.current = true;
-  }, [numInstances, analyzers]);
+
+    // Don't include analyzers in dependency array to avoid re-running when
+    // they change - we only want to run this once on mount or when
+    // numInstances changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numInstances]);
 
   const terminateWorkers = useCallback(async () => {
     // Terminate all analyzer instances
@@ -124,7 +128,10 @@ export default function useCurrentMoveAnalyzer(
     setStatus(AnalyzerStatus.Uninitialized);
     setLatestEvaluations({});
     setEngineName(null);
-  }, [analyzers]);
+
+    // Don't include analyzers in dependency array to avoid unnecessary re-runs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const findFreeOrLongestRunningInstance = useCallback((): number => {
     // Find a free instance first
@@ -225,13 +232,13 @@ export default function useCurrentMoveAnalyzer(
 
     // Analyze
     try {
-      const evaluation = await analyzers[instanceIndex].analyze(fen, {
+      await analyzers[instanceIndex].analyze(fen, {
         maxDepth: depth,
         numLines: numLines,
       });
 
-      // Add to evaluations store (latestEvaluations is updated via useEffect watching latestEvaluation)
-      setEvaluations((evs) => ({ ...evs, [fen]: evaluation }));
+      // useFenAnalyzer now handles saving to evaluations store
+      // latestEvaluations is updated via useEffect watching latestEvaluation
 
       // Mark as free
       instanceInfoRef.current[instanceIndex] = {
@@ -271,7 +278,8 @@ export default function useCurrentMoveAnalyzer(
         }
       }
     }
-  }, [currentMove, depth, numLines, analyzers, findFreeOrLongestRunningInstance, doWeAlreadyHaveEvaluation, setEvaluations, numInstances]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMove, depth, numLines, findFreeOrLongestRunningInstance, doWeAlreadyHaveEvaluation, numInstances]);
 
   // Update latestEvaluations whenever any analyzer's latestEvaluation changes
   useEffect(() => {

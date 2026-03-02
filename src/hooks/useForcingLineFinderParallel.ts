@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import useFenAnalyzer, { StockfishSettings, AnalyzeInterruptedError } from '@/hooks/useFenAnalyzer';
-import { Evaluations, PositionEvaluation } from "@/types/chess";
+import { PositionEvaluation } from "@/types/chess";
 import { ShortMove } from '@/types/chess';
 import { getThreadCount } from '@/utils/stockfishDetector';
 import {
@@ -40,8 +40,6 @@ interface FenWithIndex {
 
 export default function useForcingLineFinderParallel(
   numInstances: number,
-  evaluations: Evaluations,
-  setEvaluations: React.Dispatch<React.SetStateAction<Evaluations>>,
   stockfishSettings?: StockfishSettings,
 ): Output {
   if (numInstances < 1) throw new Error('numInstances must be at least 1');
@@ -283,6 +281,7 @@ export default function useForcingLineFinderParallel(
 
     // Check if all work is complete (queue empty and all instances idle)
     const allInstancesIdle = instanceBusyRef.current.every((busy) => !busy);
+    const busyInstances = instanceBusyRef.current.slice(0, numInstances).map((busy, idx) => busy ? idx : -1).filter(idx => idx !== -1);
     if (queueRef.current.length === 0 && allInstancesIdle) {
       // Analysis complete - resolve with whatever forcing line we found
       const originalPev = originalPevRef.current;
@@ -322,9 +321,11 @@ export default function useForcingLineFinderParallel(
       const { fen: nextFen, index } = queueRef.current.shift()!;
 
       // Check if we already have this evaluation at the required depth
-      if (nextFen in evaluations && evaluations[nextFen].depth >= options.minDepth) {
+      if (stockfishSettings?.evaluations &&
+          nextFen in stockfishSettings.evaluations &&
+          stockfishSettings.evaluations[nextFen].depth >= options.minDepth) {
         // Use existing evaluation
-        setLocalEvaluations((prev) => [...prev, { index, pev: evaluations[nextFen]}]);
+        setLocalEvaluations((prev) => [...prev, { index, pev: stockfishSettings.evaluations![nextFen]}]);
         // Don't mark as busy, just continue to next iteration
         continue;
       }
@@ -346,8 +347,8 @@ export default function useForcingLineFinderParallel(
       analyzers[i]
         .analyze(nextFen, analyzeOptions)
         .then((evaluation) => {
-          // Add to evaluations
-          setEvaluations((evs) => ({ ...evs, [nextFen]: evaluation }));
+          // useFenAnalyzer now handles saving to evaluations store
+          // Just add to localEvaluations for tracking this analysis
           setLocalEvaluations((prev) => [...prev, { index, pev: evaluation }]);
 
           // Mark instance as not busy
@@ -363,7 +364,8 @@ export default function useForcingLineFinderParallel(
           instanceBusyRef.current[i] = false;
         });
     }
-  }, [status, localEvaluations, numInstances, analyzers, evaluations, setEvaluations, findForcingIndices, buildShortMovesFromIndices]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, localEvaluations, numInstances, findForcingIndices, buildShortMovesFromIndices]);
 
   // Check for early completion - when we have enough forcing moves or found a non-forcing move
   useEffect(() => {
@@ -387,6 +389,7 @@ export default function useForcingLineFinderParallel(
       sortedEvals.length > forcingIndices.length &&
       sortedEvals[forcingIndices.length].index === forcingIndices.length * 2 + 1;
 
+
     if (hasEnoughMoves || foundNonForcingMove) {
       // Stop all active analyzers immediately
       for (let i = 0; i < numInstances; i++) {
@@ -397,6 +400,25 @@ export default function useForcingLineFinderParallel(
 
       // Build the result
       const shortMoves = buildShortMovesFromIndices(originalPev, forcingIndices);
+
+      // If we didn't find any forcing moves but the original position has only one good move, return just that move
+      if (shortMoves.length < 1 && doesOnlyOneGoodMoveExist(originalPev)) {
+        const firstMoveLan = originalPev.lines[0].lanLine.trim().split(' ')[0];
+        const result = [lanToShortMove(firstMoveLan)];
+        setForcingMoves(result);
+        setStatus(AnalyzerStatus.Idle);
+
+        if (findForcingLinePromiseRef.current) {
+          findForcingLinePromiseRef.current.resolve(result);
+          findForcingLinePromiseRef.current = null;
+        }
+
+        // Clean up
+        isAnalyzingRef.current = false;
+        queueRef.current = [];
+        instanceBusyRef.current = [];
+        return;
+      }
 
       // Update state
       setForcingMoves(shortMoves);
@@ -413,7 +435,8 @@ export default function useForcingLineFinderParallel(
       queueRef.current = [];
       instanceBusyRef.current = [];
     }
-  }, [localEvaluations, numInstances, analyzers, findForcingIndices, buildShortMovesFromIndices]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localEvaluations, numInstances, findForcingIndices, buildShortMovesFromIndices]);
 
   return {
     findForcingLine,
