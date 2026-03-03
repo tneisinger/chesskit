@@ -214,6 +214,7 @@ export interface Props {
   history: Move[];
   width: number;
   includeKeyPositionDots?: boolean;
+  includeCurrentMoveReferenceLine?: boolean;
 }
 
 const GameChart = ({
@@ -224,6 +225,7 @@ const GameChart = ({
   history,
   width,
   includeKeyPositionDots = true,
+  includeCurrentMoveReferenceLine = true,
 }: Props) => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [offset, setOffset] = useState<number>(0);
@@ -268,11 +270,13 @@ const GameChart = ({
         </defs>
         <XAxis dataKey="ply" hide />
         <YAxis domain={[-CHART_MAX_CP, CHART_MAX_CP]} hide />
-        <ReferenceLine
-          x={currentMove ? currentMove.ply : 0}
-          stroke="white"
-          strokeDasharray={inVariation ? '3 5' : '0'}
-        />
+        {includeCurrentMoveReferenceLine && (
+          <ReferenceLine
+            x={currentMove ? currentMove.ply : 0}
+            stroke="white"
+            strokeDasharray={inVariation ? '3 5' : '0'}
+          />
+        )}
         <Tooltip cursor={false} content={GameChartToolTip} />
         <Area
           type="monotone"

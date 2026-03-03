@@ -87,6 +87,7 @@ const GameAnalysis = ({
                 history={history}
                 width={width}
                 includeKeyPositionDots={false}
+                includeCurrentMoveReferenceLine={false}
               />
             </div>
           </div>
