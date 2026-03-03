@@ -11,7 +11,8 @@ import {
   getMoveJudgement,
   convertEvaluationsToGameEvals,
   getMoveJudgementColor,
-  makeMoveJudgement
+  makeMoveJudgement,
+  isMoveJudgementWorseThan
 } from '@/utils/chess';
 import {
   addShortMoveLinesToCmChess,
@@ -69,26 +70,24 @@ const FlashcardCreator = ({
   // If 'isFlashcardRecommended' is true, this function will only return true if
   // the move that was played in the position was bad enough that a flashcard is
   // not just acceptable, but recommended.
-  const isPositionFlashcardWorthy = useCallback((
-    move: Move,
-    isFlashcardRecommended = false,
-  ) => {
+  const isPositionFlashcardWorthy = useCallback((move: Move, isFlashcardRecommended = false) => {
+
     // Return false if it is not the user's turn
     if (game.userColor === getColor(move)) return false;
 
     // If there is no next move, then there is no move to judge.
     if (move.next == undefined) return false;
 
-    // If the judgement of the next move is bad enough, then this position
-    // is flashcard worthy
-    const js = [
-      MoveJudgement.Blunder,
-      MoveJudgement.Mistake,
-    ];
-    if (!isFlashcardRecommended) js.push(MoveJudgement.Inaccurate);
-    const j = makeMoveJudgement(move.fen, move.next.fen, evaluations);
-    if (j == undefined) return false;
-    return js.includes(j);
+    // A flashcard is recommended if the move was worse than an inaccuracy
+    if (isFlashcardRecommended) {
+      const j = makeMoveJudgement(move.fen, move.next.fen, evaluations);
+      if (j == undefined) return false;
+      return isMoveJudgementWorseThan(MoveJudgement.Inaccurate, j);
+    }
+
+    // otherwise, just return true. This allows the user to make a flashcard from
+    // any position where it is their turn.
+    return true;
   }, [game, evaluations]);
 
 
