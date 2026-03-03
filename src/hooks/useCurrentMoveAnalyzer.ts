@@ -96,6 +96,7 @@ export default function useCurrentMoveAnalyzer(
     }
     await Promise.all(promises);
     workersSetupRef.current = true;
+    setStatus(AnalyzerStatus.Idle);
 
     // Don't include analyzers in dependency array to avoid re-running when
     // they change - we only want to run this once on mount or when
@@ -278,8 +279,7 @@ export default function useCurrentMoveAnalyzer(
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMove, depth, numLines, findFreeOrLongestRunningInstance, doWeAlreadyHaveEvaluation, numInstances]);
+  }, [currentMove, depth, numLines, findFreeOrLongestRunningInstance, doWeAlreadyHaveEvaluation, numInstances, analyzers]);
 
   // Update latestEvaluations whenever any analyzer's latestEvaluation changes
   useEffect(() => {

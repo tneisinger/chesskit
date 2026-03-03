@@ -49,7 +49,7 @@ export interface Output {
   fenBeingAnalyzed: string | null;
   modifyStockfishSettings: (settings: StockfishSettings) => void;
   availableThreads: number | null;
-  setupWorker: () => void;
+  setupWorker: () => Promise<void>;
   terminateWorker: () => void;
 }
 
@@ -91,6 +91,13 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   const stopPromiseRef = useRef<{
     resolve: () => void;
   } | null>(null);
+
+  // Promise resolution for setup
+  const setupPromiseRef = useRef<{
+    resolve: () => void;
+    reject: (reason: any) => void;
+  } | null>(null);
+  const isWaitingForSetupReadyRef = useRef<boolean>(false);
 
   // Timeout for maxSeconds
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -188,9 +195,45 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     }
   }, [stockfish, recommendation]);
 
-  const setupWorker = useCallback(() => {
-    setupStockfishWorker();
-  }, [setupStockfishWorker]);
+  const setupWorker = useCallback((): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      // If already set up, resolve immediately
+      if (hasStockfishBeenSetup.current && stockfish) {
+        resolve();
+        return;
+      }
+
+      // Store the promise resolver
+      setupPromiseRef.current = { resolve, reject };
+      isWaitingForSetupReadyRef.current = true;
+
+      // Set up a timeout in case the worker never responds
+      const timeout = setTimeout(() => {
+        if (setupPromiseRef.current) {
+          setupPromiseRef.current.reject(
+            new Error(`Stockfish ${settings.id} Worker setup timed out after 10 seconds`)
+          );
+          setupPromiseRef.current = null;
+          isWaitingForSetupReadyRef.current = false;
+        }
+      }, 10000);
+
+      // Clear timeout when promise resolves or rejects
+      const originalResolve = setupPromiseRef.current.resolve;
+      const originalReject = setupPromiseRef.current.reject;
+      setupPromiseRef.current.resolve = () => {
+        clearTimeout(timeout);
+        originalResolve();
+      };
+      setupPromiseRef.current.reject = (reason: any) => {
+        clearTimeout(timeout);
+        originalReject(reason);
+      };
+
+      // Trigger worker creation
+      setupStockfishWorker();
+    });
+  }, [setupStockfishWorker, stockfish, settings.id]);
 
   const terminateWorker = useCallback(() => {
     // Clear any ongoing analysis
@@ -211,6 +254,15 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
 
       isAnalyzingRef.current = false;
       setIsAnalyzing(false);
+    }
+
+    // Reject pending setup
+    if (setupPromiseRef.current) {
+      setupPromiseRef.current.reject(
+        new Error(`Stockfish ${settings.id} Worker terminated during setup`)
+      );
+      setupPromiseRef.current = null;
+      isWaitingForSetupReadyRef.current = false;
     }
 
     // Reset setup flag so worker can be re-initialized
@@ -347,6 +399,14 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       }
 
       if (parseIsStockfishReady(line)) {
+        // Check if this is readyok from initial setup
+        if (isWaitingForSetupReadyRef.current && setupPromiseRef.current) {
+          isWaitingForSetupReadyRef.current = false;
+          setupPromiseRef.current.resolve();
+          setupPromiseRef.current = null;
+          return;
+        }
+
         // Check if we have a pending analysis start
         if (pendingAnalysisStart.current && stockfish) {
           const { fen, options } = pendingAnalysisStart.current;
