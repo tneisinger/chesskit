@@ -14,6 +14,7 @@ const MAX_INSTANCES = 8;
 
 export enum AnalyzerStatus {
   Uninitialized = 'Uninitialized',
+  Initializing = 'Initializing',
   Idle = 'Idle',
   Analyzing = 'Analyzing',
 }
@@ -121,6 +122,8 @@ export default function useForcingLineFinderParallel(
   }, []);
 
   const setupWorkers = useCallback(async () => {
+    setForcingMoves([]);
+    setStatus(AnalyzerStatus.Initializing);
     // Set up only the number of instances we're actually using
     const promises = [];
     for (let i = 0; i < numInstances; i++) {
@@ -164,9 +167,9 @@ export default function useForcingLineFinderParallel(
     currentOptionsRef.current = null;
     originalPevRef.current = null;
     setLocalEvaluations([]);
-    setForcingMoves([]);
     // Don't reset isTerminatingWorkersRef here - keep it true until workers are set up again
     // This prevents race conditions where analyze promises reject after terminateWorkers completes
+    // Don't reset forcingMoves here either.
   }, [analyzers]);
 
   const cancel = useCallback(() => {
@@ -194,13 +197,21 @@ export default function useForcingLineFinderParallel(
   }, [numInstances, analyzers]);
 
   const findForcingLine = useCallback((pev: PositionEvaluation, partialOptions: FindForcingLineOptions): Promise<ShortMove[]> => {
+    // Reset forcingMoves state
+    setForcingMoves([]);
+
     // Check if workers have been set up
     if (!workersSetupRef.current) {
       throw new Error('Workers are not initialized. Call setupWorkers() first.');
     }
 
-    // Check if the input pev has only one good move - if not, return empty array
-    if (!doesOnlyOneGoodMoveExist(pev)) {
+    // Check if the input pev has only one good move - if it does, add that move to forcingMoves
+    // If not, resolve with an empty array.
+    if (doesOnlyOneGoodMoveExist(pev)) {
+      const firstMoveLan = pev.lines[0].lanLine.trim().split(' ')[0];
+      const result = [lanToShortMove(firstMoveLan)];
+      setForcingMoves(result);
+    } else {
       return Promise.resolve([]);
     }
 
@@ -244,9 +255,11 @@ export default function useForcingLineFinderParallel(
       // Set up state for new analysis
       isAnalyzingRef.current = true;
       setLocalEvaluations([]);
-      setForcingMoves([]);
       setStatus(AnalyzerStatus.Analyzing);
       findForcingLinePromiseRef.current = { resolve, reject };
+
+      // Don't reset forcing moves here since we may have added the first forcing move already.
+      // setForcingMoves([]);
     });
 
     return promise;
@@ -405,13 +418,13 @@ export default function useForcingLineFinderParallel(
       if (shortMoves.length < 1 && doesOnlyOneGoodMoveExist(originalPev)) {
         const firstMoveLan = originalPev.lines[0].lanLine.trim().split(' ')[0];
         const result = [lanToShortMove(firstMoveLan)];
-        setForcingMoves(result);
-        setStatus(AnalyzerStatus.Idle);
 
         if (findForcingLinePromiseRef.current) {
           findForcingLinePromiseRef.current.resolve(result);
           findForcingLinePromiseRef.current = null;
         }
+
+        setStatus(AnalyzerStatus.Idle);
 
         // Clean up
         isAnalyzingRef.current = false;

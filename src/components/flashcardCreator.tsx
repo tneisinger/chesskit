@@ -133,8 +133,6 @@ const FlashcardCreator = ({
     const options: FindForcingLineOptions = { minDepth: 18, maxLineLength: 11 };
     const evaluation = evaluations[flashcardMove.fen];
     const forcingLine = await forcingLineFinder.findForcingLine(evaluation, options);
-    console.log('forcingLine')
-    console.log(forcingLine);
 
     // Now that we are done finding forcing moves, re-setup the currentMoveAnalyzer
     await setupCurrentMoveAnalyzer();
@@ -256,12 +254,14 @@ const FlashcardCreator = ({
       return <p className="text-sm mt-2 text-center">{content}</p>;
     }
 
-    if (forcingLineFinder.status === AnalyzerStatus.Analyzing) {
-      if (forcingLineFinder.forcingMoves.length === 0) {
-        return wrapContent(<>Looking for forcing moves</>);
-      } else {
+    if (forcingLineFinder.forcingMoves.length > 0) {
       const len = forcingLineFinder.forcingMoves.length;
-        return wrapContent( <>{len} forcing move{len === 1 ? '' : 's'} found so far</>);
+      return wrapContent(<>{len} forcing move{len === 1 ? '' : 's'} found so far</>);
+    } else {
+      if (forcingLineFinder.status === AnalyzerStatus.Analyzing ||
+          forcingLineFinder.status === AnalyzerStatus.Initializing
+      ) {
+        return wrapContent(<>Looking for forcing moves</>);
       }
     }
 
