@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, ReactElement } from "react";
-import { GameData, Evaluations, MoveJudgement } from "@/types/chess";
+import { GameData, Evaluations, MoveJudgement, ShortMove } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
 import Spinner from '@/components/spinner';
@@ -12,7 +12,8 @@ import {
   convertEvaluationsToGameEvals,
   getMoveJudgementColor,
   makeMoveJudgement,
-  isMoveJudgementWorseThan
+  isMoveJudgementWorseThan,
+  doesOnlyOneGoodMoveExist
 } from '@/utils/chess';
 import {
   addShortMoveLinesToCmChess,
@@ -127,21 +128,28 @@ const FlashcardCreator = ({
     if (flashcardMoveOfCmChess == undefined) throw new Error('lastMove was undefined');
     if (flashcardMoveOfCmChess.fen !== flashcardMove.fen) throw new Error('fens do not match');
 
-    // Setup the forcingLineFinder, which involves shutting down the currentMoveAnalyzer.
-    await setupForcingLineFinder();
-
-    // Try to get forcing lines.
-    const options: FindForcingLineOptions = { minDepth: 18, maxLineLength: 11 };
     const evaluation = evaluations[flashcardMove.fen];
-    const forcingLine = await forcingLineFinder.findForcingLine(evaluation, options);
-
-    // Now that we are done finding forcing moves, re-setup the currentMoveAnalyzer
-    await setupCurrentMoveAnalyzer();
+    if (evaluation == undefined) throw new Error('evaluation was undefined');
 
     let areLinesForcing = false;
-    if (forcingLine.length > 0) {
+
+    if (doesOnlyOneGoodMoveExist(evaluation)) {
       areLinesForcing = true;
-      addShortMoveLinesToCmChess(cmChess, [forcingLine], flashcardMoveOfCmChess);
+      // Setup the forcingLineFinder, which involves shutting down the currentMoveAnalyzer.
+      await setupForcingLineFinder();
+
+      // Try to get a forcing line.
+      const options: FindForcingLineOptions = { minDepth: 18, maxLineLength: 11 };
+      const forcingLine = await forcingLineFinder.findForcingLine(evaluation, options);
+
+      // Now that we are done finding forcing moves, re-setup the currentMoveAnalyzer
+      await setupCurrentMoveAnalyzer();
+
+      if (forcingLine.length > 0) {
+        addShortMoveLinesToCmChess(cmChess, [forcingLine], flashcardMoveOfCmChess);
+      } else {
+        console.warn('No forcing line found, even though only one good move exists according to evaluation');
+      }
     }
 
     // When there are no forcing lines, add the good moves from evaluations to cmChess.
