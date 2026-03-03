@@ -9,15 +9,9 @@ import {
   doesOnlyOneGoodMoveExist,
   lanToShortMove
 } from '@/utils/chess';
+import { AnalyzerStatus } from '@/types/analyzer';
 
 const MAX_INSTANCES = 8;
-
-export enum AnalyzerStatus {
-  Uninitialized = 'Uninitialized',
-  Initializing = 'Initializing',
-  Idle = 'Idle',
-  Analyzing = 'Analyzing',
-}
 
 export interface FindForcingLineOptions {
   minDepth: number;

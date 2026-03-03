@@ -8,7 +8,8 @@ import EvalerLine from '@/components/evalerLine';
 import { useCallback, useEffect, useState } from 'react';
 import { colorToMove } from '@/utils/cmchess';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { AnalyzerStatus, Output as CurrentMoveAnalyzer } from '@/hooks/useCurrentMoveAnalyzer';
+import { Output as CurrentMoveAnalyzer } from '@/hooks/useCurrentMoveAnalyzer';
+import { AnalyzerStatus } from '@/types/analyzer';
 
 const showDevButtons = false;
 

@@ -25,7 +25,8 @@ import {
 } from '@/utils/cmchess';
 import { Flashcard } from "@/db/schema";
 import { createFlashcard, getAllFlashcards, CreateFlashcardInput } from '@/app/flashcards/actions';
-import { FindForcingLineOptions, Output as ForcingLineFinder, AnalyzerStatus } from '@/hooks/useForcingLineFinderParallel';
+import { FindForcingLineOptions, Output as ForcingLineFinder} from '@/hooks/useForcingLineFinderParallel';
+import { AnalyzerStatus } from '@/types/analyzer';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
 import usePrevious from "@/hooks/usePrevious";
 

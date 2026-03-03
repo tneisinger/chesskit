@@ -3,12 +3,7 @@ import { Evaluations } from '@/types/chess';
 import useFenAnalyzer, { StockfishSettings } from '@/hooks/useFenAnalyzer';
 import { parse as parsePGN } from 'pgn-parser';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
-
-export enum AnalyzerStatus {
-  Uninitialized = 'Uninitialized',
-  Idle = 'Idle',
-  Analyzing = 'Analyzing',
-}
+import { AnalyzerStatus } from '@/types/analyzer';
 
 export interface AnalyzePgnOptions {
   analyzeVariations?: boolean;

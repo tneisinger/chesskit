@@ -5,15 +5,9 @@ import useFenAnalyzer, { StockfishSettings, AnalyzeInterruptedError } from '@/ho
 import { getFen } from '@/utils/chess';
 import usePrevious from '@/hooks/usePrevious';
 import { areCmMovesEqual } from '@/utils/cmchess';
+import { AnalyzerStatus } from '@/types/analyzer';
 
 const MAX_INSTANCES = 8;
-
-export enum AnalyzerStatus {
-  Uninitialized = 'Uninitialized',
-  Initializing = 'Initializing',
-  Idle = 'Idle',
-  Analyzing = 'Analyzing',
-}
 
 export interface UseCurrentMoveAnalyzerOptions {
   depth?: number;

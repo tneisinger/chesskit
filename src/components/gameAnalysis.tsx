@@ -1,7 +1,8 @@
 import Button from '@/components/button';
 import Spinner from '@/components/spinner';
 import GameChart, { Props as GameChartProps } from '@/components/gameChart';
-import { AnalyzerStatus, Output as PgnAnalyzer } from '@/hooks/usePgnAnalyzerParallel';
+import { Output as PgnAnalyzer } from '@/hooks/usePgnAnalyzerParallel';
+import { AnalyzerStatus } from '@/types/analyzer';
 
 interface Props extends GameChartProps {
   analyzePgn: PgnAnalyzer['analyzePgn'];
@@ -36,7 +37,7 @@ const GameAnalysis = ({
 
   return (
     <div className="bg-radial from-stone-600 to-stone-800 rounded-md" style={{ width, height: '100%' }}>
-      {Object.keys(gameEvaluation).length < 1 && pgnAnalyzerStatus == AnalyzerStatus.Idle && (
+      {Object.keys(gameEvaluation).length < 1 && pgnAnalyzerStatus === AnalyzerStatus.Idle && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
           <Button onClick={handleAnalyzeGame} disabled={pgnAnalyzerStatus !== AnalyzerStatus.Idle}>
             Analyze Game
