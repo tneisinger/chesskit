@@ -125,6 +125,7 @@ export default function usePgnAnalyzerParallel(
 
 
   const setupWorkers = useCallback(async () => {
+    setStatus(AnalyzerStatus.Initializing);
     // Set up only the number of instances we're actually using
     const promises = [];
     for (let i = 0; i < numInstances; i++) {

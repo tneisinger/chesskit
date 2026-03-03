@@ -37,6 +37,12 @@ const GameAnalysis = ({
 
   return (
     <div className="bg-radial from-stone-600 to-stone-800 rounded-md" style={{ width, height: '100%' }}>
+      {pgnAnalyzerStatus === AnalyzerStatus.Initializing && (
+        <div className='flex flex-col h-full justify-center items-center gap-7'>
+          <p className="text-lg font-bold">Loading Game Analyzer</p>
+          <Spinner white />
+        </div>
+      )}
       {Object.keys(gameEvaluation).length < 1 && pgnAnalyzerStatus === AnalyzerStatus.Idle && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
           <Button onClick={handleAnalyzeGame} disabled={pgnAnalyzerStatus !== AnalyzerStatus.Idle}>
