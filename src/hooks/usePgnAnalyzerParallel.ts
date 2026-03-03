@@ -26,7 +26,7 @@ export interface Output {
   currentPosition: number;
   totalPositions: number;
   pgnEvaluations: Evaluations;
-  setupWorkers: () => void;
+  setupWorkers: () => Promise<void>;
   terminateWorkers: () => void;
 }
 
@@ -43,14 +43,14 @@ export default function usePgnAnalyzerParallel(
 
   // Create maximum number of analyzer instances (must be unconditional for Rules of Hooks)
   const analyzers = [
-    useFenAnalyzer({...stockfishSettings, id: '1'}),
-    useFenAnalyzer({...stockfishSettings, id: '2'}),
-    useFenAnalyzer({...stockfishSettings, id: '3'}),
-    useFenAnalyzer({...stockfishSettings, id: '4'}),
-    useFenAnalyzer({...stockfishSettings, id: '5'}),
-    useFenAnalyzer({...stockfishSettings, id: '6'}),
-    useFenAnalyzer({...stockfishSettings, id: '7'}),
-    useFenAnalyzer({...stockfishSettings, id: '8'}),
+    useFenAnalyzer({...stockfishSettings, id: 'pgn1'}),
+    useFenAnalyzer({...stockfishSettings, id: 'pgn2'}),
+    useFenAnalyzer({...stockfishSettings, id: 'pgn3'}),
+    useFenAnalyzer({...stockfishSettings, id: 'pgn4'}),
+    useFenAnalyzer({...stockfishSettings, id: 'pgn5'}),
+    useFenAnalyzer({...stockfishSettings, id: 'pgn6'}),
+    useFenAnalyzer({...stockfishSettings, id: 'pgn7'}),
+    useFenAnalyzer({...stockfishSettings, id: 'pgn8'}),
   ];
 
   const availableThreads = analyzers[0].availableThreads;
@@ -129,11 +129,13 @@ export default function usePgnAnalyzerParallel(
   }, []);
 
 
-  const setupWorkers = useCallback(() => {
+  const setupWorkers = useCallback(async () => {
     // Set up only the number of instances we're actually using
+    const promises = [];
     for (let i = 0; i < numInstances; i++) {
-      analyzers[i].setupWorker();
+      promises.push(analyzers[i].setupWorker());
     }
+    await Promise.all(promises);
     setStatus(AnalyzerStatus.Idle);
   }, [numInstances, analyzers]);
 

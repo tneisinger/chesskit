@@ -26,6 +26,7 @@ import { updateGameAnalysis } from '@/app/game-review/actions';
 import FlashcardCreator from './flashcardCreator';
 import { useBookPositions } from '@/contexts/BookPositionsContext';
 import { StockfishSettings } from '@/hooks/useFenAnalyzer';
+import { Chess as ChessJS } from 'chess.js';
 
 enum MobileTab {
   Moves = 'Moves',
@@ -173,10 +174,10 @@ const GameReview = ({ game }: Props) => {
   }, [forcingLineFinder.terminateWorkers, pgnAnalyzer.terminateWorkers, currentMoveAnalyzer.setupWorkers]);
 
 
-  const setupPgnAnalyzer = useCallback((): void => {
+  const setupPgnAnalyzer = useCallback(async (): Promise<void> => {
     currentMoveAnalyzer.terminateWorkers();
     forcingLineFinder.terminateWorkers();
-    pgnAnalyzer.setupWorkers();
+    await pgnAnalyzer.setupWorkers();
   }, [currentMoveAnalyzer.terminateWorkers, forcingLineFinder.terminateWorkers, pgnAnalyzer.setupWorkers]);
 
 
@@ -199,7 +200,14 @@ const GameReview = ({ game }: Props) => {
       setGameEvaluation({...evaluations});
       setIsGameEvaluationComplete(true);
 
-      setupCurrentMoveAnalyzer();
+      setupCurrentMoveAnalyzer().catch((error) => {
+        // Handle setup errors gracefully (e.g., component unmounted during setup)
+        if (error.message?.includes('terminated during setup')) {
+          console.log('Worker setup cancelled due to navigation');
+        } else {
+          console.error('Error setting up current move analyzer:', error);
+        }
+      });
 
       // Save analysis results to db
       if (game.id) {
@@ -240,9 +248,25 @@ const GameReview = ({ game }: Props) => {
   // Otherwise, setup the pgnAnalyzer so the game can be analyzed.
   useEffect(() => {
     if (game.engineAnalysis) {
-      setupCurrentMoveAnalyzer();
+      setupCurrentMoveAnalyzer().catch((error) => {
+        // Handle setup errors gracefully (e.g., component unmounted during setup)
+        if (error.message?.includes('terminated during setup')) {
+          // This is expected when navigating away quickly, don't log as error
+          console.log('Worker setup cancelled due to navigation');
+        } else {
+          console.error('Error setting up current move analyzer:', error);
+        }
+      });
     } else {
-      setupPgnAnalyzer();
+      setupPgnAnalyzer().catch((error) => {
+        // Handle setup errors gracefully (e.g., component unmounted during setup)
+        if (error.message?.includes('terminated during setup')) {
+          // This is expected when navigating away quickly, don't log as error
+          console.log('Worker setup cancelled due to navigation');
+        } else {
+          console.error('Error setting up PGN analyzer:', error);
+        }
+      });
     }
   }, []);
 
@@ -439,6 +463,23 @@ const GameReview = ({ game }: Props) => {
               isCreatingFlashcard={isCreatingFlashcard}
               changeIsCreatingFlashcard={setIsCreatingFlashcard}
             />
+            <button onClick={() => {
+              const badFens: string[] = [];
+              if (bookPositions) {
+                Object.values(bookPositions).forEach((bookPosition) => {
+                  const chessjs = new ChessJS();
+                  chessjs.load(bookPosition.pev.fen);
+                  try {
+                    if (bookPosition.pev.bestMove) chessjs.move(bookPosition.pev.bestMove);
+                  } catch (error) {
+                    badFens.push(bookPosition.pev.fen);
+                  }
+                })
+              }
+              console.log('Bad FENs:', badFens.length);
+            }}>
+              debug
+            </button>
           </div>
         </div>
       </div>
