@@ -187,8 +187,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const setupFenAnalyzer = useCallback(async (): Promise<void> => {
-    currentMoveAnalyzer.terminateWorkers();
-    fenAnalyzer.setupWorker();
+    await currentMoveAnalyzer.terminateWorkers();
+    await fenAnalyzer.setupWorker();
   }, [currentMoveAnalyzer.terminateWorkers, fenAnalyzer.setupWorker]);
 
 
@@ -363,12 +363,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const gradeMove = useCallback(async (move: Move): Promise<MoveJudgement> => {
-    await setupFenAnalyzer();
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) throw new Error('flashcard was undefined');
     if (fc.bestMoves[0] == undefined) throw new Error('fc.bestLines was empty');
     const pev = await fenAnalyzer.analyze(move.fen, { maxDepth: engineDepth, maxSeconds: 60 });
-    await setupCurrentMoveAnalyzer();
     return judgePevAgainstBestScore(fc.bestMoves[0].score, pev);
   }, [fenAnalyzer.analyze, flashcards, flashcardIndex, setupFenAnalyzer, setupCurrentMoveAnalyzer]);
 
@@ -851,8 +849,20 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [previousMode, currentMode, setupCurrentMoveAnalyzer])
 
 
-  // Terminate the workers when the component unmounts
   useEffect(() => {
+    if (previousMode === currentMode) return;
+    if (currentMode === Mode.Practice) {
+      setupFenAnalyzer();
+    } else if (currentMode === Mode.Edit) {
+      setupCurrentMoveAnalyzer();
+    }
+  }, [currentMode, previousMode, setupFenAnalyzer, setupCurrentMoveAnalyzer]);
+
+
+  useEffect(() => {
+    setupFenAnalyzer();
+
+    // Terminate the workers when the component unmounts
     return () => {
       currentMoveAnalyzer.terminateWorkers();
       fenAnalyzer.terminateWorker();
