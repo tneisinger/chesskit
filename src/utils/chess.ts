@@ -1130,5 +1130,5 @@ export function doesOnlyOneGoodMoveExist(pev: PositionEvaluation): boolean {
 
   const { activeColor } = getFenParts(pev.fen);
   const judgements = judgeLines(activeColor, pev.lines);
-  return isMoveJudgementWorseThan(MoveJudgement.Inaccurate, judgements[1]);
+  return isMoveJudgementWorseThan(MoveJudgement.Good, judgements[1]);
 }
