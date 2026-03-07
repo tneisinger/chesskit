@@ -15,6 +15,7 @@ import {
 import { Chess as ChessJS } from 'chess.js';
 import { BookPositions } from '@/types/bookPositions';
 import { getBookPosition } from '@/utils/bookPositionsContext';
+import { AnalyzerStatus } from '@/types/analyzer';
 
 export class AnalyzeInterruptedError extends Error {
   constructor(message: string) {
@@ -43,7 +44,6 @@ export interface StockfishSettings {
 export interface Output {
   analyze: (fen: string, options?: AnalyzeOptions) => Promise<PositionEvaluation>;
   stop: () => Promise<void>;
-  isAnalyzing: boolean;
   latestEvaluation: PositionEvaluation | null;
   engineName: string | null;
   fenBeingAnalyzed: string | null;
@@ -51,6 +51,7 @@ export interface Output {
   availableThreads: number | null;
   setupWorker: () => Promise<void>;
   terminateWorker: () => void;
+  status: AnalyzerStatus;
 }
 
 export default function useFenAnalyzer(initialSettings?: StockfishSettings): Output {
@@ -63,7 +64,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     initializeImmediately: initialSettings?.initializeImmediately ?? true
   });
 
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [status, setStatus] = useState<AnalyzerStatus>(AnalyzerStatus.Uninitialized);
   const [latestEvaluation, setLatestEvaluation] = useState<PositionEvaluation | null>(null);
   const [engineName, setEngineName] = useState<string | null>(null);
   const [fenBeingAnalyzed, setFenBeingAnalyzed] = useState<string | null>(null);
@@ -196,9 +197,11 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   }, [stockfish, recommendation]);
 
   const setupWorker = useCallback((): Promise<void> => {
+    setStatus(AnalyzerStatus.Initializing);
     return new Promise((resolve, reject) => {
       // If already set up, resolve immediately
       if (hasStockfishBeenSetup.current && stockfish) {
+        setStatus(AnalyzerStatus.Initializing);
         resolve();
         return;
       }
@@ -210,6 +213,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       // Set up a timeout in case the worker never responds
       const timeout = setTimeout(() => {
         if (setupPromiseRef.current) {
+          setStatus(AnalyzerStatus.Uninitialized);
           setupPromiseRef.current.reject(
             new Error(`Stockfish ${settings.id} Worker setup timed out after 10 seconds`)
           );
@@ -223,10 +227,12 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       const originalReject = setupPromiseRef.current.reject;
       setupPromiseRef.current.resolve = () => {
         clearTimeout(timeout);
+        setStatus(AnalyzerStatus.Idle);
         originalResolve();
       };
       setupPromiseRef.current.reject = (reason: any) => {
         clearTimeout(timeout);
+        setStatus(AnalyzerStatus.Uninitialized);
         originalReject(reason);
       };
 
@@ -253,7 +259,6 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       }
 
       isAnalyzingRef.current = false;
-      setIsAnalyzing(false);
     }
 
     // Reject pending setup
@@ -277,6 +282,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
 
     // Terminate the stockfish worker
     terminateStockfishWorker();
+    setStatus(AnalyzerStatus.Uninitialized);
   }, [terminateStockfishWorker, settings.id]);
 
   const stop = useCallback((): Promise<void> => {
@@ -299,6 +305,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
 
       stopPromiseRef.current = { resolve };
       stockfish.postMessage('stop');
+      setStatus(AnalyzerStatus.Idle);
     });
   }, [stockfish, settings.id]);
 
@@ -351,7 +358,6 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
 
       // Set up analysis state
       isAnalyzingRef.current = true;
-      setIsAnalyzing(true);
       setLatestEvaluation(null);
       setFenBeingAnalyzed(fen);
       fenRef.current = fen;
@@ -382,10 +388,6 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     };
   }, []);
 
-  // Sync isAnalyzingRef with isAnalyzing state
-  useEffect(() => {
-    isAnalyzingRef.current = isAnalyzing;
-  }, [isAnalyzing]);
 
   // Handle stockfish messages
   useEffect(() => {
@@ -411,6 +413,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
         if (pendingAnalysisStart.current && stockfish) {
           const { fen, options } = pendingAnalysisStart.current;
           pendingAnalysisStart.current = null;
+          setStatus(AnalyzerStatus.Analyzing);
 
           stockfish.postMessage(`position fen ${fen}`);
           // console.log(`Stockfish ${settings.id}: position fen ${fen}`);
@@ -463,6 +466,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
 
       // Resolve stop promise if it exists
       if (stopPromiseRef.current) {
+        setStatus(AnalyzerStatus.Idle);
         stopPromiseRef.current.resolve();
         stopPromiseRef.current = null;
       }
@@ -511,22 +515,22 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       if (fenRef.current == null) {
         console.error(`stockfish ${settings.id} fenRef was null`);
         if (analysisPromiseRef.current) {
+          setStatus(AnalyzerStatus.Idle);
           analysisPromiseRef.current.reject(new Error(`Stockfish ${settings.id} FEN reference was null`));
           analysisPromiseRef.current = null;
         }
         isAnalyzingRef.current = false;
-        setIsAnalyzing(false);
         return;
       }
 
       if (!lastAddedEval.current) {
         console.error(`stockfish ${settings.id} lastAddedEval should be defined`);
         if (analysisPromiseRef.current) {
+          setStatus(AnalyzerStatus.Idle);
           analysisPromiseRef.current.reject(new Error(`Stockfish ${settings.id} No evaluation data available`));
           analysisPromiseRef.current = null;
         }
         isAnalyzingRef.current = false;
-        setIsAnalyzing(false);
         fenRef.current = null;
         return;
       }
@@ -557,12 +561,12 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       }
 
       if (analysisPromiseRef.current) {
+        setStatus(AnalyzerStatus.Idle);
         analysisPromiseRef.current.resolve(evaluation);
         analysisPromiseRef.current = null;
       }
 
       isAnalyzingRef.current = false;
-      setIsAnalyzing(false);
       setFenBeingAnalyzed(null);
       fenRef.current = null;
       currentOptionsRef.current = null;
@@ -661,7 +665,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   return {
     analyze,
     stop,
-    isAnalyzing,
+    status,
     latestEvaluation,
     engineName,
     fenBeingAnalyzed,
