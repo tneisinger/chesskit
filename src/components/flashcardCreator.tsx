@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, ReactElement } from "react";
-import { GameData, Evaluations, MoveJudgement, ShortMove } from "@/types/chess";
+import { GameData, Evaluations, MoveJudgement } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
 import Spinner from '@/components/spinner';
