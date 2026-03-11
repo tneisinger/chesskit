@@ -4,6 +4,7 @@ import useFenAnalyzer, { StockfishSettings } from '@/hooks/useFenAnalyzer';
 import { parse as parsePGN } from 'pgn-parser';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
 import { AnalyzerStatus } from '@/types/analyzer';
+import { getBookPosition } from '@/utils/bookPositionsContext';
 
 export interface AnalyzePgnOptions {
   analyzeVariations?: boolean;
@@ -194,6 +195,30 @@ export default function usePgnAnalyzerParallel(
     // Generate FENs from PGN
     const allFens = generateFensFromPgn(pgn, options.analyzeVariations);
 
+    let fensToAnalyze: string[] = [];
+    const bookEvaluations: Evaluations = {};
+
+    // Get any evaluations from bookPositions that we can
+    if (stockfishSettings) {
+      if (stockfishSettings.bookPositions) {
+        for (let i = 0; i < allFens.length; i++) {
+          const bookPos = getBookPosition(allFens[i], stockfishSettings.bookPositions);
+          if (bookPos) {
+            bookEvaluations[allFens[i]] = bookPos.pev;
+          } else {
+            fensToAnalyze.push(allFens[i]);
+          }
+        }
+        if (stockfishSettings.setEvaluations) {
+          stockfishSettings.setEvaluations((evs) => ({...evs, ...bookEvaluations }))
+        }
+      }
+    }
+
+    // If no bookEvaluations, then set fensToAnalyze to allFens
+    if (Object.keys(bookEvaluations).length < 1) fensToAnalyze = allFens;
+
+
     if (allFens.length === 0) {
       console.error('No positions to analyze');
       return;
@@ -220,15 +245,24 @@ export default function usePgnAnalyzerParallel(
     }
 
     // Initialize queue and instance busy states
-    queueRef.current = [...allFens]; // Copy all FENs into the queue
+    queueRef.current = [...fensToAnalyze];
     instanceBusyRef.current = new Array(numInstances).fill(false);
 
     // Set up state for new analysis
     setTotalPositions(allFens.length);
-    setCompletedPositions(0);
-    setPgnEvaluations({});
-    isAnalyzingRef.current = true;
-    setStatus(AnalyzerStatus.Analyzing);
+
+    if (Object.keys(bookEvaluations).length > 0) {
+      setCompletedPositions(Object.keys(bookEvaluations).length);
+      setPgnEvaluations(bookEvaluations);
+    } else {
+      setCompletedPositions(0);
+      setPgnEvaluations({});
+    }
+
+    if (fensToAnalyze.length > 0) {
+      isAnalyzingRef.current = true;
+      setStatus(AnalyzerStatus.Analyzing);
+    }
   }, [
     generateFensFromPgn,
     defaultDepth,
@@ -237,6 +271,7 @@ export default function usePgnAnalyzerParallel(
     numInstances,
     availableThreads,
     analyzers,
+    stockfishSettings,
   ]);
 
   // Process positions using queue-based work distribution
