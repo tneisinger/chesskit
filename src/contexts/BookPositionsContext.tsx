@@ -31,8 +31,8 @@ export function BookPositionsProvider({ children }: BookPositionsProviderProps) 
     setError(null);
 
     try {
-      console.log('Fetching book positions from /data/bookPositionsAnalyzed.json...');
-      const response = await fetch('/data/bookPositionsAnalyzed.json');
+      console.log('Fetching book positions from /data/bookPositionsMinified.json...');
+      const response = await fetch('/data/bookPositionsMinified.json');
 
       if (!response.ok) {
         throw new Error(`Failed to load book positions: ${response.statusText}`);
