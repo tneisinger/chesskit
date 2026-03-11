@@ -12,7 +12,9 @@ interface Props {
 }
 
 const EvalerLine = ({ fen, maxLineLengthPx, line, scoreColor }: Props) => {
-  if (line == undefined) return <div className="py-[3px] h-[1.6rem]" />;
+  if (line == undefined || (line.lanLine.length === 1 && line.lanLine[0] === '')) {
+    return <div className="py-[3px] h-[1.6rem]" />;
+  }
 
   const sanLine = convertLanLineToSanLine(line.lanLine, fen);
 

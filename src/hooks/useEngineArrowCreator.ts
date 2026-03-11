@@ -44,7 +44,7 @@ export default function useEngineArrowCreator(
     const newArrows: Arrow[] = [];
 
     // Make an arrow for each line
-    for (let i = 0; i < ev.lines.length; i++ ) {
+    for (let i = 0; i < ev.lines.length; i++) {
       // If the move is not good enough, don't make an arrow for it.
       if (lineJudgements[i] === MoveJudgement.Inaccurate) continue;
       if (lineJudgements[i] === MoveJudgement.Mistake) continue;
@@ -53,6 +53,11 @@ export default function useEngineArrowCreator(
       // Get the 'from' and 'to' squares from the first move of this line.
       const { lanLine } = ev.lines[i];
       const firstLanMove = lanLine.trim().split(' ')[0];
+
+      // If the lanLine is empty, then firstLanMove will be ''
+      // In that case, continue.
+      if (firstLanMove.length < 1 || firstLanMove == undefined) continue;
+
       const { from, to } = lanToShortMove(firstLanMove);
 
       // Determine which ARROW_TYPE to use, which defines the color of the arrow.
