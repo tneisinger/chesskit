@@ -151,11 +151,6 @@ export default function useCurrentMoveAnalyzer(
   }, [numInstances]);
 
   const analyzeCurrentMove = useCallback(async () => {
-    if (!currentMove) {
-      currentMoveAnalysisRef.current = null;
-      setStatus(AnalyzerStatus.Idle);
-      return;
-    }
 
     if (!workersSetupRef.current) {
       console.error('Workers not set up. Call setupWorkers() first.');
