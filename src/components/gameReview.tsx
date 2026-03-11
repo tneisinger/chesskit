@@ -27,7 +27,6 @@ import { updateGameAnalysis } from '@/app/game-review/actions';
 import FlashcardCreator from './flashcardCreator';
 import { useBookPositions } from '@/contexts/BookPositionsContext';
 import { StockfishSettings } from '@/hooks/useFenAnalyzer';
-import { Chess as ChessJS } from 'chess.js';
 
 enum MobileTab {
   Moves = 'Moves',
@@ -103,7 +102,7 @@ const GameReview = ({ game }: Props) => {
   const [isGameEvaluationComplete, setIsGameEvaluationComplete] = useState(false);
 
 
-  const { bookPositions, isLoading, error } = useBookPositions();
+  const { bookPositions } = useBookPositions();
 
 
   // Set up chessboard engine
@@ -123,6 +122,7 @@ const GameReview = ({ game }: Props) => {
     initializeImmediately: false,
     evaluations,
     setEvaluations,
+    bookPositions,
   }
 
 
@@ -464,23 +464,6 @@ const GameReview = ({ game }: Props) => {
               isCreatingFlashcard={isCreatingFlashcard}
               changeIsCreatingFlashcard={setIsCreatingFlashcard}
             />
-            <button onClick={() => {
-              const badFens: string[] = [];
-              if (bookPositions) {
-                Object.values(bookPositions).forEach((bookPosition) => {
-                  const chessjs = new ChessJS();
-                  chessjs.load(bookPosition.pev.fen);
-                  try {
-                    if (bookPosition.pev.bestMove) chessjs.move(bookPosition.pev.bestMove);
-                  } catch (error) {
-                    badFens.push(bookPosition.pev.fen);
-                  }
-                })
-              }
-              console.log('Bad FENs:', badFens.length);
-            }}>
-              debug
-            </button>
           </div>
         </div>
       </div>
