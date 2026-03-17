@@ -14,12 +14,18 @@ export function isBookPosition(fen: string, bookPositions: BookPositions): boole
 }
 
 export function getBookPosition(fen: string, bookPositions: BookPositions): BookPosition | undefined {
-  const bp = bookPositions[makeKey(fen)];
-  if (bp) return bp;
-
-  const altFens = makeAltFensWithEnPassantSquares(fen);
-  for (let i = 0; i < altFens.length; i++) {
-    const bp = bookPositions[makeKey(altFens[i])];
-    if (bp) return bp;
+  let bookPosition = bookPositions[makeKey(fen)];
+  if (bookPosition == undefined) {
+    const altFens = makeAltFensWithEnPassantSquares(fen);
+    for (let i = 0; i < altFens.length; i++) {
+      bookPosition = bookPositions[makeKey(altFens[i])];
+      if (bookPosition != undefined) break;
+    }
   }
+
+  if (bookPosition) {
+    // Replace pev.fen with the input fen because move clocks may differ
+    bookPosition.pev.fen = fen;
+  }
+  return bookPosition;
 }

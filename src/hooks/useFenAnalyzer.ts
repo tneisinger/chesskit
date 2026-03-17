@@ -44,6 +44,7 @@ export interface StockfishSettings {
 export interface Output {
   analyze: (fen: string, options?: AnalyzeOptions) => Promise<PositionEvaluation>;
   stop: () => Promise<void>;
+  newGame: () => Promise<void>;
   latestEvaluation: PositionEvaluation | null;
   engineName: string | null;
   fenBeingAnalyzed: string | null;
@@ -99,6 +100,13 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     reject: (reason: any) => void;
   } | null>(null);
   const isWaitingForSetupReadyRef = useRef<boolean>(false);
+
+  // Promise resolution for newGame
+  const newGamePromiseRef = useRef<{
+    resolve: () => void;
+    reject: (reason: any) => void;
+  } | null>(null);
+  const isWaitingForNewGameReadyRef = useRef<boolean>(false);
 
   // Timeout for maxSeconds
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -270,6 +278,15 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       isWaitingForSetupReadyRef.current = false;
     }
 
+    // Reject pending newGame
+    if (newGamePromiseRef.current) {
+      newGamePromiseRef.current.reject(
+        new Error(`Stockfish ${settings.id} Worker terminated during newGame`)
+      );
+      newGamePromiseRef.current = null;
+      isWaitingForNewGameReadyRef.current = false;
+    }
+
     // Reset setup flag so worker can be re-initialized
     hasStockfishBeenSetup.current = false;
 
@@ -284,6 +301,23 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
     terminateStockfishWorker();
     setStatus(AnalyzerStatus.Uninitialized);
   }, [terminateStockfishWorker, settings.id]);
+
+  const newGame = useCallback((): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (!stockfish || !hasStockfishBeenSetup.current) {
+        reject(new Error(`Worker ${settings.id} not initialized`));
+        return;
+      }
+      if (isAnalyzingRef.current) {
+        reject(new Error(`Worker ${settings.id} cannot call newGame while analyzing`));
+        return;
+      }
+      newGamePromiseRef.current = { resolve, reject };
+      isWaitingForNewGameReadyRef.current = true;
+      stockfish.postMessage('ucinewgame');
+      stockfish.postMessage('isready');
+    });
+  }, [stockfish, settings.id]);
 
   const stop = useCallback((): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -406,6 +440,14 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
           isWaitingForSetupReadyRef.current = false;
           setupPromiseRef.current.resolve();
           setupPromiseRef.current = null;
+          return;
+        }
+
+        // Check if this is readyok from newGame
+        if (isWaitingForNewGameReadyRef.current && newGamePromiseRef.current) {
+          isWaitingForNewGameReadyRef.current = false;
+          newGamePromiseRef.current.resolve();
+          newGamePromiseRef.current = null;
           return;
         }
 
@@ -665,6 +707,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
   return {
     analyze,
     stop,
+    newGame,
     status,
     latestEvaluation,
     engineName,

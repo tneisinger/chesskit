@@ -21,9 +21,8 @@ import { reviewFlashcard, updateFlashcardPgn, deleteFlashcard } from '@/app/flas
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
-import { MoveJudgement, PieceColor, ShortMove, Evaluations } from '@/types/chess';
+import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
-import useFenAnalyzer from '@/hooks/useFenAnalyzer';
 import useCurrentMoveAnalyzer from '@/hooks/useCurrentMoveAnalyzer';
 import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
 import {
@@ -55,6 +54,7 @@ import useWindowSize from '@/hooks/useWindowSize';
 import { getRandom } from '@/utils';
 import usePrevious from '@/hooks/usePrevious';
 import { FEN } from 'cm-chess/src/Chess';
+import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
 
 const COUNTDOWN_START_TIME = 30;
 const MOVE_INCREMENT_SECONDS = 5;
@@ -113,7 +113,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const undoMoveTimeoutRef = useRef<number>(0);
   const resetBoardTimeoutRef = useRef<number>(0);
 
-  // Put all the timeouts into an array for easy cleanup
   const timeoutRefs = [
     opponentMoveTimeoutRef,
     wrongAnswerBlinkTimeoutRef,
@@ -126,7 +125,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const router = useRouter();
 
-  // Create a countdown for the countdownClock component
   const {
     remainingTime,
     pause: pauseClock,
@@ -150,25 +148,18 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     promoteVariation,
   } = useChessboardEngine();
 
-  const [evaluations, setEvaluations] = useState<Evaluations>({});
-  const [engineDepth, setEngineDepth] = useState(18);
-  const [numEngineLines, setNumEngineLines] = useState(2);
-
-
-  const fenAnalyzer = useFenAnalyzer({ numThreads: 8, hashSize: 1024, initializeImmediately: false, evaluations, setEvaluations });
-
+  const context = useFenAnalyzers();
+  const [engineDepth] = useState(18);
 
   const currentMoveAnalyzer = useCurrentMoveAnalyzer(
-    8, // Number of useFenAnalyzer instances to use
     currentMove,
-    {numThreads: 1, hashSize: 128, initializeImmediately: false, evaluations, setEvaluations }, // settings for each instance
     { depth: 18, numLines: 2 }
   );
 
 
   useEngineArrowCreator(
     currentMoveAnalyzer.isOn,
-    evaluations,
+    context.evaluations,
     currentMoveAnalyzer.latestEvaluations,
     currentMove,
     (newArrows) => setArrows(newArrows),
@@ -180,20 +171,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const previousMode = usePrevious(currentMode);
 
 
-  const setupCurrentMoveAnalyzer = useCallback(async (): Promise<void> => {
-    fenAnalyzer.terminateWorker();
-    await currentMoveAnalyzer.setupWorkers();
-  }, [fenAnalyzer.terminateWorker, currentMoveAnalyzer.setupWorkers]);
-
-
-  const setupFenAnalyzer = useCallback(async (): Promise<void> => {
-    await currentMoveAnalyzer.terminateWorkers();
-    await fenAnalyzer.setupWorker();
-  }, [currentMoveAnalyzer.terminateWorkers, fenAnalyzer.setupWorker]);
-
-
   const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
-    // By default, indicate that the move was wrong.
     if (options === undefined || options.indicateThatTheMoveWasWrong) {
       setWrongAnswerCount((blinkCount) => blinkCount + 1);
     } else {
@@ -253,10 +231,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       const result = await reviewFlashcard(currentFlashcard.id, quality);
 
       if (result.success) {
-        // Update the badge count in the navigation
         await refreshDueCount();
         } else {
-          // All done - refresh to show updated stats
           router.refresh();
         }
     } catch (error) {
@@ -279,8 +255,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       throw new Error("Cannot setup opponent move timeout if it is not the opponent's turn");
     }
 
-    // Pick a random next move (which should be an opponent move) and set up a timeout
-    // that will play the move after a short delay.
     const nextMove = getRandom(nextMoves);
     opponentMoveTimeoutRef.current = window.setTimeout(() => {
       playMove(nextMove!);
@@ -307,8 +281,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [lines, currentMove]);
 
 
-  // The user should play an alternative move if 'areLinesForcing' is true and
-  // every relevantLine is complete.
   const shouldUserPlayAnAlternativeMove = useCallback((relevantLines: string[]): boolean => {
     if (!areLinesForcing) return false;
     return relevantLines.every((rLine => lines[rLine].isComplete));
@@ -328,9 +300,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const handleCorrectUserMove = useCallback((relevantLines: string[]) => {
     if (currentMove == undefined) throw new Error('currentMove was undefined');
 
-    // If areLinesForcing, then the only correct move is the best move.
-    // If we have reached this point in the code, we can assume that the user
-    // played the best move.
     if (areLinesForcing) {
       setMoveGrade({ san: currentMove.san, grade: MoveJudgement.Best });
     } else {
@@ -338,7 +307,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setMoveGrade({ san: currentMove.san, grade: j });
     }
 
-    // Check if the user should play an alternative move.
     if (shouldUserPlayAnAlternativeMove(relevantLines)) {
       if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
       setShowAltMoveModal(true);
@@ -347,16 +315,12 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     const nextMoves = getNextMoves(lines, currentMove, {incompleteLinesOnly: true});
 
-    // If there are nextMoves, then there are still moves to be played.
     if (nextMoves.length > 0) {
-      // At this point, the user has played a correct move but there are more moves to play.
-      // If time hasn't expired, add 5 seconds to the countdown clock.
       if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
       setupOpponentMoveTimeout(nextMoves);
       return;
     }
 
-    // If we have reached this point, then a line has been completed.
     markCurrentLineComplete();
   }, [lines, currentMove, remainingTime, addTimeToClock, setupOpponentMoveTimeout,
       shouldUserPlayAnAlternativeMove, markCurrentLineComplete, areLinesForcing]);
@@ -366,31 +330,23 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) throw new Error('flashcard was undefined');
     if (fc.bestMoves[0] == undefined) throw new Error('fc.bestLines was empty');
-    const pev = await fenAnalyzer.analyze(move.fen, { maxDepth: engineDepth, maxSeconds: 60 });
+    const pev = await context.analyze(move.fen, { maxDepth: engineDepth, maxSeconds: 60 });
     return judgePevAgainstBestScore(fc.bestMoves[0].score, pev);
-  }, [fenAnalyzer.analyze, flashcards, flashcardIndex, setupFenAnalyzer, setupCurrentMoveAnalyzer]);
+  }, [context.analyze, flashcards, flashcardIndex, engineDepth]);
 
 
   const handleMoveThatWasNotInFlashcardPgn = useCallback(async () => {
     if (currentMove == undefined) throw new Error('currentMove was undefined');
 
-    // If this is a flashcard with forcing lines (areLinesForcing === true) then
-    // a move not in the pgn is an incorrect move.
     if (areLinesForcing) {
       handleIncorrectUserMove();
-
-    // Otherwise, use the engine to evaluate the move.
     } else {
-      // Use the engine to create a moveGrade
       setIsGradingMove(true);
       const judgement = await gradeMove(currentMove);
       setIsGradingMove(false);
 
-      // Setting the moveGrade will cause a useEffect to run. That useEffect is where the flashcard will
-      // be marked complete if this is not a forcing flashcard (areLinesForcing === false)
       setMoveGrade({ san: currentMove.san, grade: judgement });
 
-      // If the move was worse than good, tell the user that they played an incorrect move.
       if (isMoveJudgementWorseThan(MoveJudgement.Good, judgement)) {
         handleIncorrectUserMove();
       }
@@ -400,7 +356,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const handleUserMove = useCallback(() => {
-    // If in edit mode, we don't need to do anything.
     if (currentMode === Mode.Edit) return;
 
     if (currentMove == undefined) throw new Error('currentMove was undefined');
@@ -409,21 +364,15 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     const relevantLines = getRelevantLessonLines(lines, currentMove);
 
-    // If there are no relevant lines, then the user played a move that was not in
-    // the flashcard pgn.
     if (relevantLines.length < 1) {
       handleMoveThatWasNotInFlashcardPgn();
       return;
     }
 
-    // If there are relevant lines, then a correct move has been played.
     handleCorrectUserMove(relevantLines);
   }, [lines, currentMove, handleMoveThatWasNotInFlashcardPgn, handleCorrectUserMove, currentMode]);
 
 
-  // Setup timeouts that will reset the board and play the opponent move
-  // that will put the board back into the target position of the current
-  // flashcard
   const setupResetBoardTimeouts = useCallback((delay = 800) => {
     const fc = flashcards[flashcardIndex];
     const cmhistory = cmchess.current.history();
@@ -515,7 +464,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       const result = await updateFlashcardPgn(currentFlashcard.id, pgn);
 
       if (result.success) {
-        // Refresh the page data to reflect the saved changes
         router.refresh();
       } else {
         console.error('Error saving flashcard:', result.error);
@@ -536,7 +484,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
       if (result.success) {
         setDeleteStatus(DeleteStatus.Success);
-        // Update the badge count in the navigation
         await refreshDueCount();
       } else {
         console.error('Error deleting flashcard:', result.error);
@@ -575,13 +522,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const handleModeBtnClick = useCallback(() => {
-    // Switching to Practice mode
     if (currentMode === Mode.Edit) {
       setCurrentMode(Mode.Practice);
       handleReplayFlashcardBtnClick(250);
     }
 
-    // Switching to Edit mode
     if (currentMode === Mode.Practice) {
       pauseClock();
       discardUnsavedChanges();
@@ -645,24 +590,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
     const haveAnyLinesBeenCompleted = numIncompleteLinesRef.current < totalLinesRef.current;
 
-    // If areLinesForcing is true, then the user has to complete every line in the pgn.
-    // If there are incomplete lines, reset the board so the user can solve the next line.
     if (areLinesForcing) {
-      // If there are incomplete lines and at least one line has been completed,
-      // that means that the user just solved a line but there are more lines
-      // left to be solved.
       if (numIncompleteLinesRef.current > 0 && haveAnyLinesBeenCompleted) {
-        // Add time to the clock if time hasn't run out
         if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
         setupResetBoardTimeouts();
       }
     }
 
-    // If there are no incomplete lines, then the flashcard is complete.
-    // Also, if areLinesForcing is false (aka this is not a forcing line flashcard) and
-    // ANY lines have been completed, then the flashcard is complete.
     if (numIncompleteLinesRef.current === 0 || (!areLinesForcing && haveAnyLinesBeenCompleted)) {
-      // Pause the clock and mark the flashcard complete
       pauseClock();
       setHasUserCompletedFlashcard(true);
     }
@@ -687,24 +622,18 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       const judgements = judgeScores(fc.userColor, fc.bestMoves.map(({score}) => score));
       setMoveJudgements(judgements);
 
-      // If the judgement of the second best move is Good or better, that means that
-      // there are at least two 'good enough' answers to this flashcard. In that case,
-      // set areLinesForcing to false. Otherwise, set areLinesForcing to true.
       if (isMoveJudgementAtLeast(MoveJudgement.Good, judgements[1])) {
         setAreLinesForcing(false);
       } else {
         setAreLinesForcing(true);
       }
 
-      // Reset the clock for the new flashcard
       resetClock();
 
       loadPgnIntoCmChess(fc.pgn, cmchess.current);
       const cmhistory = cmchess.current.history();
       setHistory(cmhistory);
 
-      // Set to one move before the target position so that we can animate into
-      // the target position.
       setCurrentMove(cmhistory.find((m) => m.ply === fc.positionIdx - 1));
       setOpponentFirstMove(cmhistory.find((m) => m.ply === fc.positionIdx));
       setLines(makeLineStatsRecord(fc.pgn))
@@ -727,7 +656,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       }, 1000);
     }
 
-    // Cleanup: clear the timeout
     return () => {
       if (opponentMoveTimeoutRef.current !== 0) {
         window.clearTimeout(opponentMoveTimeoutRef.current);
@@ -752,7 +680,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   // When wrongAnswerCount changes...
   useEffect(() => {
-    // This prevents undoLastMove() from running on the initial render
     if (wrongAnswerCount < 1) return;
 
     wrongAnswerBlinkTimeoutRef.current = window.setTimeout(() => {
@@ -765,7 +692,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       undoLastMove();
     }, 1300);
 
-    // Cleanup: clear timeouts if effect re-runs or component unmounts
     return () => {
       if (wrongAnswerBlinkTimeoutRef.current !== 0) {
         window.clearTimeout(wrongAnswerBlinkTimeoutRef.current);
@@ -780,38 +706,22 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   useEffect(() => {
-    // If currentMove hasn't changed, do nothing
     if (areCmMovesEqual(currentMove, previousMove)) return;
-
-    // If this is the end of a line, do nothing
     if (isCurrentMoveAtEndOfALine()) return;
-
-    // Do nothing if not in Practice mode
     if (currentMode !== Mode.Practice) return;
-
-    // Toggle the pause state of the clock based on if it is the user's turn or not
     isUsersTurn() ? unpauseClock() : pauseClock();
   }, [isUsersTurn, currentMode]);
 
 
-  // This useEffect handles the situation where a line ends with an opponent move.
-  // It should mark the line complete.
+  // Handle line ending with opponent move
   useEffect(() => {
-    // If currentMove hasn't changed, do nothing
     if (areCmMovesEqual(currentMove, previousMove)) return;
-
-    // If not in practice mode, do nothing
     if (currentMode !== Mode.Practice) return;
-
-    // If it is not the user's turn, do nothing.
     if (colorToMove(currentMove) !== flashcards[flashcardIndex].userColor) return;
 
-    // If there are nextMoves, then there are still moves to be played.
-    // In that case, do nothing.
     const nextMoves = getNextMoves(lines, currentMove, {incompleteLinesOnly: true});
     if (nextMoves.length > 0) return;
 
-    // If we have reached this point, then a line has been completed.
     markCurrentLineComplete();
   }, [lines, currentMove, flashcards, flashcardIndex, currentMode])
 
@@ -835,38 +745,31 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [hasUserCompletedFlashcard])
 
 
-  // Whenever we go into edit mode, setup the currentMoveAnalyzer
-  // When we leave edit mode, terminate the currentMoveAnalyzer workers and turn it off
+  // Whenever we go into edit mode, turn on the currentMoveAnalyzer
+  // When we leave edit mode, turn it off
   useEffect(() => {
     if (previousMode !== currentMode) {
       if (currentMode === Mode.Edit) {
-        setupCurrentMoveAnalyzer();
+        currentMoveAnalyzer.setIsOn(true);
       } else {
         currentMoveAnalyzer.setIsOn(false);
-        currentMoveAnalyzer.terminateWorkers();
       }
     }
-  }, [previousMode, currentMode, setupCurrentMoveAnalyzer])
+  }, [previousMode, currentMode])
 
 
+  // On first load: setup workers and clear evaluations
   useEffect(() => {
-    if (previousMode === currentMode) return;
-    if (currentMode === Mode.Practice) {
-      setupFenAnalyzer();
-    } else if (currentMode === Mode.Edit) {
-      setupCurrentMoveAnalyzer();
-    }
-  }, [currentMode, previousMode, setupFenAnalyzer, setupCurrentMoveAnalyzer]);
-
-
-  useEffect(() => {
-    setupFenAnalyzer();
-
-    // Terminate the workers when the component unmounts
-    return () => {
-      currentMoveAnalyzer.terminateWorkers();
-      fenAnalyzer.terminateWorker();
-    }
+    context.setupWorkers()
+      .then(() => context.newGame())
+      .then(() => context.setEvaluations({}))
+      .catch((error) => {
+        if (error.message?.includes('terminated during setup')) {
+          console.log('Worker setup cancelled due to navigation');
+        } else {
+          console.error('Error setting up workers:', error);
+        }
+      });
   }, [])
 
 
@@ -880,8 +783,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (windowSize.width == undefined || windowSize.height == undefined) {
       boardSize = maxBoardSize;
     } else {
-      // These values are based on the current layout and will need to updated if the
-      // layout changes.
       const maxBoardWidth = Math.min(maxBoardSize, windowSize.width - 625);
       const maxBoardHeight = Math.min(maxBoardSize, windowSize.height - 175);
       boardSize = Math.min(maxBoardWidth, maxBoardHeight);
@@ -918,7 +819,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const engineDisplay = (
     <EngineDisplay
       currentMoveAnalyzer={currentMoveAnalyzer}
-      evaluations={evaluations}
+      evaluations={context.evaluations}
       currentMove={currentMove}
       maxLineLengthPx={rightColumnWidth}
       isSwitchDisabled={currentMode === Mode.Practice}

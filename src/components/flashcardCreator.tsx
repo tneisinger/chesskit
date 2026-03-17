@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, ReactElement } from "react";
-import { GameData, Evaluations, MoveJudgement } from "@/types/chess";
+import { GameData, MoveJudgement } from "@/types/chess";
 import Button, { ButtonStyle } from "./button";
 import { Chess as CmChess, Move } from 'cm-chess/src/Chess';
 import Spinner from '@/components/spinner';
@@ -30,27 +30,22 @@ import { FindForcingLineOptions, Output as ForcingLineFinder} from '@/hooks/useF
 import { AnalyzerStatus } from '@/types/analyzer';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
 import usePrevious from "@/hooks/usePrevious";
+import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
 
 interface Props {
   game: GameData;
-  evaluations: Evaluations;
   currentMove: Move | undefined;
   hasGameBeenAnalyzed: boolean;
   forcingLineFinder: ForcingLineFinder;
-  setupForcingLineFinder: () => Promise<void>;
-  setupCurrentMoveAnalyzer: () => Promise<void>;
   isCreatingFlashcard: boolean;
   changeIsCreatingFlashcard: (b: boolean) => void;
 }
 
 const FlashcardCreator = ({
   game,
-  evaluations,
   currentMove,
   hasGameBeenAnalyzed,
   forcingLineFinder,
-  setupForcingLineFinder,
-  setupCurrentMoveAnalyzer,
   isCreatingFlashcard,
   changeIsCreatingFlashcard,
 }: Props) => {
@@ -66,12 +61,11 @@ const FlashcardCreator = ({
   const flashcardMoveAwaitingConfirmRef = useRef<Move | null>(null);
 
   const { refreshDueCount } = useFlashcardContext();
+  const context = useFenAnalyzers();
+  const evaluations = context.evaluations;
 
 
   // Returns true if the given move represents a position that is flashcard worthy.
-  // If 'isFlashcardRecommended' is true, this function will only return true if
-  // the move that was played in the position was bad enough that a flashcard is
-  // not just acceptable, but recommended.
   const isPositionFlashcardWorthy = useCallback((move: Move, isFlashcardRecommended = false) => {
 
     // Return false if it is not the user's turn
@@ -87,17 +81,12 @@ const FlashcardCreator = ({
       return isMoveJudgementWorseThan(MoveJudgement.Inaccurate, j);
     }
 
-    // otherwise, just return true. This allows the user to make a flashcard from
-    // any position where it is their turn.
     return true;
   }, [game, evaluations]);
 
 
   const getFlashcardMove = useCallback((): Move | null => {
     if (currentMove == undefined) return null;
-    // The flashcard move is the move that represents the starting position
-    // of the flashcard. If we are in a variation, the flashcard move should
-    // be the mainLine parent of the variation.
     let flashcardMove = currentMove;
     if (isInVariation(currentMove)) {
       const parent = getMainLineParentOfVariation(currentMove);
@@ -116,11 +105,6 @@ const FlashcardCreator = ({
       throw new Error("In the flashcardMove position, it is not the user's turn");
     }
 
-    // Create a new CmChess object and play moves into it up to and including
-    // the flashcardMove. Create the flashcardMoveOfCmChess variable, which will contain
-    // a move that is identical to flashcardMove, but it is important that it comes from
-    // our new instance of CmChess. We must use this new version of the flashcardMove in
-    // the 'playForcingLineIntoCmChess' function.
     const cmChess = new CmChess();
     const moves = getLineFromCmMove(flashcardMove);
     let flashcardMoveOfCmChess: Move | undefined;
@@ -135,15 +119,12 @@ const FlashcardCreator = ({
 
     if (doesOnlyOneGoodMoveExist(evaluation)) {
       areLinesForcing = true;
-      // Setup the forcingLineFinder, which involves shutting down the currentMoveAnalyzer.
-      await setupForcingLineFinder();
 
-      // Try to get a forcing line.
+      // Stop current analyses and find forcing line
+      await context.stop();
+
       const options: FindForcingLineOptions = { minDepth: 18, maxLineLength: 11 };
       const forcingLine = await forcingLineFinder.findForcingLine(evaluation, options);
-
-      // Now that we are done finding forcing moves, re-setup the currentMoveAnalyzer
-      await setupCurrentMoveAnalyzer();
 
       if (forcingLine.length > 0) {
         addShortMoveLinesToCmChess(cmChess, [forcingLine], flashcardMoveOfCmChess);
@@ -183,7 +164,7 @@ const FlashcardCreator = ({
       movePlayedInGame: { san: flashcardMove.san, lan: (flashcardMove.from + flashcardMove.to)},
       gameUrl: game.url,
     }
-  }, [game, getFlashcardMove, evaluations, setupCurrentMoveAnalyzer, setupForcingLineFinder, forcingLineFinder])
+  }, [game, getFlashcardMove, evaluations, context.stop, forcingLineFinder])
 
 
   const makeFlashcardPositionHtml = useCallback((): ReactElement => {
@@ -197,17 +178,13 @@ const FlashcardCreator = ({
   }, [getFlashcardMove]);
 
   const shouldHighlightFlashcardBtn = useCallback((): boolean => {
-    // Don't highlight the button if in the starting position.
     if (currentMove === undefined) return false;
 
-    // If we are in a variation that derives from a flashcard recommended position,
-    // the flashcard button should be highlighted
     if (isInVariation(currentMove)) {
       const parent = getMainLineParentOfVariation(currentMove);
       if (parent && isPositionFlashcardWorthy(parent, true)) return true;
     }
 
-    // Otherwise, just check the current move
     return isPositionFlashcardWorthy(currentMove, true);
   }, [currentMove, game])
 
@@ -219,19 +196,14 @@ const FlashcardCreator = ({
   }, [currentMove, gameFlashcards]);
 
 
-  // Return true if a flashcard could be made from the currentMove position,
-  // or if in a variation whose mainline parent position could be a flashcard.
   const isPositionFlashcardRelevant = useCallback((): boolean => {
     if (currentMove == undefined) return false;
 
-    // If we are in a variation that derives from a flashcard worthy position,
-    // return true.
     if (isInVariation(currentMove)) {
       const parent = getMainLineParentOfVariation(currentMove);
       if (parent && isPositionFlashcardWorthy(parent)) return true;
     }
 
-    // If the current position is flashcard worthy, return true
     if (isPositionFlashcardWorthy(currentMove)) return true;
 
     return false;
@@ -239,14 +211,8 @@ const FlashcardCreator = ({
 
 
   const shouldDisableFlashcardBtn = useCallback((): boolean => {
-    // Disable the button if we already have a flashcard for this position
     if (doesFlashcardAlreadyExistForThisPosition()) return true;
-
-    // Don't disable the button if the current position could be a flashcard,
-    // or if we are in a variation whose mainline parent could be a flashcard.
     if (isPositionFlashcardRelevant()) return false;
-
-    // Otherwise, the button should be disabled.
     return true;
   }, [isPositionFlashcardRelevant, doesFlashcardAlreadyExistForThisPosition]);
 
@@ -292,9 +258,7 @@ const FlashcardCreator = ({
   }, [game]);
 
 
-  // When the user navigates to a different move, if we were awaiting them to confirm creating a
-  // flashcard for the previous move, check if we should still be awaiting confirmation for the new move.
-  // If not, reset the confirmation state.
+  // When the user navigates to a different move, reset confirmation state if needed
   useEffect(() => {
     if (currentMove === previousMove) return;
     if (!awaitingUserConfirm) return;

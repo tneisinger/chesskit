@@ -25,8 +25,8 @@ import { Svg } from '@/components/svgIcon';
 import usePrevious from '@/hooks/usePrevious';
 import { updateGameAnalysis } from '@/app/game-review/actions';
 import FlashcardCreator from './flashcardCreator';
-import { useBookPositions } from '@/contexts/BookPositionsContext';
-import { StockfishSettings } from '@/hooks/useFenAnalyzer';
+import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
+import { makeEvaluationsArray } from '@/utils/chess';
 
 enum MobileTab {
   Moves = 'Moves',
@@ -98,12 +98,9 @@ const GameReview = ({ game }: Props) => {
   const [s, dispatch] = useReducer(reducer, initialState);
 
   const [gameEvaluation, setGameEvaluation] = useState<Evaluations>({});
-  const [evaluations, setEvaluations] = useState<Evaluations>({});
   const [isGameEvaluationComplete, setIsGameEvaluationComplete] = useState(false);
 
-
-  const { bookPositions } = useBookPositions();
-
+  const context = useFenAnalyzers();
 
   // Set up chessboard engine
   const {
@@ -115,43 +112,20 @@ const GameReview = ({ game }: Props) => {
     playMove,
   } = useChessboardEngine();
 
-
-  const fenAnalyzerSettings: StockfishSettings = {
-    numThreads: 1,
-    hashSize: 128,
-    initializeImmediately: false,
-    evaluations,
-    setEvaluations,
-    bookPositions,
-  }
-
-
   const currentMoveAnalyzer = useCurrentMoveAnalyzer(
-    8, // Number of useFenAnalyzer instances to use
     currentMove,
-    fenAnalyzerSettings, // settings for each instance
     { depth: 18, numLines: 2 }
   );
 
-
   // Set up PGN analyzer
-  const pgnAnalyzer = usePgnAnalyzerParallel(
-    8, // Number of useFenAnalyzer instances to use
-    fenAnalyzerSettings, // settings for each instance
-    depth,
-    numLines
-  );
+  const pgnAnalyzer = usePgnAnalyzerParallel(depth, numLines);
 
   // Set up forcing line finder
-  const forcingLineFinder = useForcingLineFinderParallel(
-    8,
-    fenAnalyzerSettings, // settings for each instance
-  );
-
+  const forcingLineFinder = useForcingLineFinderParallel();
 
   useEngineArrowCreator(
     currentMoveAnalyzer.isOn,
-    evaluations,
+    context.evaluations,
     currentMoveAnalyzer.latestEvaluations,
     currentMove,
     (newArrows) => dispatch({ type: 'setArrows', arrows: newArrows })
@@ -159,27 +133,6 @@ const GameReview = ({ game }: Props) => {
 
   const prevAnalyzerStatus = usePrevious(pgnAnalyzer.status);
   const prevIsCurrentMoveAnalyzerOn = usePrevious(currentMoveAnalyzer.isOn);
-
-
-  const setupForcingLineFinder = useCallback(async (): Promise<void> => {
-    currentMoveAnalyzer.terminateWorkers();
-    pgnAnalyzer.terminateWorkers();
-    await forcingLineFinder.setupWorkers();
-  }, [currentMoveAnalyzer.terminateWorkers, pgnAnalyzer.terminateWorkers, forcingLineFinder.setupWorkers]);
-
-
-  const setupCurrentMoveAnalyzer = useCallback(async (): Promise<void> => {
-    forcingLineFinder.terminateWorkers();
-    pgnAnalyzer.terminateWorkers();
-    await currentMoveAnalyzer.setupWorkers();
-  }, [forcingLineFinder.terminateWorkers, pgnAnalyzer.terminateWorkers, currentMoveAnalyzer.setupWorkers]);
-
-
-  const setupPgnAnalyzer = useCallback(async (): Promise<void> => {
-    currentMoveAnalyzer.terminateWorkers();
-    forcingLineFinder.terminateWorkers();
-    await pgnAnalyzer.setupWorkers();
-  }, [currentMoveAnalyzer.terminateWorkers, forcingLineFinder.terminateWorkers, pgnAnalyzer.setupWorkers]);
 
 
   // Clear markers and arrows when turning off current move analysis
@@ -195,24 +148,15 @@ const GameReview = ({ game }: Props) => {
   useEffect(() => {
     if (prevAnalyzerStatus == AnalyzerStatus.Analyzing &&
         pgnAnalyzer.status == AnalyzerStatus.Idle &&
-        Object.keys(evaluations).length > 0
+        Object.keys(context.evaluations).length > 0
     ) {
       // Save a copy of evaluations that only contains evaluations of the game
-      setGameEvaluation({...evaluations});
+      setGameEvaluation({...context.evaluations});
       setIsGameEvaluationComplete(true);
-
-      setupCurrentMoveAnalyzer().catch((error) => {
-        // Handle setup errors gracefully (e.g., component unmounted during setup)
-        if (error.message?.includes('terminated during setup')) {
-          console.log('Worker setup cancelled due to navigation');
-        } else {
-          console.error('Error setting up current move analyzer:', error);
-        }
-      });
 
       // Save analysis results to db
       if (game.id) {
-        updateGameAnalysis(game.id, evaluations)
+        updateGameAnalysis(game.id, context.evaluations)
           .then((result:any) => {
             if (result.success) {
               console.log('Game analysis saved successfully');
@@ -225,7 +169,7 @@ const GameReview = ({ game }: Props) => {
           });
       }
     }
-  }, [pgnAnalyzer.status, prevAnalyzerStatus, game.id, evaluations, setupCurrentMoveAnalyzer])
+  }, [pgnAnalyzer.status, prevAnalyzerStatus, game.id, context.evaluations])
 
   // When we get the game...
   useEffect(() => {
@@ -233,7 +177,7 @@ const GameReview = ({ game }: Props) => {
       loadPgnIntoCmChess(game.pgn, cmchess.current);
       setHistory(cmchess.current.history());
       if (game.engineAnalysis) {
-        setEvaluations(game.engineAnalysis);
+        context.setEvaluations(game.engineAnalysis);
         setGameEvaluation(game.engineAnalysis);
         setIsGameEvaluationComplete(true);
       }
@@ -245,49 +189,33 @@ const GameReview = ({ game }: Props) => {
   }, [game]);
 
 
-  // If we have engineAnalysis for the game, setup the currentMoveAnalyer.
-  // Otherwise, setup the pgnAnalyzer so the game can be analyzed.
+  // On first load: setup workers and start analysis
   useEffect(() => {
-    if (game.engineAnalysis) {
-      setupCurrentMoveAnalyzer().catch((error) => {
-        // Handle setup errors gracefully (e.g., component unmounted during setup)
+    context.setupWorkers()
+      .then(() => context.setEvaluations({}))
+      .then(() => context.newGame())
+      .then(() => {
+        if (game.engineAnalysis) {
+          // Game already analyzed, enable current move analyzer
+          currentMoveAnalyzer.setIsOn(true);
+        }
+      })
+      .catch((error) => {
         if (error.message?.includes('terminated during setup')) {
-          // This is expected when navigating away quickly, don't log as error
           console.log('Worker setup cancelled due to navigation');
         } else {
-          console.error('Error setting up current move analyzer:', error);
+          console.error('Error setting up workers:', error);
         }
       });
-    } else {
-      setupPgnAnalyzer().catch((error) => {
-        // Handle setup errors gracefully (e.g., component unmounted during setup)
-        if (error.message?.includes('terminated during setup')) {
-          // This is expected when navigating away quickly, don't log as error
-          console.log('Worker setup cancelled due to navigation');
-        } else {
-          console.error('Error setting up PGN analyzer:', error);
-        }
-      });
-    }
-  }, []);
-
-
-  // Terminate all workers when component unmounts to prevent memory leaks and unnecessary computations
-  useEffect(() => {
-    return () => {
-      currentMoveAnalyzer.terminateWorkers();
-      pgnAnalyzer.terminateWorkers();
-      forcingLineFinder.terminateWorkers();
-    }
   }, []);
 
 
   // While analyzing game, update gameEvaluations every time evaluations changes.
   useEffect(() => {
     if (pgnAnalyzer.status === AnalyzerStatus.Analyzing) {
-      setGameEvaluation(evaluations);
+      setGameEvaluation(context.evaluations);
     }
-  }, [evaluations, pgnAnalyzer.status]);
+  }, [context.evaluations, pgnAnalyzer.status]);
 
 
   // Calculate board size
@@ -329,7 +257,7 @@ const GameReview = ({ game }: Props) => {
   const engineDisplay = (
     <EngineDisplay
       currentMoveAnalyzer={currentMoveAnalyzer}
-      evaluations={evaluations}
+      evaluations={context.evaluations}
       currentMove={currentMove}
       maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
       isSwitchDisabled={!isGameEvaluationComplete}
@@ -455,15 +383,19 @@ const GameReview = ({ game }: Props) => {
           <div style={{ width: rightColWidth }}>
             <FlashcardCreator
               game={game}
-              evaluations={evaluations}
               currentMove={currentMove}
               hasGameBeenAnalyzed={isGameEvaluationComplete}
-              setupForcingLineFinder={setupForcingLineFinder}
-              setupCurrentMoveAnalyzer={setupCurrentMoveAnalyzer}
               forcingLineFinder={forcingLineFinder}
               isCreatingFlashcard={isCreatingFlashcard}
               changeIsCreatingFlashcard={setIsCreatingFlashcard}
             />
+            <button onClick={() => {
+              console.log('debug');
+              console.log(makeEvaluationsArray(context.evaluations));
+              console.log(context.status);
+            }}>
+              debug
+            </button>
           </div>
         </div>
       </div>
