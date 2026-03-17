@@ -80,8 +80,7 @@ interface Props {
 const GameReview = ({ game }: Props) => {
   const windowSize = useWindowSize();
 
-  const [depth, setDepth] = useState(18);
-  const [numLines, setNumLines] = useState(2);
+  const [depth, setDepth] = useState(20);
   const [hasGameLoaded, setHasGameLoaded] = useState(false);
   const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
 
@@ -100,7 +99,7 @@ const GameReview = ({ game }: Props) => {
   const [gameEvaluation, setGameEvaluation] = useState<Evaluations>({});
   const [isGameEvaluationComplete, setIsGameEvaluationComplete] = useState(false);
 
-  const context = useFenAnalyzers();
+  const fenAnalyzers = useFenAnalyzers();
 
   // Set up chessboard engine
   const {
@@ -118,14 +117,14 @@ const GameReview = ({ game }: Props) => {
   );
 
   // Set up PGN analyzer
-  const pgnAnalyzer = usePgnAnalyzerParallel(depth, numLines);
+  const pgnAnalyzer = usePgnAnalyzerParallel(depth, 2);
 
   // Set up forcing line finder
   const forcingLineFinder = useForcingLineFinderParallel();
 
   useEngineArrowCreator(
     currentMoveAnalyzer.isOn,
-    context.evaluations,
+    fenAnalyzers.evaluations,
     currentMoveAnalyzer.latestEvaluations,
     currentMove,
     (newArrows) => dispatch({ type: 'setArrows', arrows: newArrows })
@@ -148,15 +147,15 @@ const GameReview = ({ game }: Props) => {
   useEffect(() => {
     if (prevAnalyzerStatus == AnalyzerStatus.Analyzing &&
         pgnAnalyzer.status == AnalyzerStatus.Idle &&
-        Object.keys(context.evaluations).length > 0
+        Object.keys(fenAnalyzers.evaluations).length > 0
     ) {
       // Save a copy of evaluations that only contains evaluations of the game
-      setGameEvaluation({...context.evaluations});
+      setGameEvaluation({...fenAnalyzers.evaluations});
       setIsGameEvaluationComplete(true);
 
       // Save analysis results to db
       if (game.id) {
-        updateGameAnalysis(game.id, context.evaluations)
+        updateGameAnalysis(game.id, fenAnalyzers.evaluations)
           .then((result:any) => {
             if (result.success) {
               console.log('Game analysis saved successfully');
@@ -169,7 +168,7 @@ const GameReview = ({ game }: Props) => {
           });
       }
     }
-  }, [pgnAnalyzer.status, prevAnalyzerStatus, game.id, context.evaluations])
+  }, [pgnAnalyzer.status, prevAnalyzerStatus, game.id, fenAnalyzers.evaluations])
 
   // When we get the game...
   useEffect(() => {
@@ -177,7 +176,7 @@ const GameReview = ({ game }: Props) => {
       loadPgnIntoCmChess(game.pgn, cmchess.current);
       setHistory(cmchess.current.history());
       if (game.engineAnalysis) {
-        context.setEvaluations(game.engineAnalysis);
+        fenAnalyzers.setEvaluations(game.engineAnalysis);
         setGameEvaluation(game.engineAnalysis);
         setIsGameEvaluationComplete(true);
       }
@@ -191,9 +190,9 @@ const GameReview = ({ game }: Props) => {
 
   // On first load: setup workers and start analysis
   useEffect(() => {
-    context.setupWorkers()
-      .then(() => context.setEvaluations({}))
-      .then(() => context.newGame())
+    fenAnalyzers.setupWorkers()
+      .then(() => fenAnalyzers.setEvaluations({}))
+      .then(() => fenAnalyzers.newGame())
       .then(() => {
         if (game.engineAnalysis) {
           // Game already analyzed, enable current move analyzer
@@ -213,9 +212,9 @@ const GameReview = ({ game }: Props) => {
   // While analyzing game, update gameEvaluations every time evaluations changes.
   useEffect(() => {
     if (pgnAnalyzer.status === AnalyzerStatus.Analyzing) {
-      setGameEvaluation(context.evaluations);
+      setGameEvaluation(fenAnalyzers.evaluations);
     }
-  }, [context.evaluations, pgnAnalyzer.status]);
+  }, [fenAnalyzers.evaluations, pgnAnalyzer.status]);
 
 
   // Calculate board size
@@ -257,7 +256,7 @@ const GameReview = ({ game }: Props) => {
   const engineDisplay = (
     <EngineDisplay
       currentMoveAnalyzer={currentMoveAnalyzer}
-      evaluations={context.evaluations}
+      evaluations={fenAnalyzers.evaluations}
       currentMove={currentMove}
       maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
       isSwitchDisabled={!isGameEvaluationComplete}
@@ -367,8 +366,6 @@ const GameReview = ({ game }: Props) => {
                 analyzePgn={pgnAnalyzer.analyzePgn}
                 depth={depth}
                 changeDepth={setDepth}
-                numLines={numLines}
-                changeNumLines={setNumLines}
                 pgnAnalyzerStatus={pgnAnalyzer.status}
                 pgnAnalysisProgress={pgnAnalyzer.progress}
                 isGameEvaluationComplete={isGameEvaluationComplete}
@@ -391,8 +388,8 @@ const GameReview = ({ game }: Props) => {
             />
             <button onClick={() => {
               console.log('debug');
-              console.log(makeEvaluationsArray(context.evaluations));
-              console.log(context.status);
+              console.log(makeEvaluationsArray(fenAnalyzers.evaluations));
+              console.log(fenAnalyzers.status);
             }}>
               debug
             </button>

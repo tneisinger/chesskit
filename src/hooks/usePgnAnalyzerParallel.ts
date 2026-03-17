@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Evaluations } from '@/types/chess';
 import { AnalyzeInterruptedError } from '@/hooks/useFenAnalyzer';
 import { parse as parsePGN } from 'pgn-parser';
@@ -28,9 +28,9 @@ export default function usePgnAnalyzerParallel(
   defaultDepth: number = 20,
   defaultNumLines: number = 2
 ): Output {
-  const context = useFenAnalyzers();
+  const fenAnalyzers = useFenAnalyzers();
 
-  const [status, setStatus] = useState(AnalyzerStatus.Idle);
+  const [status, setStatus] = useState(fenAnalyzers.status);
   const [pgnEvaluations, setPgnEvaluations] = useState<Evaluations>({});
   const [totalPositions, setTotalPositions] = useState(0);
   const [completedPositions, setCompletedPositions] = useState(0);
@@ -84,13 +84,13 @@ export default function usePgnAnalyzerParallel(
   const cancel = useCallback(() => {
     if (!isAnalyzingRef.current) return;
 
-    context.stop().catch(() => {});
+    fenAnalyzers.stop().catch(() => {});
 
     isAnalyzingRef.current = false;
     setStatus(AnalyzerStatus.Idle);
     setTotalPositions(0);
     setCompletedPositions(0);
-  }, [context.stop]);
+  }, [fenAnalyzers.stop]);
 
   const analyzePgn = useCallback((pgn: string, partialOptions?: AnalyzePgnOptions) => {
     const defaultOptions: Required<Omit<AnalyzePgnOptions, 'maxSecondsPerPosition'>> & { maxSecondsPerPosition: number } = {
@@ -110,7 +110,7 @@ export default function usePgnAnalyzerParallel(
 
     // Check existing evaluations (includes book positions since useFenAnalyzer checks them)
     for (let i = 0; i < allFens.length; i++) {
-      const existingEval = context.evaluations[allFens[i]];
+      const existingEval = fenAnalyzers.evaluations[allFens[i]];
       if (existingEval && existingEval.depth >= options.depth) {
         bookEvaluations[allFens[i]] = existingEval;
       } else {
@@ -165,7 +165,7 @@ export default function usePgnAnalyzerParallel(
         analyzeOptions.maxSeconds = options.maxSecondsPerPosition;
       }
 
-      return context.analyze(fen, analyzeOptions)
+      return fenAnalyzers.analyze(fen, analyzeOptions)
         .then((evaluation) => {
           setPgnEvaluations((prev) => ({ ...prev, [fen]: evaluation }));
           setCompletedPositions((prev) => prev + 1);
@@ -191,9 +191,27 @@ export default function usePgnAnalyzerParallel(
     defaultDepth,
     defaultNumLines,
     cancel,
-    context.analyze,
-    context.evaluations,
+    fenAnalyzers.analyze,
+    fenAnalyzers.evaluations,
   ]);
+
+
+  useEffect(() => {
+    if (status === AnalyzerStatus.Uninitialized && fenAnalyzers.status === AnalyzerStatus.Initializing) {
+      setStatus(AnalyzerStatus.Initializing);
+      return;
+    }
+
+    if (status === AnalyzerStatus.Initializing && fenAnalyzers.status === AnalyzerStatus.Idle) {
+      setStatus(AnalyzerStatus.Idle);
+      return;
+    }
+
+    if (fenAnalyzers.status === AnalyzerStatus.Uninitialized && status !== AnalyzerStatus.Uninitialized) {
+      setStatus(AnalyzerStatus.Uninitialized);
+      return;
+    }
+  }, [fenAnalyzers.status, status]);
 
   const progress =
     totalPositions > 0 ? Math.round((completedPositions / totalPositions) * 100) : 0;

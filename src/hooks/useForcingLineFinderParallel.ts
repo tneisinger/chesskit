@@ -30,7 +30,7 @@ interface FenWithIndex {
 }
 
 export default function useForcingLineFinderParallel(): Output {
-  const context = useFenAnalyzers();
+  const fenAnalyzers = useFenAnalyzers();
 
   const [status, setStatus] = useState<AnalyzerStatus>(AnalyzerStatus.Idle);
   const [forcingMoves, setForcingMoves] = useState<ShortMove[]>([]);
@@ -88,7 +88,7 @@ export default function useForcingLineFinderParallel(): Output {
   const cancel = useCallback(() => {
     if (!isAnalyzingRef.current) return;
 
-    context.stop().catch(() => {});
+    fenAnalyzers.stop().catch(() => {});
 
     if (findForcingLinePromiseRef.current) {
       findForcingLinePromiseRef.current.reject(new Error('Analysis cancelled'));
@@ -100,7 +100,7 @@ export default function useForcingLineFinderParallel(): Output {
     currentOptionsRef.current = null;
     originalPevRef.current = null;
     setLocalEvaluations([]);
-  }, [context.stop]);
+  }, [fenAnalyzers.stop]);
 
   const findForcingLine = useCallback((pev: PositionEvaluation, partialOptions: FindForcingLineOptions): Promise<ShortMove[]> => {
     // Reset forcingMoves state
@@ -147,8 +147,8 @@ export default function useForcingLineFinderParallel(): Output {
       // Submit all FENs to the context queue
       for (const { fen, index } of fens) {
         // Check if we already have this evaluation at the required depth
-        if (context.evaluations[fen] && context.evaluations[fen].depth >= options.minDepth) {
-          setLocalEvaluations((prev) => [...prev, { index, pev: context.evaluations[fen] }]);
+        if (fenAnalyzers.evaluations[fen] && fenAnalyzers.evaluations[fen].depth >= options.minDepth) {
+          setLocalEvaluations((prev) => [...prev, { index, pev: fenAnalyzers.evaluations[fen] }]);
           continue;
         }
 
@@ -161,7 +161,7 @@ export default function useForcingLineFinderParallel(): Output {
           analyzeOptions.maxSeconds = options.maxSecondsPerPosition;
         }
 
-        context.analyze(fen, analyzeOptions)
+        fenAnalyzers.analyze(fen, analyzeOptions)
           .then((evaluation) => {
             setLocalEvaluations((prev) => [...prev, { index, pev: evaluation }]);
           })
@@ -176,7 +176,7 @@ export default function useForcingLineFinderParallel(): Output {
     });
 
     return promise;
-  }, [context.analyze, context.evaluations, cancel, generateFens]);
+  }, [fenAnalyzers.analyze, fenAnalyzers.evaluations, cancel, generateFens]);
 
   // Check for completion or early termination when localEvaluations changes
   useEffect(() => {
@@ -202,7 +202,7 @@ export default function useForcingLineFinderParallel(): Output {
 
     if (hasEnoughMoves || foundNonForcingMove || allComplete) {
       // Stop remaining analyses
-      context.stop().catch(() => {});
+      fenAnalyzers.stop().catch(() => {});
 
       const shortMoves = buildShortMovesFromIndices(originalPev, forcingIndices);
 
@@ -228,7 +228,7 @@ export default function useForcingLineFinderParallel(): Output {
       isAnalyzingRef.current = false;
       setStatus(AnalyzerStatus.Idle);
     }
-  }, [localEvaluations, findForcingIndices, buildShortMovesFromIndices, generateFens, context.stop]);
+  }, [localEvaluations, findForcingIndices, buildShortMovesFromIndices, generateFens, fenAnalyzers.stop]);
 
   return {
     findForcingLine,

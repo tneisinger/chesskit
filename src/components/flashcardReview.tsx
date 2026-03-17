@@ -148,7 +148,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     promoteVariation,
   } = useChessboardEngine();
 
-  const context = useFenAnalyzers();
+  const fenAnalyzers = useFenAnalyzers();
   const [engineDepth] = useState(18);
 
   const currentMoveAnalyzer = useCurrentMoveAnalyzer(
@@ -159,7 +159,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   useEngineArrowCreator(
     currentMoveAnalyzer.isOn,
-    context.evaluations,
+    fenAnalyzers.evaluations,
     currentMoveAnalyzer.latestEvaluations,
     currentMove,
     (newArrows) => setArrows(newArrows),
@@ -330,9 +330,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) throw new Error('flashcard was undefined');
     if (fc.bestMoves[0] == undefined) throw new Error('fc.bestLines was empty');
-    const pev = await context.analyze(move.fen, { maxDepth: engineDepth, maxSeconds: 60 });
+    const pev = await fenAnalyzers.analyze(move.fen, { maxDepth: engineDepth, maxSeconds: 60 });
     return judgePevAgainstBestScore(fc.bestMoves[0].score, pev);
-  }, [context.analyze, flashcards, flashcardIndex, engineDepth]);
+  }, [fenAnalyzers.analyze, flashcards, flashcardIndex, engineDepth]);
 
 
   const handleMoveThatWasNotInFlashcardPgn = useCallback(async () => {
@@ -760,9 +760,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   // On first load: setup workers and clear evaluations
   useEffect(() => {
-    context.setupWorkers()
-      .then(() => context.newGame())
-      .then(() => context.setEvaluations({}))
+    fenAnalyzers.setupWorkers()
+      .then(() => fenAnalyzers.newGame())
+      .then(() => fenAnalyzers.setEvaluations({}))
       .catch((error) => {
         if (error.message?.includes('terminated during setup')) {
           console.log('Worker setup cancelled due to navigation');
@@ -819,7 +819,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const engineDisplay = (
     <EngineDisplay
       currentMoveAnalyzer={currentMoveAnalyzer}
-      evaluations={context.evaluations}
+      evaluations={fenAnalyzers.evaluations}
       currentMove={currentMove}
       maxLineLengthPx={rightColumnWidth}
       isSwitchDisabled={currentMode === Mode.Practice}

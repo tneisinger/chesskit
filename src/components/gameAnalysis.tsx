@@ -8,8 +8,6 @@ interface Props extends GameChartProps {
   analyzePgn: PgnAnalyzer['analyzePgn'];
   depth: number;
   changeDepth: (newDepth: number) => void;
-  numLines: number;
-  changeNumLines: (newNumLines: number) => void;
   pgnAnalyzerStatus: AnalyzerStatus;
   pgnAnalysisProgress: number;
   isGameEvaluationComplete: boolean;
@@ -20,8 +18,6 @@ const GameAnalysis = ({
   analyzePgn,
   depth,
   changeDepth,
-  numLines,
-  changeNumLines,
   pgnAnalyzerStatus,
   pgnAnalysisProgress,
   isGameEvaluationComplete,

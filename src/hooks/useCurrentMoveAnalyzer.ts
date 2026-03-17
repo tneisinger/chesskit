@@ -30,7 +30,7 @@ export default function useCurrentMoveAnalyzer(
   const depth = options?.depth ?? 20;
   const numLines = options?.numLines ?? 2;
 
-  const context = useFenAnalyzers();
+  const fenAnalyzers = useFenAnalyzers();
 
   const [isOn, setIsOn] = useState(false);
   const [status, setStatus] = useState<AnalyzerStatus>(AnalyzerStatus.Idle);
@@ -40,10 +40,10 @@ export default function useCurrentMoveAnalyzer(
   const currentAnalysisFenRef = useRef<string | null>(null);
 
   const doWeAlreadyHaveEvaluation = useCallback((fen: string): boolean => {
-    const fenEval = context.evaluations[fen];
+    const fenEval = fenAnalyzers.evaluations[fen];
     if (fenEval && fenEval.depth >= depth) return true;
     return false;
-  }, [context.evaluations, depth]);
+  }, [fenAnalyzers.evaluations, depth]);
 
   const analyzeCurrentMove = useCallback(async () => {
     const fen = getFen(currentMove);
@@ -64,7 +64,7 @@ export default function useCurrentMoveAnalyzer(
     setStatus(AnalyzerStatus.Analyzing);
 
     try {
-      await context.analyze(fen, { maxDepth: depth, numLines });
+      await fenAnalyzers.analyze(fen, { maxDepth: depth, numLines });
 
       if (currentAnalysisFenRef.current === fen) {
         currentAnalysisFenRef.current = null;
@@ -82,18 +82,18 @@ export default function useCurrentMoveAnalyzer(
         setStatus(AnalyzerStatus.Idle);
       }
     }
-  }, [currentMove, depth, numLines, doWeAlreadyHaveEvaluation, context.analyze]);
+  }, [currentMove, depth, numLines, doWeAlreadyHaveEvaluation, fenAnalyzers.analyze]);
 
   // When isOn changes to false, stop analysis
   useEffect(() => {
     if (prevIsOn && !isOn) {
-      context.stop().catch(error => {
+      fenAnalyzers.stop().catch(error => {
         console.error('Error stopping analyzers:', error);
       });
       currentAnalysisFenRef.current = null;
       setStatus(AnalyzerStatus.Idle);
     }
-  }, [isOn, prevIsOn, context.stop]);
+  }, [isOn, prevIsOn, fenAnalyzers.stop]);
 
   // When isOn is true and currentMove changes, analyze
   useEffect(() => {
@@ -117,8 +117,8 @@ export default function useCurrentMoveAnalyzer(
     status,
     isOn,
     setIsOn,
-    latestEvaluations: context.latestEvaluations,
-    engineName: context.engineName,
+    latestEvaluations: fenAnalyzers.latestEvaluations,
+    engineName: fenAnalyzers.engineName,
     depth,
     numLines,
   };

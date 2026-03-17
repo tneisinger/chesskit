@@ -61,8 +61,8 @@ const FlashcardCreator = ({
   const flashcardMoveAwaitingConfirmRef = useRef<Move | null>(null);
 
   const { refreshDueCount } = useFlashcardContext();
-  const context = useFenAnalyzers();
-  const evaluations = context.evaluations;
+  const fenAnalyzers = useFenAnalyzers();
+  const evaluations = fenAnalyzers.evaluations;
 
 
   // Returns true if the given move represents a position that is flashcard worthy.
@@ -121,7 +121,7 @@ const FlashcardCreator = ({
       areLinesForcing = true;
 
       // Stop current analyses and find forcing line
-      await context.stop();
+      await fenAnalyzers.stop();
 
       const options: FindForcingLineOptions = { minDepth: 18, maxLineLength: 11 };
       const forcingLine = await forcingLineFinder.findForcingLine(evaluation, options);
@@ -164,7 +164,7 @@ const FlashcardCreator = ({
       movePlayedInGame: { san: flashcardMove.san, lan: (flashcardMove.from + flashcardMove.to)},
       gameUrl: game.url,
     }
-  }, [game, getFlashcardMove, evaluations, context.stop, forcingLineFinder])
+  }, [game, getFlashcardMove, evaluations, fenAnalyzers.stop, forcingLineFinder])
 
 
   const makeFlashcardPositionHtml = useCallback((): ReactElement => {
