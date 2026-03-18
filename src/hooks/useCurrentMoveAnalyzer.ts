@@ -33,7 +33,7 @@ export default function useCurrentMoveAnalyzer(
   const fenAnalyzers = useFenAnalyzers();
 
   const [isOn, setIsOn] = useState(false);
-  const [status, setStatus] = useState<AnalyzerStatus>(AnalyzerStatus.Idle);
+  const [status, setStatus] = useState<AnalyzerStatus>(fenAnalyzers.status);
 
   const prevIsOn = usePrevious(isOn);
   const previousMove = usePrevious(currentMove);
@@ -112,6 +112,24 @@ export default function useCurrentMoveAnalyzer(
       currentAnalysisFenRef.current = null;
     }
   }, [isOn, prevIsOn, currentMove, previousMove, analyzeCurrentMove]);
+
+
+  useEffect(() => {
+    if (status === AnalyzerStatus.Uninitialized && fenAnalyzers.status === AnalyzerStatus.Initializing) {
+      setStatus(AnalyzerStatus.Initializing);
+      return;
+    }
+
+    if (status === AnalyzerStatus.Initializing && fenAnalyzers.status === AnalyzerStatus.Idle) {
+      setStatus(AnalyzerStatus.Idle);
+      return;
+    }
+
+    if (fenAnalyzers.status === AnalyzerStatus.Uninitialized && status !== AnalyzerStatus.Uninitialized) {
+      setStatus(AnalyzerStatus.Uninitialized);
+      return;
+    }
+  }, [fenAnalyzers.status, status]);
 
   return {
     status,
