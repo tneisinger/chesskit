@@ -1,8 +1,12 @@
+import { useState, useCallback, useEffect } from 'react';
 import Button from '@/components/button';
 import Spinner from '@/components/spinner';
 import GameChart, { Props as GameChartProps } from '@/components/gameChart';
 import { Output as PgnAnalyzer } from '@/hooks/usePgnAnalyzerParallel';
 import { AnalyzerStatus } from '@/types/analyzer';
+import usePrevious from '@/hooks/usePrevious';
+
+const ANALYZE_OPTIONS = { analyzeVariations: false, maxSecondsPerPosition: 60 * 3 };
 
 interface Props extends GameChartProps {
   analyzePgn: PgnAnalyzer['analyzePgn'];
@@ -27,21 +31,41 @@ const GameAnalysis = ({
   history,
   width,
 }: Props) => {
-  const handleAnalyzeGame = () => {
-    analyzePgn(game.pgn, { analyzeVariations: false, maxSecondsPerPosition: 60 * 4 });
-  }
+  const [analyzeWhenReady, setAnalyzeWhenReady] = useState(false);
+  const prevAnalyzerStatus = usePrevious(pgnAnalyzerStatus);
+
+
+  const handleAnalyzeGame = useCallback(() => {
+    if (pgnAnalyzerStatus === AnalyzerStatus.Initializing) {
+      setAnalyzeWhenReady(true);
+    } else {
+      analyzePgn(game.pgn, ANALYZE_OPTIONS);
+    }
+  }, [analyzePgn, pgnAnalyzerStatus, game.pgn]);
+
+
+  useEffect(() => {
+    if (prevAnalyzerStatus === AnalyzerStatus.Initializing &&
+        pgnAnalyzerStatus === AnalyzerStatus.Idle &&
+        analyzeWhenReady
+    ) {
+      analyzePgn(game.pgn, ANALYZE_OPTIONS);
+      setAnalyzeWhenReady(false)
+    }
+  }, [pgnAnalyzerStatus, prevAnalyzerStatus, analyzeWhenReady, analyzePgn, game.pgn]);
+
 
   return (
     <div className="bg-radial from-stone-600 to-stone-800 rounded-md" style={{ width, height: '100%' }}>
-      {pgnAnalyzerStatus === AnalyzerStatus.Initializing && (
+      {analyzeWhenReady && pgnAnalyzerStatus === AnalyzerStatus.Initializing && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
           <p className="text-lg font-bold">Loading Game Analyzer</p>
           <Spinner white />
         </div>
       )}
-      {Object.keys(gameEvaluation).length < 1 && pgnAnalyzerStatus === AnalyzerStatus.Idle && (
+      {!analyzeWhenReady && Object.keys(gameEvaluation).length < 1 && pgnAnalyzerStatus !== AnalyzerStatus.Analyzing && (
         <div className='flex flex-col h-full justify-center items-center gap-7'>
-          <Button onClick={handleAnalyzeGame} disabled={pgnAnalyzerStatus !== AnalyzerStatus.Idle}>
+          <Button onClick={handleAnalyzeGame}>
             Analyze Game
           </Button>
           <div className='flex flex-row gap-8'>
