@@ -188,15 +188,15 @@ const GameReview = ({ game }: Props) => {
   }, [game]);
 
 
-  // On first load: setup workers and start analysis
+  // On first load: setup workers, reset evaluations, and prepare for a new game
   useEffect(() => {
     fenAnalyzers.setupWorkers()
-      .then(() => fenAnalyzers.setEvaluations({}))
-      .then(() => fenAnalyzers.newGame())
       .then(() => {
+        fenAnalyzers.newGame();
         if (game.engineAnalysis) {
-          // Game already analyzed, enable current move analyzer
-          currentMoveAnalyzer.setIsOn(true);
+          fenAnalyzers.setEvaluations(game.engineAnalysis);
+        } else {
+          fenAnalyzers.setEvaluations({})
         }
       })
       .catch((error) => {
