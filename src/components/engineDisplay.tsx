@@ -79,7 +79,12 @@ const EngineDisplay = ({
 
   const makeDepthString = useCallback((): string => {
     if (!currentMoveAnalyzer.isOn) return '';
-    const renderString = (d: number) => `Depth ${d}/${currentMoveAnalyzer.depth}`;
+    const renderString = (d: number) => {
+      if (d <= currentMoveAnalyzer.depth) {
+        return `Depth ${d}/${currentMoveAnalyzer.depth}`;
+      }
+      return `Depth ${d}`;
+    }
 
     if (currentEvaluation == undefined) return renderString(0);
 
