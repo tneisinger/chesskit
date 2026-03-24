@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { Flashcard } from '@/db/schema';
 import Chessboard from '@/components/Chessboard';
 import BlinkOverlay from '@/components/blinkOverlay';
@@ -45,6 +45,9 @@ import {
   judgePevAgainstBestScore,
   isMoveJudgementWorseThan,
   isMoveJudgementAtLeast,
+  sanToShortMove,
+  convertSanLineToShortMoves,
+  areMovesEqual,
 } from '@/utils/chess';
 import { LineStats, Mode } from '@/types/lesson';
 import { makeLineStatsRecord, getRelevantLessonLines, getNextMoves } from '@/utils/lesson';
@@ -55,6 +58,7 @@ import { getRandom } from '@/utils';
 import usePrevious from '@/hooks/usePrevious';
 import { FEN } from 'cm-chess/src/Chess';
 import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
+import { parsePGN } from '@/utils/chess';
 
 const COUNTDOWN_START_TIME = 30;
 const MOVE_INCREMENT_SECONDS = 5;
@@ -87,7 +91,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
-  const [opponentFirstMove, setOpponentFirstMove] = useState<Move | undefined | null>(null);
+  const [opponentFirstMove, setOpponentFirstMove] = useState<ShortMove | undefined | null>(null);
   const [moveJudgements, setMoveJudgements] = useState<MoveJudgement[]>([]);
   const [areLinesForcing, setAreLinesForcing] = useState<boolean | null>(null);
   const [lines, setLines] = useState<Record<string, LineStats>>({});
@@ -169,6 +173,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const previousLines = usePrevious(lines);
   const previousMoveGrade = usePrevious(moveGrade);
   const previousMode = usePrevious(currentMode);
+  const prevOpponentFirstMove = usePrevious(opponentFirstMove);
 
 
   const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
@@ -226,7 +231,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const saveFlashcardSolveResult = async (quality: ReviewQuality) => {
     setIsSubmitting(true);
-    setIsSubmitting(false);
     try {
       const result = await reviewFlashcard(currentFlashcard.id, quality);
 
@@ -414,6 +418,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     resetClock();
     setNumHintsGiven(0);
     setNumShowMovesGiven(0);
+    hasSubmittedRef.current = false;
   }, [flashcards, flashcardIndex, setupResetBoardTimeouts, resetClock]);
 
 
@@ -601,7 +606,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       pauseClock();
       setHasUserCompletedFlashcard(true);
     }
-  }, [lines, areLinesForcing, previousLines, setupResetBoardTimeouts, pauseClock]);
+  }, [lines, areLinesForcing, previousLines, setupResetBoardTimeouts, pauseClock, remainingTime]);
 
 
   // When the flashcardIndex changes...
@@ -615,6 +620,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     setNumShowMovesGiven(0);
     numIncompleteLinesRef.current = null;
     totalLinesRef.current = null;
+    hasSubmittedRef.current = false;
 
     const fc = flashcards[flashcardIndex];
     if (fc != undefined) {
@@ -630,12 +636,24 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
       resetClock();
 
-      loadPgnIntoCmChess(fc.pgn, cmchess.current);
-      const cmhistory = cmchess.current.history();
-      setHistory(cmhistory);
+      const parsedPgn = parsePGN(fc.pgn);
+      if (parsedPgn.length !== 1) throw new Error('parsedPgn length was not 1');
+      const parsedMoves = parsedPgn[0].moves.map((m) => m.move);
+      const initialMoves = parsedMoves.slice(0, fc.positionIdx - 1);
+      initialMoves.forEach((move) => {
+        const result = cmchess.current.move(move);
+        if (result == undefined) throw new Error('bad move');
+      })
 
-      setCurrentMove(cmhistory.find((m) => m.ply === fc.positionIdx - 1));
-      setOpponentFirstMove(cmhistory.find((m) => m.ply === fc.positionIdx));
+
+      // loadPgnIntoCmChess(fc.pgn, cmchess.current);
+      const cmHistory = cmchess.current.history();
+      setHistory(cmHistory);
+
+      setCurrentMove(cmHistory[cmHistory.length - 1]);
+
+      const shortMoves = convertSanLineToShortMoves(parsedMoves);
+      setOpponentFirstMove(shortMoves[cmHistory.length]);
       setLines(makeLineStatsRecord(fc.pgn))
       setBoardFenOverride(undefined);
     } else {
@@ -650,19 +668,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   // Play the opponent move after a slight delay
   useEffect(() => {
     if (opponentFirstMove) {
+      if (prevOpponentFirstMove && areMovesEqual(opponentFirstMove, prevOpponentFirstMove)) return;
       opponentMoveTimeoutRef.current = window.setTimeout(() => {
-        setCurrentMove(opponentFirstMove);
+        playMove(opponentFirstMove);
         setOpponentFirstMove(null);
       }, 1000);
     }
-
-    return () => {
-      if (opponentMoveTimeoutRef.current !== 0) {
-        window.clearTimeout(opponentMoveTimeoutRef.current);
-        opponentMoveTimeoutRef.current = 0;
-      }
-    };
-  }, [opponentFirstMove]);
+  }, [prevOpponentFirstMove, opponentFirstMove, playMove]);
 
 
   // Cleanup timeouts on unmount
@@ -735,8 +747,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [moveGrade, previousMoveGrade, areLinesForcing])
 
 
+  // Save flashcard result only once when completed
+  const hasSubmittedRef = useRef(false);
+  const completionTimeRef = useRef<number>(0);
+
   useEffect(() => {
-    if (hasUserCompletedFlashcard) {
+    if (hasUserCompletedFlashcard && !hasSubmittedRef.current) {
+      hasSubmittedRef.current = true;
+      completionTimeRef.current = remainingTime;
       const reviewQuality = getReviewQuality();
       if (reviewQuality != null) {
         saveFlashcardSolveResult(reviewQuality)
@@ -750,7 +768,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   useEffect(() => {
     if (previousMode !== currentMode) {
       if (currentMode === Mode.Edit) {
-        currentMoveAnalyzer.setIsOn(true);
+        // currentMoveAnalyzer.setIsOn(true);
       } else {
         currentMoveAnalyzer.setIsOn(false);
       }
@@ -790,7 +808,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }
 
 
-  const movesDisplay = (
+  const movesDisplay = useMemo(() => (
     <NewMovesDisplay
       history={history}
       currentMove={currentMove}
@@ -800,42 +818,76 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       contextMenu={makeContextMenu()}
       keyMoves={[history[currentFlashcard.positionIdx - 1]]}
     />
-  );
+  ), [history, currentMove, currentFlashcard.positionIdx]);
 
 
-  const arrowButtons = (
+  const arrowButtons = useMemo(() => (
     <ArrowButtons
       history={history}
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
       marginTop={0}
     />
-  );
+  ), [history, currentMove]);
 
-  const rightColumnWidth = 300;
+  const leftColWidth = 275;
+  const rightColWidth = 275;
   const columnGapWidth = 8;
-  const mainDivWidth = boardSize + rightColumnWidth + columnGapWidth;
+  const mainDivWidth = leftColWidth + boardSize + rightColWidth + (columnGapWidth * 2);
 
-  const engineDisplay = (
+  const engineDisplay = useMemo(() => (
     <EngineDisplay
       currentMoveAnalyzer={currentMoveAnalyzer}
       evaluations={fenAnalyzers.evaluations}
       currentMove={currentMove}
-      maxLineLengthPx={rightColumnWidth}
+      maxLineLengthPx={rightColWidth}
       isSwitchDisabled={currentMode === Mode.Practice}
       switchDisabledTooltip='Complete the flashcard to unlock the engine'
       showMoveJudgements={false}
       colorLineScores={true}
     />
-  );
-
+  ), [currentMoveAnalyzer, fenAnalyzers.evaluations, currentMove, rightColWidth, currentMode]);
 
   return (
     <div className="flex flex-col items-center gap-3" style={{ width: mainDivWidth }}>
       {/* First row  */}
       <div className="flex flex-row w-full max-w-[1400px]">
 
-        {/* Left Column - Chessboard */}
+        {/* Left Column */}
+        <div className="flex justify-start" style={{width: rightColWidth + columnGapWidth}}>
+          <div className="flex flex-col gap-2" style={{width: rightColWidth, height: boardSize }}>
+            {useMemo(() => (
+              <div className="flex flex-col gap-4 w-full bg-background-page rounded-md p-2 text-center">
+                <h1 className="text-2xl font-bold">Flashcard Review</h1>
+                <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
+                <div className="flex gap-4 text-sm text-gray-400 justify-center">
+                  <div>Total: <span className="font-semibold text-foreground">{stats.total}</span></div>
+                  <div>Due: <span className="font-semibold text-foreground">{stats.due}</span></div>
+                </div>
+              </div>
+            ), [flashcardIndex, flashcards.length, stats.total, stats.due])}
+            {useMemo(() => (
+              <FlashcardDetails flashcard={currentFlashcard} />
+            ), [currentFlashcard])}
+            {useMemo(() => (
+              <FlashcardFeedback
+                dueFlashcards={flashcards}
+                flashcardIndex={flashcardIndex}
+                currentMove={currentMove}
+                isFlashcardComplete={hasUserCompletedFlashcard}
+                onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
+                onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
+                numWrongAnswers={wrongAnswerCount}
+                numHintsGiven={numHintsGiven}
+                numShowMovesGiven={numShowMovesGiven}
+                isGradingMove={isGradingMove}
+                moveGrade={moveGrade}
+              />
+            ), [flashcards, flashcardIndex, currentMove, hasUserCompletedFlashcard, wrongAnswerCount, numHintsGiven, numShowMovesGiven, isGradingMove, moveGrade])}
+          </div>
+        </div>
+
+        {/* Chessboard */}
         <div className="relative" style={{ width: boardSize }}>
           <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
           <AltMoveModal
@@ -855,32 +907,39 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             onConfirmedFlashcardDelete={handleConfirmedFlashcardDelete}
             deleteStatus={deleteStatus}
           />
-          <Chessboard
-            currentMove={currentMove}
-            boardSize={boardSize}
-            orientation={currentFlashcard.userColor}
-            allowInteraction={currentMode === Mode.Edit ? true : isUsersTurn()}
-            playMove={playMove}
-            afterUserMove={handleUserMove}
-            animate={true}
-            markers={markers}
-            fenOverride={boardFenOverride}
-            arrows={arrows}
-          />
+          {useMemo(() => {
+            const allowInteraction = currentMode === Mode.Edit ? true : isUsersTurn();
+            return (
+              <Chessboard
+                currentMove={currentMove}
+                boardSize={boardSize}
+                orientation={currentFlashcard.userColor}
+                allowInteraction={allowInteraction}
+                playMove={playMove}
+                afterUserMove={handleUserMove}
+                animate={true}
+                markers={markers}
+                fenOverride={boardFenOverride}
+                arrows={arrows}
+              />
+            );
+          }, [currentMove, boardSize, currentFlashcard.userColor, currentMode, markers, boardFenOverride, arrows])}
         </div>
 
         {/* Right column */}
-        <div className="flex justify-end" style={{width: rightColumnWidth + columnGapWidth}}>
-          <div className="flex" style={{width: rightColumnWidth, height: boardSize }}>
+        <div className="flex justify-end" style={{width: rightColWidth + columnGapWidth}}>
+          <div className="flex" style={{width: rightColWidth, height: boardSize }}>
             <div className="flex flex-col items-center w-full flex-1 gap-2">
-              {currentMode === Mode.Edit && (
+              {currentMode !== Mode.Practice && (
+                <div className="flex bg-background-page w-full rounded-md min-h-4">
+                  {engineDisplay}
+                </div>
+              )}
+              <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
+                {movesDisplay}
+              </div>
+              {currentMode === Mode.Edit && useMemo(() => (
                 <>
-                  <div className="flex bg-background-page w-full rounded-md min-h-4">
-                    {engineDisplay}
-                  </div>
-                  <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
-                    {movesDisplay}
-                  </div>
                   <FlashcardEditButtons
                     onDiscardChangesBtnClick={discardUnsavedChanges}
                     onSaveChangesBtnClick={saveFlashcardPgnChanges}
@@ -889,35 +948,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                     showSaveAndUndoBtns={areLinesForcing === true}
                   />
                 </>
-              )}
-              {currentMode !== Mode.Edit && (
-                <div className="flex flex-col gap-2 flex-1">
-                  <div className="flex flex-col gap-4 w-full bg-background-page rounded-md p-2 text-center">
-                    <h1 className="text-2xl font-bold">Flashcard Review</h1>
-                    <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
-                    <div className="flex gap-4 text-sm text-gray-400 justify-center">
-                      <div>Total: <span className="font-semibold text-foreground">{stats.total}</span></div>
-                      <div>Due: <span className="font-semibold text-foreground">{stats.due}</span></div>
-                      <div>Learning: <span className="font-semibold text-foreground">{stats.learning}</span></div>
-                      <div>Mature: <span className="font-semibold text-foreground">{stats.mature}</span></div>
-                    </div>
-                  </div>
-                  <FlashcardDetails flashcard={currentFlashcard} />
-                  <FlashcardFeedback
-                    dueFlashcards={flashcards}
-                    flashcardIndex={flashcardIndex}
-                    currentMove={currentMove}
-                    isFlashcardComplete={hasUserCompletedFlashcard}
-                    onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
-                    onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
-                    numWrongAnswers={wrongAnswerCount}
-                    numHintsGiven={numHintsGiven}
-                    numShowMovesGiven={numShowMovesGiven}
-                    isGradingMove={isGradingMove}
-                    moveGrade={moveGrade}
-                  />
-                </div>
-              )}
+              ), [history, areLinesForcing])}
             </div>
           </div>
         </div>
@@ -926,41 +957,54 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       {/* Second Row  */}
       <div className="flex flex-row w-full max-w-[1400px]">
 
+
         {/* Left Column */}
+        <div className="flex justify-start" style={{width: rightColWidth + columnGapWidth}}>
+          <div className="flex" style={{width: rightColWidth }}>
+          </div>
+        </div>
+
+        {/* Center Column */}
         <div className="relative" style={{ width: boardSize }}>
           <div className="flex justify-center">
             <div className="flex flex-1 justify-between items-center">
               <div className="basis-32">
-                <HintButtons
-                  currentMove={currentMove}
-                  giveHint={giveHint}
-                  showMove={showMoves}
-                  hintButtonText="Show Hint"
-                  showButtonText="Show Move"
-                  buttonSize={ButtonSize.Normal}
-                />
+                {useMemo(() => (
+                  <HintButtons
+                    currentMove={currentMove}
+                    giveHint={giveHint}
+                    showMove={showMoves}
+                    hintButtonText="Show Hint"
+                    showButtonText="Show Move"
+                    buttonSize={ButtonSize.Normal}
+                  />
+                ), [currentMove])}
               </div>
               <div className="ml-auto mr-auto">
-                {currentMode === Mode.Practice && (
-                  <Button
-                    onClick={handleModeBtnClick}
-                    disabled={!hasUserCompletedFlashcard}
-                  >
-                    Edit Flashcard
-                  </Button>
-                )}
-                {currentMode === Mode.Edit && (
-                  <div className="flex flex-row gap-4">
-                    <Button onClick={handleModeBtnClick}>
-                      Replay
-                    </Button>
-                    {(hasUserCompletedFlashcard && flashcardIndex < flashcards.length - 1) && (
-                      <Button buttonStyle={ButtonStyle.Primary} onClick={handleNextFlashcardBtnClick}>
-                        Next Flashcard
+                {useMemo(() => (
+                  <>
+                    {currentMode === Mode.Practice && (
+                      <Button
+                        onClick={handleModeBtnClick}
+                        disabled={!hasUserCompletedFlashcard}
+                      >
+                        Edit Flashcard
                       </Button>
                     )}
-                  </div>
-                )}
+                    {currentMode === Mode.Edit && (
+                      <div className="flex flex-row gap-4">
+                        <Button onClick={handleModeBtnClick}>
+                          Replay
+                        </Button>
+                        {(hasUserCompletedFlashcard && flashcardIndex < flashcards.length - 1) && (
+                          <Button buttonStyle={ButtonStyle.Primary} onClick={handleNextFlashcardBtnClick}>
+                            Next Flashcard
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ), [currentMode, hasUserCompletedFlashcard, flashcardIndex, flashcards.length])}
               </div>
               <div className="flex justify-end basis-32">
                 <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
@@ -970,8 +1014,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         </div>
 
         {/* Right column */}
-        <div className="flex justify-center" style={{width: rightColumnWidth, marginLeft: columnGapWidth}}>
-            {currentMode === Mode.Edit && arrowButtons}
+        <div className="flex justify-center" style={{width: rightColWidth, marginLeft: columnGapWidth}}>
+          {arrowButtons}
         </div>
       </div>
     </div>
