@@ -23,6 +23,7 @@ export interface CreateFlashcardInput {
   bestMoves: ScoredMove[];
   movePlayedInGame: { san: string, lan: string };
   gameUrl?: string;
+  areLinesForcing: boolean;
 }
 
 /**
@@ -69,6 +70,7 @@ export async function createFlashcard(
       bestMoves: input.bestMoves,
       movePlayedInGame: input.movePlayedInGame,
       gameUrl: input.gameUrl,
+      areLinesForcing: input.areLinesForcing,
       repetitions: sm2.repetitions,
       easinessFactor: efToInt(sm2.easinessFactor),
       interval: sm2.interval,

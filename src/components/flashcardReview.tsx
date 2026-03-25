@@ -629,11 +629,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       const judgements = judgeScores(fc.userColor, fc.bestMoves.map(({score}) => score));
       setMoveJudgements(judgements);
 
-      if (isMoveJudgementAtLeast(MoveJudgement.Good, judgements[1])) {
-        setAreLinesForcing(false);
-      } else {
-        setAreLinesForcing(true);
-      }
+      // Use the areLinesForcing value stored in the database
+      setAreLinesForcing(fc.areLinesForcing);
 
       resetClock();
 
@@ -990,7 +987,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
               <div className="ml-auto mr-auto">
                 {useMemo(() => (
                   <>
-                    {currentMode === Mode.Practice && (
+                    {currentMode !== Mode.Edit && (
                       <Button
                         onClick={handleModeBtnClick}
                         disabled={!hasUserCompletedFlashcard}

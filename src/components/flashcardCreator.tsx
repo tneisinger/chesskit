@@ -163,6 +163,7 @@ const FlashcardCreator = ({
       bestMoves: getScoredBestMovesFromPev(flashcardPev),
       movePlayedInGame: { san: flashcardMove.san, lan: (flashcardMove.from + flashcardMove.to)},
       gameUrl: game.url,
+      areLinesForcing,
     }
   }, [game, getFlashcardMove, evaluations, fenAnalyzers.stop, forcingLineFinder])
 

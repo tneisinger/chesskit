@@ -143,6 +143,7 @@ export const flashcards = sqliteTable("flashcards", {
     .notNull()
     .$type<{ san: string, lan: string}>(),
   gameUrl: text("game_url"),
+	areLinesForcing: integer("are_lines_forcing", { mode: "boolean" }).notNull(),
 
 	// SuperMemo-2 algorithm fields
 	repetitions: integer("repetitions").notNull().default(0),
