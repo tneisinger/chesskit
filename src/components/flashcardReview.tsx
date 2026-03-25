@@ -360,7 +360,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const handleUserMove = useCallback(() => {
-    if (currentMode === Mode.Edit) return;
+    if (currentMode !== Mode.Practice) return;
 
     if (currentMove == undefined) throw new Error('currentMove was undefined');
     const move: ShortMove = { from: currentMove.from, to: currentMove.to };
@@ -409,6 +409,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const handleReplayFlashcardBtnClick = useCallback((resetBoardDelay = 500) => {
     const fc = flashcards[flashcardIndex];
     setLines(makeLineStatsRecord(fc.pgn));
+    setCurrentMode(Mode.Practice);
     setHasUserCompletedFlashcard(false);
     currentMoveAnalyzer.setIsOn(false);
     setMoveGrade(null);
@@ -776,6 +777,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [previousMode, currentMode])
 
 
+  useEffect(() => {
+    if (hasUserCompletedFlashcard) setCurrentMode(Mode.Explore);
+  }, [hasUserCompletedFlashcard]);
+
+
   // On first load: setup workers and clear evaluations
   useEffect(() => {
     fenAnalyzers.setupWorkers()
@@ -908,7 +914,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             deleteStatus={deleteStatus}
           />
           {useMemo(() => {
-            const allowInteraction = currentMode === Mode.Edit ? true : isUsersTurn();
+            let allowInteraction = true;
+            if (currentMode === Mode.Practice && !isUsersTurn()) {
+              allowInteraction = false;
+            }
             return (
               <Chessboard
                 currentMove={currentMove}
@@ -930,11 +939,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         <div className="flex justify-end" style={{width: rightColWidth + columnGapWidth}}>
           <div className="flex" style={{width: rightColWidth, height: boardSize }}>
             <div className="flex flex-col items-center w-full flex-1 gap-2">
-              {currentMode !== Mode.Practice && (
-                <div className="flex bg-background-page w-full rounded-md min-h-4">
-                  {engineDisplay}
-                </div>
-              )}
+              <div className="flex bg-background-page w-full rounded-md min-h-4">
+                {engineDisplay}
+              </div>
               <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
                 {movesDisplay}
               </div>
