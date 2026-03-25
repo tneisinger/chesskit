@@ -246,10 +246,10 @@ const CmChessboard = ({
     return Promise.resolve();
   }, [setArrows, changeIsMoving, playMoveSound]);
 
-  const performMove = useCallback((shortMove: ShortMove) => {
+  const performMove = useCallback(async (shortMove: ShortMove) => {
     const chessjsMove = chessjs.current.move(shortMove);
     if (!chessjsMove) throw new Error(`Unable to play move ${shortMove}`);
-    changeBoardPosition(chessjs.current.fen(), chessjsMove.san, false);
+    await changeBoardPosition(chessjs.current.fen(), chessjsMove.san, false);
 
     // setExpectedUserMove so that the afterUserMove callback will run after currentMove updates
     setExpectedUserMove(shortMove);
