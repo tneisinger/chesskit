@@ -255,7 +255,7 @@ const CmChessboard = ({
     setExpectedUserMove(shortMove);
 
     if (playMove != undefined) playMove(shortMove);
-  }, [afterUserMove, playMove, changeBoardPosition]);
+  }, [playMove, changeBoardPosition]);
 
   const enableMoveInput = useCallback(() => {
     const handleMoveFinished = (event: MoveInputEvent) => {
@@ -434,16 +434,20 @@ const CmChessboard = ({
     } else if (fenOverride && isLoading && fenOverride !== boardFen.current) {
       changeBoardPosition(fenOverride);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   },
     [currentMove, isLoading, prevOrientation, fenOverride, animate,
-      orientation, setPiecesAfterOrientation, enableMoveInput, changeBoardPosition,
+      orientation, setPiecesAfterOrientation,
+      // Note: enableMoveInput and changeBoardPosition are intentionally excluded from deps
+      // to prevent unnecessary re-runs when these function references change
     ]);
 
   useEffect(() => {
     enableMoveInput();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   },
     [nextMoveSound, limitMoveInputToColor, afterUserMove, allowInteraction,
-      enableMoveInput
+      // Note: enableMoveInput intentionally excluded to prevent unnecessary re-runs
     ]);
 
   useEffect(() => {
