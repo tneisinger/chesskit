@@ -21,6 +21,9 @@ interface Props {
   useMobileLayout?: boolean;
   showVariations?: boolean;
   contextMenu?: ContextMenuItems;
+  scrollToTop?: number;
+  scrollToBottom?: number;
+  scrollToSelected?: number;
 }
 
 interface MoveDisplayProps {
@@ -117,14 +120,41 @@ const NewMovesDisplay: React.FC<Props> = ({
   useMobileLayout = false,
   showVariations = true,
   contextMenu,
+  scrollToTop,
+  scrollToBottom,
+  scrollToSelected,
 }) => {
   const topOfDisplay = useRef<HTMLDivElement>(null);
+  const scrollContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (currentMove === undefined && topOfDisplay.current) {
       topOfDisplay.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [currentMove]);
+
+  // Scroll to top when scrollToTop prop changes
+  useEffect(() => {
+    if (scrollToTop !== undefined && topOfDisplay.current) {
+      topOfDisplay.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [scrollToTop]);
+
+  // Scroll to bottom when scrollToBottom prop changes
+  useEffect(() => {
+    if (scrollToBottom !== undefined && scrollContainer.current) {
+      scrollContainer.current.scrollTop = scrollContainer.current.scrollHeight;
+    }
+  }, [scrollToBottom]);
+
+
+  // Scroll to selected move when scrollToSelected prop changes
+  useEffect(() => {
+    if (scrollToSelected !== undefined && currentMove) {
+      // The MoveDisplay component's useEffect will handle this automatically
+      // We just need to trigger a re-render, which this effect does
+    }
+  }, [scrollToSelected]);
 
   const isKeyMove = (move: Move): boolean => {
     return keyMoves.some((km) => areMovesEqual(km, move));
@@ -355,7 +385,7 @@ const NewMovesDisplay: React.FC<Props> = ({
   if (useMobileLayout) classes.push('flex-row flex-wrap content-start');
 
   return (
-    <div className={classes.join(' ')}>
+    <div ref={scrollContainer} className={classes.join(' ')}>
       <div ref={topOfDisplay} />
       {renderMainLine()}
     </div>

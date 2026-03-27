@@ -111,6 +111,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [isGradingMove, setIsGradingMove] = useState(false);
   const [moveGrade, setMoveGrade] = useState<{ san: string, grade: MoveJudgement } | null>(null);
 
+  // Used to scroll to the bottom of the MovesDisplay
+  const [scrollTrigger, setScrollTrigger] = useState(0);
+
 
   const opponentMoveTimeoutRef = useRef<number>(0);
   const wrongAnswerBlinkTimeoutRef = useRef<number>(0);
@@ -233,6 +236,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     setIsSubmitting(true);
     try {
       const result = await reviewFlashcard(currentFlashcard.id, quality);
+      // const result = { success: true }; // Use this line to fake flashcardReview during testing
 
       if (result.success) {
         await refreshDueCount();
@@ -779,6 +783,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [hasUserCompletedFlashcard]);
 
 
+  useEffect(() => {
+    if (previousMode !== currentMode && currentMode === Mode.Edit) {
+      setScrollTrigger((n) => n + 1);
+    }
+  }, [currentMode, previousMode])
+
+
   // On first load: setup workers and clear evaluations
   useEffect(() => {
     fenAnalyzers.setupWorkers()
@@ -820,8 +831,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       showVariations={true}
       contextMenu={makeContextMenu()}
       keyMoves={[history[currentFlashcard.positionIdx - 1]]}
+      scrollToBottom={scrollTrigger}
     />
-  ), [history, currentMove, currentFlashcard.positionIdx]);
+  ), [history, currentMove, currentFlashcard.positionIdx, scrollTrigger]);
 
 
   const arrowButtons = useMemo(() => (
