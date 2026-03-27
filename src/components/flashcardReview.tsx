@@ -533,7 +533,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       handleReplayFlashcardBtnClick(250);
     }
 
-    if (currentMode === Mode.Practice) {
+    if (currentMode !== Mode.Edit) {
       pauseClock();
       discardUnsavedChanges();
       setCurrentMode(Mode.Edit);
@@ -942,17 +942,20 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
               <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
                 {movesDisplay}
               </div>
-              {currentMode === Mode.Edit && useMemo(() => (
-                <>
-                  <FlashcardEditButtons
-                    onDiscardChangesBtnClick={discardUnsavedChanges}
-                    onSaveChangesBtnClick={saveFlashcardPgnChanges}
-                    onDeleteFlashcardBtnClick={() => setShowDeleteFlashcardModal(true)}
-                    doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
-                    showSaveAndUndoBtns={areLinesForcing === true}
-                  />
-                </>
-              ), [history, areLinesForcing])}
+              {useMemo(() => {
+                if (currentMode !== Mode.Edit) return null;
+                return (
+                  <>
+                    <FlashcardEditButtons
+                      onDiscardChangesBtnClick={discardUnsavedChanges}
+                      onSaveChangesBtnClick={saveFlashcardPgnChanges}
+                      onDeleteFlashcardBtnClick={() => setShowDeleteFlashcardModal(true)}
+                      doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
+                      showSaveAndUndoBtns={areLinesForcing === true}
+                    />
+                  </>
+                );
+              }, [currentMode, history, areLinesForcing])}
             </div>
           </div>
         </div>
