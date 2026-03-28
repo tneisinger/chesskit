@@ -59,6 +59,7 @@ import usePrevious from '@/hooks/usePrevious';
 import { FEN } from 'cm-chess/src/Chess';
 import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
 import { parsePGN } from '@/utils/chess';
+import { Chess as CmChess } from 'cm-chess/src/Chess';
 
 const COUNTDOWN_START_TIME = 30;
 const MOVE_INCREMENT_SECONDS = 5;
@@ -381,11 +382,30 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [lines, currentMove, handleMoveThatWasNotInFlashcardPgn, handleCorrectUserMove, currentMode]);
 
 
+  // Set the history so that the MovesDisplay shows the correct history for the flashcard
+  // unsolved state. Return the opponentMove so that the opponentMoveTimeout can be setup.
+  const setupHistoryForUnsolvedFlashcard = useCallback((flashcard: Flashcard): ShortMove => {
+    cmchess.current = new CmChess();
+    const parsedPgn = parsePGN(flashcard.pgn);
+    if (parsedPgn.length !== 1) throw new Error('parsedPgn length was not 1');
+    const parsedMoves = parsedPgn[0].moves.map((m) => m.move);
+    const initialMoves = parsedMoves.slice(0, flashcard.positionIdx - 1);
+    initialMoves.forEach((move) => {
+      const result = cmchess.current.move(move);
+      if (result == undefined) throw new Error('bad move');
+    })
+    const cmHistory = cmchess.current.history();
+    setHistory(cmHistory);
+    const shortMoves = convertSanLineToShortMoves(parsedMoves);
+    return shortMoves[cmHistory.length];
+  }, []);
+
+
   const setupResetBoardTimeouts = useCallback((delay = 800) => {
     const fc = flashcards[flashcardIndex];
+    const opponentMove = setupHistoryForUnsolvedFlashcard(fc);
     const cmhistory = cmchess.current.history();
-    const newCurrentMove = cmhistory.find((m) => m.ply === fc.positionIdx - 1);
-    const opponentMove = cmhistory.find((m) => m.ply === fc.positionIdx);
+    const newCurrentMove = cmhistory[cmhistory.length - 1];
 
     resetBoardTimeoutRef.current = window.setTimeout(() => {
       setCurrentMove(newCurrentMove);
@@ -394,7 +414,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     opponentMoveTimeoutRef.current = window.setTimeout(() => {
       setOpponentFirstMove(opponentMove);
     }, delay + 200);
-  }, [flashcardIndex, flashcards, cmchess.current]);
+  }, [flashcardIndex, flashcards, cmchess.current, setupHistoryForUnsolvedFlashcard]);
 
 
   const isCurrentMoveAtEndOfALine = useCallback((): boolean => {
@@ -616,7 +636,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   // When the flashcardIndex changes...
   useEffect(() => {
-    resetChessboardEngine();
     setIsReplay(false);
     setWrongAnswerCount(0);
     setHasUserCompletedFlashcard(false);
@@ -638,24 +657,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
       resetClock();
 
-      const parsedPgn = parsePGN(fc.pgn);
-      if (parsedPgn.length !== 1) throw new Error('parsedPgn length was not 1');
-      const parsedMoves = parsedPgn[0].moves.map((m) => m.move);
-      const initialMoves = parsedMoves.slice(0, fc.positionIdx - 1);
-      initialMoves.forEach((move) => {
-        const result = cmchess.current.move(move);
-        if (result == undefined) throw new Error('bad move');
-      })
-
-
-      // loadPgnIntoCmChess(fc.pgn, cmchess.current);
+      const opponentMove = setupHistoryForUnsolvedFlashcard(fc);
       const cmHistory = cmchess.current.history();
-      setHistory(cmHistory);
-
       setCurrentMove(cmHistory[cmHistory.length - 1]);
+      setOpponentFirstMove(opponentMove);
 
-      const shortMoves = convertSanLineToShortMoves(parsedMoves);
-      setOpponentFirstMove(shortMoves[cmHistory.length]);
       setLines(makeLineStatsRecord(fc.pgn))
       setBoardFenOverride(undefined);
     } else {
@@ -664,7 +670,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setOpponentFirstMove(null);
       setLines({});
     }
-  }, [flashcardIndex, resetClock]);
+  }, [flashcardIndex, resetClock, setupHistoryForUnsolvedFlashcard]);
 
 
   // Play the opponent move after a slight delay
