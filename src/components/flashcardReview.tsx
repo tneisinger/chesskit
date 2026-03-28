@@ -267,8 +267,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     const nextMove = getRandom(nextMoves);
     opponentMoveTimeoutRef.current = window.setTimeout(() => {
       playMove(nextMove!);
+      unpauseClock();
     }, 800);
-  }, [playMove, currentMove, flashcards, flashcardIndex]);
+  }, [playMove, currentMove, flashcards, flashcardIndex, unpauseClock]);
 
 
   const markCurrentLineComplete = useCallback(() => {
@@ -370,6 +371,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (currentMove == undefined) throw new Error('currentMove was undefined');
     const move: ShortMove = { from: currentMove.from, to: currentMove.to };
     setUserAttemptedMove(move);
+    pauseClock();
 
     const relevantLines = getRelevantLessonLines(lines, currentMove);
 
@@ -379,7 +381,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     }
 
     handleCorrectUserMove(relevantLines);
-  }, [lines, currentMove, handleMoveThatWasNotInFlashcardPgn, handleCorrectUserMove, currentMode]);
+  }, [lines, currentMove, handleMoveThatWasNotInFlashcardPgn, handleCorrectUserMove, currentMode, pauseClock]);
 
 
   // Set the history so that the MovesDisplay shows the correct history for the flashcard
@@ -680,9 +682,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       opponentMoveTimeoutRef.current = window.setTimeout(() => {
         playMove(opponentFirstMove);
         setOpponentFirstMove(null);
+        unpauseClock();
       }, 1000);
     }
-  }, [prevOpponentFirstMove, opponentFirstMove, playMove]);
+  }, [prevOpponentFirstMove, opponentFirstMove, playMove, unpauseClock]);
 
 
   // Cleanup timeouts on unmount
@@ -723,14 +726,6 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       }
     };
   }, [wrongAnswerCount]);
-
-
-  useEffect(() => {
-    if (areCmMovesEqual(currentMove, previousMove)) return;
-    if (isCurrentMoveAtEndOfALine()) return;
-    if (currentMode !== Mode.Practice) return;
-    isUsersTurn() ? unpauseClock() : pauseClock();
-  }, [isUsersTurn, currentMode]);
 
 
   // Handle line ending with opponent move
