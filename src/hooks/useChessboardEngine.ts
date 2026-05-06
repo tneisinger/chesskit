@@ -76,11 +76,12 @@ export default function useChessboardEngine(options = defaultOptions) {
     setCurrentMove(undefined);
   }
 
-  const undoLastMove = () => {
-    if (currentMoveRef.current == undefined) return;
+  const undoLastMove = (): boolean => {
+    if (currentMoveRef.current == undefined) return false;
     cmchess.current.undo();
     setHistory([...cmchess.current.history()]);
     setCurrentMove(currentMoveRef.current.previous);
+    return true;
   }
 
   // Delete a move from cmchess and history. All subsequent moves and

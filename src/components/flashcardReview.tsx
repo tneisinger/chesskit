@@ -184,9 +184,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (options === undefined || options.indicateThatTheMoveWasWrong) {
       setWrongAnswerCount((blinkCount) => blinkCount + 1);
     } else {
-      if (currentMove) undoLastMove();
+      const didUndo = undoLastMove();
+      if (didUndo) unpauseClock();
     }
-  }, [currentMove, undoLastMove]);
+  }, [undoLastMove, unpauseClock]);
 
 
   const isUsersTurn = useCallback(() => {
@@ -255,7 +256,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const handleIncorrectUserMove = useCallback(() => {
     performWrongAnswerActions();
-  }, []);
+  }, [performWrongAnswerActions]);
 
 
   const setupOpponentMoveTimeout = useCallback((nextMoves: ShortMove[]) => {
@@ -712,7 +713,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     }, 300);
 
     undoMoveTimeoutRef.current = window.setTimeout(() => {
-      undoLastMove();
+      const didUndo = undoLastMove();
+      if (didUndo) unpauseClock();
     }, 1300);
 
     return () => {
