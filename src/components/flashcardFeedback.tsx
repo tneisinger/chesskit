@@ -1,7 +1,7 @@
 import { useCallback ,ReactElement } from "react";
 import Button, { ButtonSize, ButtonStyle } from "@/components/button";
 import Spinner from '@/components/spinner';
-import { MoveJudgement } from "@/types/chess";
+import { MoveJudgement, PieceColor } from "@/types/chess";
 import { getJudgementColor } from '@/utils/chess';
 import {  Move } from 'cm-chess/src/Chess';
 import { Flashcard } from "@/db/schema";
@@ -133,10 +133,11 @@ const FlashcardFeedback = ({
     </div>
   );
 
+  const fc = getCurrentFlashcard();
 
-  if (!isFlashcardComplete) return wrapContent(
+  if (!isFlashcardComplete && fc != null) return wrapContent(
     <div className="flex flex-col">
-      <p>Play a Move!</p>
+      <p>{fc.userColor === PieceColor.WHITE ? 'White' : 'Black'} to move</p>
     </div>
   );
 
