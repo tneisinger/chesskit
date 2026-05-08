@@ -61,7 +61,7 @@ import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
 import { parsePGN } from '@/utils/chess';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
 
-const COUNTDOWN_START_TIME = 30;
+const COUNTDOWN_START_TIME = 60 * 5;
 const MOVE_INCREMENT_SECONDS = 5;
 
 
