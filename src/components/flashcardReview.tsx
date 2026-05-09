@@ -104,7 +104,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>(DeleteStatus.NotStarted);
   const [isReplay, setIsReplay] = useState(false);
   const [markers, setMarkers] = useState<Marker[]>([]);
-  const [arrows, setArrows] = useState<Arrow[]>([]);
+  const [engineArrows, setEngineArrows] = useState<Arrow[]>([]);
+  const [arrowsForNewPosition, setArrowsForNewPosition] = useState<Arrow[]>([]);
+  const [persistentArrows, setPersistentArrows] = useState<Arrow[]>([]);
   const [hasUserCompletedFlashcard, setHasUserCompletedFlashcard] = useState(false);
   const [numHintsGiven, setNumHintsGiven] = useState(0);
   const [numShowMovesGiven, setNumShowMovesGiven] = useState(0);
@@ -170,8 +172,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     fenAnalyzers.evaluations,
     currentMoveAnalyzer.latestEvaluations,
     currentMove,
-    (newArrows) => setArrows(newArrows),
+    (newArrows) => setEngineArrows(newArrows),
   );
+
+  // Combine engine arrows and persistent arrows
+  const arrows = useMemo(() => {
+    return [...engineArrows, ...persistentArrows];
+  }, [engineArrows, persistentArrows]);
 
   const previousMove = usePrevious(currentMove);
   const previousLines = usePrevious(lines);
@@ -374,6 +381,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     setUserAttemptedMove(move);
     pauseClock();
 
+    // Clear hint/show move arrows and markers when user makes a move
+    setMarkers([]);
+    setPersistentArrows([]);
+
     const relevantLines = getRelevantLessonLines(lines, currentMove);
 
     if (relevantLines.length < 1) {
@@ -446,6 +457,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     resetClock();
     setNumHintsGiven(0);
     setNumShowMovesGiven(0);
+    setMarkers([]);
+    setPersistentArrows([]);
     hasSubmittedRef.current = false;
   }, [flashcards, flashcardIndex, setupResetBoardTimeouts, resetClock]);
 
@@ -549,7 +562,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       (m) => ({ type: ARROW_TYPE.info, from: m.from, to: m.to })
     );
     setMarkers([]);
-    setArrows(newArrows);
+    setPersistentArrows(newArrows);
     setNumShowMovesGiven((n) => n + 1);
   }, [lines, currentMove]);
 
@@ -578,19 +591,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [flashcardIndex, flashcards]);
 
 
-  const showMovePlayedInGameArrow = useCallback((fc: Flashcard) => {
+  const handleShowMistakeBtnClick = useCallback(() => {
+    const fc = flashcards[flashcardIndex];
     const from = fc.movePlayedInGame.lan.slice(0,2);
     const to = fc.movePlayedInGame.lan.slice(2,4);
-    setArrows((arrows) => [...arrows, { type: ARROW_TYPE.warning, from, to }])
-  }, []);
-
-
-  const handleShowMistakeBtnClick = useCallback(() => {
-    console.log('showing mistake');
-    const fc = flashcards[flashcardIndex];
+    setArrowsForNewPosition([{ type: ARROW_TYPE.danger, from, to }]);
     setCurrentMove(history[fc.positionIdx - 1]);
-    showMovePlayedInGameArrow(fc);
-  }, [flashcards, flashcardIndex, history, showMovePlayedInGameArrow]);
+  }, [flashcards, flashcardIndex, history]);
 
 
   const makeContextMenu = useCallback((): ContextMenuItems => {
@@ -660,6 +667,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     setMoveGrade(null);
     setNumHintsGiven(0);
     setNumShowMovesGiven(0);
+    setMarkers([]);
+    setPersistentArrows([]);
     numIncompleteLinesRef.current = null;
     totalLinesRef.current = null;
     hasSubmittedRef.current = false;
@@ -806,6 +815,24 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       setScrollTrigger((n) => n + 1);
     }
   }, [currentMode, previousMode])
+
+
+  useEffect(() => {
+    if (currentMove === previousMove) return;
+    if (arrowsForNewPosition.length < 1) {
+      setPersistentArrows([]);
+    } else {
+      setPersistentArrows(arrowsForNewPosition);
+      setArrowsForNewPosition([]);
+    }
+  }, [currentMove, previousMove, arrowsForNewPosition])
+
+
+  useEffect(() => {
+    if (currentMoveAnalyzer.isOn === false) {
+      setEngineArrows([]);
+    }
+  }, [currentMoveAnalyzer.isOn]);
 
 
   // On first load: setup workers and clear evaluations

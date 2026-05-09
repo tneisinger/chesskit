@@ -155,15 +155,13 @@ const FlashcardCreator = ({
     if (flashcardPev == undefined) throw new Error('flashcardPev was undefined');
     if (flashcardPev.lines.length < 2) throw new Error('Not enough evaluation lines to make flashcard');
 
-    if (flashcardMove.next == undefined) throw new Error('flashcardMove.next was undefined');
-
     return {
       gameId: game.id,
       pgn: renderPgn(cmChess).trim(),
       positionIdx: flashcardMove.ply,
       userColor: game.userColor,
       bestMoves: getScoredBestMovesFromPev(flashcardPev),
-      movePlayedInGame: { san: flashcardMove.next.san, lan: (flashcardMove.next.from + flashcardMove.next.to)},
+      movePlayedInGame: { san: flashcardMove.san, lan: (flashcardMove.from + flashcardMove.to)},
       gameUrl: game.url,
       areLinesForcing,
     }
