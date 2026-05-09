@@ -15,6 +15,7 @@ interface Props {
   moveGrade: { san: string, grade: MoveJudgement } | null;
   onReplayFlashcardBtnClick: () => void;
   onNextFlashcardBtnClick: () => void;
+  onShowMistakeBtnClick: () => void;
   numWrongAnswers: number;
   numHintsGiven?: number;
   numShowMovesGiven?: number;
@@ -29,6 +30,7 @@ const FlashcardFeedback = ({
   moveGrade,
   onReplayFlashcardBtnClick,
   onNextFlashcardBtnClick,
+  onShowMistakeBtnClick,
   numWrongAnswers,
   numHintsGiven,
   numShowMovesGiven,
@@ -123,6 +125,16 @@ const FlashcardFeedback = ({
           Next Flashcard
         </Button>
       </div>
+      <div>
+        <Button
+          buttonSize={ButtonSize.Small}
+          buttonStyle={ButtonStyle.Danger}
+          onClick={onShowMistakeBtnClick}
+        >
+          Show game mistake
+        </Button>
+      </div>
+
     </>
   );
 

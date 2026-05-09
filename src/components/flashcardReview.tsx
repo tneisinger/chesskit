@@ -578,6 +578,21 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [flashcardIndex, flashcards]);
 
 
+  const showMovePlayedInGameArrow = useCallback((fc: Flashcard) => {
+    const from = fc.movePlayedInGame.lan.slice(0,2);
+    const to = fc.movePlayedInGame.lan.slice(2,4);
+    setArrows((arrows) => [...arrows, { type: ARROW_TYPE.warning, from, to }])
+  }, []);
+
+
+  const handleShowMistakeBtnClick = useCallback(() => {
+    console.log('showing mistake');
+    const fc = flashcards[flashcardIndex];
+    setCurrentMove(history[fc.positionIdx - 1]);
+    showMovePlayedInGameArrow(fc);
+  }, [flashcards, flashcardIndex, history, showMovePlayedInGameArrow]);
+
+
   const makeContextMenu = useCallback((): ContextMenuItems => {
     return ({
       'Delete from here forward': {
@@ -895,6 +910,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
                 isFlashcardComplete={hasUserCompletedFlashcard}
                 onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
                 onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
+                onShowMistakeBtnClick={handleShowMistakeBtnClick}
                 numWrongAnswers={wrongAnswerCount}
                 numHintsGiven={numHintsGiven}
                 numShowMovesGiven={numShowMovesGiven}
