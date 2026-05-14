@@ -56,14 +56,13 @@ const FlashcardFeedback = ({
   }, [getCurrentFlashcard]);
 
   const renderMoveGradeFeedback = useCallback((): ReactElement => {
-    if (currentMove == undefined) throw new Error('currentMove was undefined');
     if (moveGrade == null) throw new Error('moveGrade was null');
     return (
         <p>
           {moveGrade.san} is <span style={{ color: getJudgementColor(moveGrade.grade) }}>{moveGrade.grade}</span>
         </p>
     );
-  }, [currentMove, moveGrade]);
+  }, [moveGrade]);
 
 
   // Component return statements:
