@@ -595,9 +595,13 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     const fc = flashcards[flashcardIndex];
     const from = fc.movePlayedInGame.lan.slice(0,2);
     const to = fc.movePlayedInGame.lan.slice(2,4);
-    setArrowsForNewPosition([{ type: ARROW_TYPE.danger, from, to }]);
-    setCurrentMove(history[fc.positionIdx - 1]);
-  }, [flashcards, flashcardIndex, history]);
+    if (currentMove === history[fc.positionIdx - 1]) {
+      setPersistentArrows([{ type: ARROW_TYPE.danger, from, to }]);
+    } else {
+      setArrowsForNewPosition([{ type: ARROW_TYPE.danger, from, to }]);
+      setCurrentMove(history[fc.positionIdx - 1]);
+    }
+  }, [flashcards, flashcardIndex, history, currentMove]);
 
 
   const makeContextMenu = useCallback((): ContextMenuItems => {
