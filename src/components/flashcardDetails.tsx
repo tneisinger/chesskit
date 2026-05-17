@@ -12,6 +12,7 @@ const FlashcardDetails = ({ flashcard }: Props) => {
       <div className="flex flex-col items-center gap-2 mb-2 text-sm">
         <p>Created: {flashcard.createdAt.toLocaleDateString()}</p>
         <p>Last Attempt: {flashcard.lastReviewedDate ? flashcard.lastReviewedDate.toLocaleDateString() : 'Never'}</p>
+        <p>flashcard id: {flashcard.id}</p>
         <div className="pt-2 px-4 flex flex-row justify-between w-full border-t-1 border-stone-700">
             {flashcard.gameId != null && (
               <Link href={`/game-review/${flashcard.gameId}`} className="text-white underline">Game Review</Link>
