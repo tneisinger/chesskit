@@ -219,9 +219,34 @@ const GameReview = ({ game }: Props) => {
 
   // Calculate board size
   const useMobile = shouldUseMobileLayout(windowSize);
+
+  // Desktop board size calculation - resize dynamically to fill available space
+  const leftColWidthPx = 224; // w-56 in Tailwind
+  const rightColWidthPx = 275;
+  const columnGap = 8; // gap-2 between columns
+  const edgeGap = 8; // minimum gap along screen edges
+  const maxTotalWidth = 1764;
+  const gameAnalysisHeight = 200;
+  const topMargin = 8; // mt-2
+  const gapBetweenRows = 8; // gap-2
+  const bottomMargin = 16; // mb-4
+
+  // Calculate maximum width the board can be
+  const maxBoardWidthFromWindow = windowSize.width
+    ? windowSize.width - leftColWidthPx - rightColWidthPx - (columnGap * 2) - (edgeGap * 2)
+    : maxTotalWidth;
+  const maxBoardWidthFromMaxTotal = maxTotalWidth - leftColWidthPx - rightColWidthPx - (columnGap * 2);
+  const maxBoardWidth = Math.min(maxBoardWidthFromWindow, maxBoardWidthFromMaxTotal);
+
+  // Calculate maximum height the board can be
+  const maxBoardHeight = windowSize.height
+    ? windowSize.height - NAV_BAR_HEIGHT - gameAnalysisHeight - topMargin - gapBetweenRows - bottomMargin
+    : maxBoardWidth;
+
+  // Board must be square, so use the minimum of width and height constraints
   const boardSize = useMobile
     ? Math.min(windowSize.width || 400, windowSize.height || 400) - 10
-    : 600;
+    : Math.max(400, Math.min(maxBoardWidth, maxBoardHeight)); // minimum 400px for usability
 
   const chessboard = (
     <div className="relative">
@@ -327,8 +352,8 @@ const GameReview = ({ game }: Props) => {
     );
   }
 
-  const leftColWidth = "w-56";
-  const rightColWidth = 275;
+  const leftColWidth = "w-56"; // 224px
+  const rightColWidth = rightColWidthPx;
 
   return (
     <ScrollLock>
@@ -357,7 +382,7 @@ const GameReview = ({ game }: Props) => {
             </div>
           </div>
         </div>
-        <div className="flex-1 w-full flex flex-row gap-2 mb-4">
+        <div className="h-[200px] w-full flex flex-row gap-2 mb-4">
           <div className={`${leftColWidth}`} />
           <div style={{ width: boardSize }}>
             {hasGameLoaded && (
