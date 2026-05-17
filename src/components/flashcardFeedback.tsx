@@ -94,6 +94,15 @@ const FlashcardFeedback = ({
           Replay Flashcard
         </Button>
       </div>
+      <div>
+        <Button
+          buttonSize={ButtonSize.Small}
+          buttonStyle={ButtonStyle.Danger}
+          onClick={onShowMistakeBtnClick}
+        >
+          Show game mistake
+        </Button>
+      </div>
     </>
   );
 

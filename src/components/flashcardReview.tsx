@@ -773,7 +773,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   useEffect(() => {
     if (areLinesForcing) return;
-    if (previousMoveGrade == null && moveGrade != null &&
+    if (moveGrade != null && previousMoveGrade !== moveGrade &&
         isMoveJudgementAtLeast(MoveJudgement.Good, moveGrade.grade)) {
       setHasUserCompletedFlashcard(true);
     }
