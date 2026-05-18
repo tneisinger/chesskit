@@ -21,6 +21,7 @@ import { reviewFlashcard, updateFlashcardPgn, deleteFlashcard } from '@/app/flas
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
+import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import { MoveJudgement, PieceColor, ShortMove } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import useCurrentMoveAnalyzer from '@/hooks/useCurrentMoveAnalyzer';
@@ -854,21 +855,31 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   }, [])
 
 
-  // Determine the board size
-  const maxBoardSize = 600;
+  // Determine the board size - resize dynamically to fill available space
   const windowSize = useWindowSize();
-  let boardSize: number;
-  if (windowSize.width && windowSize.width < maxBoardSize) {
-    boardSize = windowSize.width;
-  } else {
-    if (windowSize.width == undefined || windowSize.height == undefined) {
-      boardSize = maxBoardSize;
-    } else {
-      const maxBoardWidth = Math.min(maxBoardSize, windowSize.width - 625);
-      const maxBoardHeight = Math.min(maxBoardSize, windowSize.height - 175);
-      boardSize = Math.min(maxBoardWidth, maxBoardHeight);
-    }
-  }
+
+  const leftColWidthPx = 275;
+  const rightColWidthPx = 275;
+  const columnGap = 8;
+  const edgeGap = 8; // minimum gap along screen edges
+  const maxTotalWidth = 1764;
+  const gapBetweenRows = 12; // gap-3
+  const secondRowHeight = 50; // approximate height for controls/buttons row
+
+  // Calculate maximum width the board can be
+  const maxBoardWidthFromWindow = windowSize.width
+    ? windowSize.width - leftColWidthPx - rightColWidthPx - (columnGap * 2) - (edgeGap * 2)
+    : maxTotalWidth;
+  const maxBoardWidthFromMaxTotal = maxTotalWidth - leftColWidthPx - rightColWidthPx - (columnGap * 2);
+  const maxBoardWidth = Math.min(maxBoardWidthFromWindow, maxBoardWidthFromMaxTotal);
+
+  // Calculate maximum height the board can be
+  const maxBoardHeight = windowSize.height
+    ? windowSize.height - NAV_BAR_HEIGHT - secondRowHeight - gapBetweenRows - edgeGap
+    : maxBoardWidth;
+
+  // Board must be square, so use the minimum of width and height constraints
+  const boardSize = Math.max(400, Math.min(maxBoardWidth, maxBoardHeight)); // minimum 400px for usability
 
 
   const movesDisplay = useMemo(() => (
@@ -894,9 +905,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     />
   ), [history, currentMove]);
 
-  const leftColWidth = 275;
-  const rightColWidth = 275;
-  const columnGapWidth = 8;
+  const leftColWidth = leftColWidthPx;
+  const rightColWidth = rightColWidthPx;
+  const columnGapWidth = columnGap;
   const mainDivWidth = leftColWidth + boardSize + rightColWidth + (columnGapWidth * 2);
 
   const engineDisplay = useMemo(() => (
@@ -915,7 +926,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   return (
     <div className="flex flex-col items-center gap-3" style={{ width: mainDivWidth }}>
       {/* First row  */}
-      <div className="flex flex-row w-full max-w-[1400px]">
+      <div className="flex flex-row w-full max-w-[1768px]">
 
         {/* Left Column */}
         <div className="flex justify-start" style={{width: rightColWidth + columnGapWidth}}>
@@ -1024,7 +1035,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       </div>
 
       {/* Second Row  */}
-      <div className="flex flex-row w-full max-w-[1400px]">
+      <div className="flex flex-row w-full max-w-[1768px]">
 
 
         {/* Left Column */}
