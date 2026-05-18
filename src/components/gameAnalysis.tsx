@@ -28,7 +28,7 @@ const GameAnalysis = ({
   gameEvaluation,
   currentMove,
   changeCurrentMove,
-  history,
+  gameHistory,
   width,
 }: Props) => {
   const [analyzeWhenReady, setAnalyzeWhenReady] = useState(false);
@@ -104,7 +104,7 @@ const GameAnalysis = ({
                 gameEvaluation={gameEvaluation}
                 currentMove={currentMove}
                 changeCurrentMove={changeCurrentMove}
-                history={history}
+                gameHistory={gameHistory}
                 width={width}
                 includeKeyPositionDots={false}
                 includeCurrentMoveReferenceLine={false}
@@ -119,7 +119,7 @@ const GameAnalysis = ({
           gameEvaluation={gameEvaluation}
           currentMove={currentMove}
           changeCurrentMove={changeCurrentMove}
-          history={history}
+          gameHistory={gameHistory}
           width={width}
         />
       )}

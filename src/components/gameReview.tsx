@@ -5,6 +5,7 @@ import { ScrollLock } from '@/components/ScrollLock';
 import { GameData, Evaluations } from '@/types/chess';
 import { Cursor, MoveSound, Arrow } from '@/components/cmChessboard';
 import { Marker, loadPgnIntoCmChess } from '@/utils/cmchess';
+import { Move } from 'cm-chess/src/Chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import GameDetails from '@/components/gameDetails';
 import Chessboard from '@/components/Chessboard';
@@ -83,6 +84,7 @@ const GameReview = ({ game }: Props) => {
   const [depth, setDepth] = useState(20);
   const [hasGameLoaded, setHasGameLoaded] = useState(false);
   const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
+  const [gameHistory, setGameHistory] = useState<null | Move[]>(null);
 
   const initialState: State = {
     allowBoardInteraction: true,
@@ -170,11 +172,14 @@ const GameReview = ({ game }: Props) => {
     }
   }, [pgnAnalyzer.status, prevAnalyzerStatus, game.id, fenAnalyzers.evaluations])
 
+
   // When we get the game...
   useEffect(() => {
     if (game) {
       loadPgnIntoCmChess(game.pgn, cmchess.current);
-      setHistory(cmchess.current.history());
+      const h = cmchess.current.history();
+      setHistory(h);
+      setGameHistory([...h]); // Keep a copy of the original game history for the GameChart
       if (game.engineAnalysis) {
         fenAnalyzers.setEvaluations(game.engineAnalysis);
         setGameEvaluation(game.engineAnalysis);
@@ -385,7 +390,7 @@ const GameReview = ({ game }: Props) => {
         <div className="h-[200px] w-full flex flex-row gap-2 mb-4">
           <div className={`${leftColWidth}`} />
           <div style={{ width: boardSize }}>
-            {hasGameLoaded && (
+            {hasGameLoaded && gameHistory != null && (
               <GameAnalysis
                 game={game}
                 analyzePgn={pgnAnalyzer.analyzePgn}
@@ -397,7 +402,7 @@ const GameReview = ({ game }: Props) => {
                 gameEvaluation={gameEvaluation}
                 currentMove={currentMove}
                 changeCurrentMove={setCurrentMove}
-                history={history}
+                gameHistory={gameHistory}
                 width={boardSize}
               />
             )}

@@ -49,9 +49,9 @@ type ChartDataPoint = ChartDataPointWithCP | ChartDataPointWithMate;
 
 
 function makeChartData(
-  history: Move[],
+  gameHistory: Move[],
   gameEvaluation: Evaluations,
-  userColor: PieceColor
+  userColor: PieceColor,
 ): ChartDataPoint[] {
   const result: ChartDataPoint[] = [];
 
@@ -62,7 +62,7 @@ function makeChartData(
     if (fen === FEN.start) return;
 
     const judgement = moveJudgements[fen];
-    const moveInfo = history.find((m) => m.fen === fen);
+    const moveInfo = gameHistory.find((m) => m.fen === fen);
     if (!moveInfo) return;
 
     const move = moveInfo.san;
@@ -130,23 +130,23 @@ function makeChartData(
     if (keyPositionJudgements.includes(judgement)) result[i].keyPosition = judgement;
   }
 
-  return fillChartDataWithEmptyPoints(history, userColor, result);
+  return fillChartDataWithEmptyPoints(gameHistory, userColor, result);
 }
 
 
-// If chartData does not have a ChartDataPoint for every move in history, return a new array
-// where there is a ChartDataPoint for every move in history, using empty values.
+// If chartData does not have a ChartDataPoint for every move in gameHistory, return a new array
+// where there is a ChartDataPoint for every move in gameHistory, using empty values.
 function fillChartDataWithEmptyPoints(
-  history: Move[],
+  gameHistory: Move[],
   userColor: PieceColor,
   chartData: ChartDataPoint[]
 ): ChartDataPoint[] {
-  // If chartData is as long as history, just return chartData.
-  if (chartData.length >= history.length) return chartData;
+  // If chartData is as long as gameHistory, just return chartData.
+  if (chartData.length >= gameHistory.length) return chartData;
 
   const result: ChartDataPoint[] = [];
 
-  for (let i = 0; i < history.length; i++) {
+  for (let i = 0; i < gameHistory.length; i++) {
     // If we have a datapoint at this index, push it into the result and continue.
     if (chartData[i] != undefined) {
       result.push(chartData[i]);
@@ -154,8 +154,8 @@ function fillChartDataWithEmptyPoints(
     }
     // Otherwise, we need to make a filler data point.
 
-    // Get the move from history
-    const move = history[i];
+    // Get the move from gameHistory
+    const move = gameHistory[i];
     if (move == undefined) throw new Error('move was undefined');
 
     // Indicate if this move was played by the user
@@ -211,7 +211,7 @@ export interface Props {
   gameEvaluation: Evaluations;
   currentMove: Move | undefined;
   changeCurrentMove: (newCurrentMove?: Move) => void;
-  history: Move[];
+  gameHistory: Move[];
   width: number;
   includeKeyPositionDots?: boolean;
   includeCurrentMoveReferenceLine?: boolean;
@@ -222,7 +222,7 @@ const GameChart = ({
   gameEvaluation,
   currentMove,
   changeCurrentMove,
-  history,
+  gameHistory,
   width,
   includeKeyPositionDots = true,
   includeCurrentMoveReferenceLine = true,
@@ -239,20 +239,20 @@ const GameChart = ({
     }
   }, [currentMove]);
 
-  // Recompute chart data when history or gameEvaluation changes
+  // Recompute chart data when gameHistory or gameEvaluation changes
   useEffect(() => {
-    const data = makeChartData(history, gameEvaluation, game.userColor);
+    const data = makeChartData(gameHistory, gameEvaluation, game.userColor);
     setChartData(data);
 
     const max = Math.max(...data.map((d) => d.chartCp));
     const min = Math.min(...data.map((d) => d.chartCp));
     const offsetOrNan = max / (max - min);
     if (!isNaN(offsetOrNan)) setOffset(offsetOrNan);
-  }, [history, gameEvaluation]);
+  }, [gameHistory, gameEvaluation]);
 
-  const handleChartClick = (data: any, chartData: ChartDataPoint[], history: Move[]) => {
+  const handleChartClick = (data: any, chartData: ChartDataPoint[], gameHistory: Move[]) => {
     if (data.activeIndex === undefined) return;
-    changeCurrentMove(history.find((m) => m.ply === chartData[data.activeIndex].ply));
+    changeCurrentMove(gameHistory.find((m) => m.ply === chartData[data.activeIndex].ply));
   }
 
   return (
@@ -260,7 +260,7 @@ const GameChart = ({
       <AreaChart
         data={chartData}
         margin={{ top: 3, right: 4, bottom: 3, left: 4 }}
-        onClick={(e) => handleChartClick(e, chartData, history)}
+        onClick={(e) => handleChartClick(e, chartData, gameHistory)}
       >
         <defs>
           <linearGradient id="colorCp" x1="0" y1="0" x2="0" y2="1">
