@@ -162,7 +162,7 @@ export function makeScoreString(score: Score): string {
   }
   if (score.key === 'mate') {
     if (score.value > 0) {
-      return `#+${score.value}`;
+      return `#${score.value}`;
     }
     return `#${score.value}`;
   }
