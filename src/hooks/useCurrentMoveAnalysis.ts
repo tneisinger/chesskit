@@ -5,6 +5,7 @@ import { Output as FenAnalyzerOutput } from '@/hooks/useFenAnalyzer';
 import { getFen } from '@/utils/chess';
 import usePrevious from '@/hooks/usePrevious';
 import { areCmMovesEqual } from '@/utils/cmchess';
+import { AnalyzerStatus } from '@/types/analyzer';
 
 export interface UseCurrentMoveAnalysisOptions {
   depth?: number;
@@ -123,7 +124,7 @@ export default function useCurrentMoveAnalysis(
   // 3. Either the ref matches current FEN OR the latestEvaluation matches
   const isAnalyzingCurrentMove =
     isOn &&
-    fenAnalyzer.isAnalyzing &&
+    fenAnalyzer.status === AnalyzerStatus.Analyzing &&
     (currentFenRef.current === currentMoveFen || isLatestEvaluationForCurrentMove);
 
   const latestEvaluationForCurrentMove =
