@@ -5,6 +5,46 @@
  * The algorithm adjusts review intervals based on user performance.
  */
 
+/**
+ * Configuration for new card scheduling behavior
+ *
+ * Adjust these values to experiment with how frequently new cards appear for review.
+ * Default values preserve the standard SM-2 algorithm behavior.
+ */
+export const NEW_CARD_CONFIG = {
+  /**
+   * Number of successful repetitions before a card is considered "mature"
+   * Cards with repetitions <= this threshold are affected by newCardIntervalMultiplier
+   *
+   * Default: 2 (affects cards on their 1st and 2nd successful review)
+   */
+  newCardThreshold: 3,
+
+  /**
+   * Multiplier applied to intervals for new cards
+   * - Values < 1.0: Cards appear MORE frequently (e.g., 0.5 = twice as often)
+   * - Values > 1.0: Cards appear LESS frequently (e.g., 2.0 = half as often)
+   * - Value = 1.0: No change to standard SM-2 behavior
+   *
+   * Default: 1.0 (standard behavior)
+   */
+  newCardIntervalMultiplier: 0.5,
+
+  /**
+   * Base interval for first successful review (in days)
+   *
+   * Default: 1 (standard SM-2)
+   */
+  firstRepetitionInterval: 1,
+
+  /**
+   * Base interval for second successful review (in days)
+   *
+   * Default: 6 (standard SM-2)
+   */
+  secondRepetitionInterval: 6,
+};
+
 export interface SM2Result {
   repetitions: number;
   easinessFactor: number; // Float value (e.g., 2.5)
@@ -71,12 +111,21 @@ export function calculateNextReview(
 
     // Calculate interval based on repetition number
     if (newRepetitions === 1) {
-      newInterval = 1; // First repetition: 1 day
+      newInterval = NEW_CARD_CONFIG.firstRepetitionInterval;
     } else if (newRepetitions === 2) {
-      newInterval = 6; // Second repetition: 6 days
+      newInterval = NEW_CARD_CONFIG.secondRepetitionInterval;
     } else {
       // Third+ repetitions: I(n) = I(n-1) * EF
       newInterval = Math.round(interval * newEF);
+    }
+
+    // Apply new card multiplier if still in learning phase
+    if (newRepetitions <= NEW_CARD_CONFIG.newCardThreshold) {
+      newInterval = Math.round(newInterval * NEW_CARD_CONFIG.newCardIntervalMultiplier);
+      // Ensure minimum interval of 1 day
+      if (newInterval < 1) {
+        newInterval = 1;
+      }
     }
   }
 
