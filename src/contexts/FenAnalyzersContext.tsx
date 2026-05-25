@@ -6,7 +6,8 @@ import useFenAnalyzer, { AnalyzeOptions, AnalyzeInterruptedError } from '@/hooks
 import { AnalyzerStatus } from '@/types/analyzer';
 import { useBookPositions } from '@/contexts/BookPositionsContext';
 
-const NUM_INSTANCES = 8;
+// Maximum number of analyzer instances we can create (due to Rules of Hooks)
+const MAX_INSTANCES = 16;
 
 interface QueueItem {
   fen: string;
@@ -38,9 +39,19 @@ interface FenAnalyzersProviderProps {
 export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
   const { bookPositions } = useBookPositions();
 
+  // Detect available threads and determine how many instances to use
+  // Default to 8 if navigator.hardwareConcurrency is not available
+  const numInstancesToUse = Math.min(
+    navigator.hardwareConcurrency || 8,
+    MAX_INSTANCES
+  );
+
   const [evaluations, setEvaluations] = useState<Evaluations>({});
   const [latestEvaluations, setLatestEvaluations] = useState<Evaluations>({});
   const [status, setStatus] = useState<AnalyzerStatus>(AnalyzerStatus.Uninitialized);
+
+  // Store the number of instances to actually use
+  const numInstancesRef = useRef(numInstancesToUse);
 
   const settings = {
     numThreads: 1,
@@ -51,7 +62,8 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
     bookPositions,
   };
 
-  // Create 8 useFenAnalyzer instances (unconditional for Rules of Hooks)
+  // Create MAX_INSTANCES useFenAnalyzer instances unconditionally (Rules of Hooks)
+  // Only the first numInstancesToUse will be initialized and used
   const analyzers = [
     useFenAnalyzer({ ...settings, id: 'ctx-1' }),
     useFenAnalyzer({ ...settings, id: 'ctx-2' }),
@@ -61,11 +73,19 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
     useFenAnalyzer({ ...settings, id: 'ctx-6' }),
     useFenAnalyzer({ ...settings, id: 'ctx-7' }),
     useFenAnalyzer({ ...settings, id: 'ctx-8' }),
+    useFenAnalyzer({ ...settings, id: 'ctx-9' }),
+    useFenAnalyzer({ ...settings, id: 'ctx-10' }),
+    useFenAnalyzer({ ...settings, id: 'ctx-11' }),
+    useFenAnalyzer({ ...settings, id: 'ctx-12' }),
+    useFenAnalyzer({ ...settings, id: 'ctx-13' }),
+    useFenAnalyzer({ ...settings, id: 'ctx-14' }),
+    useFenAnalyzer({ ...settings, id: 'ctx-15' }),
+    useFenAnalyzer({ ...settings, id: 'ctx-16' }),
   ];
 
   const queueRef = useRef<QueueItem[]>([]);
-  const instanceBusyRef = useRef<boolean[]>(new Array(NUM_INSTANCES).fill(false));
-  const activeItemsRef = useRef<(QueueItem | null)[]>(new Array(NUM_INSTANCES).fill(null));
+  const instanceBusyRef = useRef<boolean[]>(new Array(MAX_INSTANCES).fill(false));
+  const activeItemsRef = useRef<(QueueItem | null)[]>(new Array(MAX_INSTANCES).fill(null));
   const workersSetupRef = useRef(false);
   // Ref to analyzers so processQueue can access them without stale closures
   const analyzersRef = useRef(analyzers);
@@ -73,8 +93,9 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
 
   const processQueue = useCallback(() => {
     const analyzersCurrent = analyzersRef.current;
+    const numInstances = numInstancesRef.current;
 
-    for (let i = 0; i < NUM_INSTANCES; i++) {
+    for (let i = 0; i < numInstances; i++) {
       if (instanceBusyRef.current[i]) continue;
       if (queueRef.current.length === 0) break;
 
@@ -114,8 +135,8 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
         });
     }
 
-    // Update status based on queue and busy states
-    const anyBusy = instanceBusyRef.current.some(b => b);
+    // Update status based on queue and busy states (only check active instances)
+    const anyBusy = instanceBusyRef.current.slice(0, numInstances).some(b => b);
     const hasQueue = queueRef.current.some(item => !item.cancelled);
     if (anyBusy || hasQueue) {
       setStatus(AnalyzerStatus.Analyzing);
@@ -133,6 +154,8 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
   }, [processQueue]);
 
   const stop = useCallback(async (): Promise<void> => {
+    const numInstances = numInstancesRef.current;
+
     // Reject all queued items
     const pendingItems = [...queueRef.current];
     queueRef.current = [];
@@ -143,9 +166,9 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
       }
     }
 
-    // Cancel and reject active items, then stop their analyzers
+    // Cancel and reject active items, then stop their analyzers (only active instances)
     const stopPromises: Promise<void>[] = [];
-    for (let i = 0; i < NUM_INSTANCES; i++) {
+    for (let i = 0; i < numInstances; i++) {
       const activeItem = activeItemsRef.current[i];
       if (activeItem && !activeItem.cancelled) {
         activeItem.cancelled = true;
@@ -161,8 +184,8 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
     await Promise.all(stopPromises);
 
     // Reset busy states
-    instanceBusyRef.current = new Array(NUM_INSTANCES).fill(false);
-    activeItemsRef.current = new Array(NUM_INSTANCES).fill(null);
+    instanceBusyRef.current = new Array(MAX_INSTANCES).fill(false);
+    activeItemsRef.current = new Array(MAX_INSTANCES).fill(null);
 
     if (workersSetupRef.current) {
       setStatus(AnalyzerStatus.Idle);
@@ -171,14 +194,22 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
 
   const newGame = useCallback(async (): Promise<void> => {
     await stop();
-    const promises = analyzersRef.current.map(a => a.newGame().catch(() => {}));
+    const numInstances = numInstancesRef.current;
+    // Only call newGame on initialized instances
+    const promises = analyzersRef.current.slice(0, numInstances).map(a => a.newGame().catch(() => {}));
     await Promise.all(promises);
   }, [stop]);
 
   const setupWorkers = useCallback(async (): Promise<void> => {
     if (workersSetupRef.current) return;
     setStatus(AnalyzerStatus.Initializing);
-    const promises = analyzersRef.current.map(a => a.setupWorker());
+
+    const numInstances = numInstancesRef.current;
+    const availableThreads = navigator.hardwareConcurrency || 'unknown';
+    console.log(`Initializing ${numInstances} analyzer instances (${availableThreads} hardware threads available)`);
+
+    // Only setup the workers we need (first numInstances analyzers)
+    const promises = analyzersRef.current.slice(0, numInstances).map(a => a.setupWorker());
     await Promise.all(promises);
     workersSetupRef.current = true;
     setStatus(AnalyzerStatus.Idle);
@@ -190,7 +221,8 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
       const updated = { ...prev };
       let changed = false;
 
-      for (let i = 0; i < NUM_INSTANCES; i++) {
+      const numInstances = numInstancesRef.current;
+      for (let i = 0; i < numInstances; i++) {
         const latestEval = analyzers[i].latestEvaluation;
         if (latestEval && latestEval.fen) {
           const existing = updated[latestEval.fen];
@@ -212,6 +244,14 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
     analyzers[5].latestEvaluation,
     analyzers[6].latestEvaluation,
     analyzers[7].latestEvaluation,
+    analyzers[8].latestEvaluation,
+    analyzers[9].latestEvaluation,
+    analyzers[10].latestEvaluation,
+    analyzers[11].latestEvaluation,
+    analyzers[12].latestEvaluation,
+    analyzers[13].latestEvaluation,
+    analyzers[14].latestEvaluation,
+    analyzers[15].latestEvaluation,
   ]);
 
   const engineName = analyzers[0].engineName;
