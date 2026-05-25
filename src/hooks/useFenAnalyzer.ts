@@ -219,16 +219,17 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
       isWaitingForSetupReadyRef.current = true;
 
       // Set up a timeout in case the worker never responds
+      const timeoutSeconds = 120;
       const timeout = setTimeout(() => {
         if (setupPromiseRef.current) {
           setStatus(AnalyzerStatus.Uninitialized);
           setupPromiseRef.current.reject(
-            new Error(`Stockfish ${settings.id} Worker setup timed out after 30 seconds`)
+            new Error(`Stockfish ${settings.id} Worker setup timed out after {timeoutSeconds} seconds`)
           );
           setupPromiseRef.current = null;
           isWaitingForSetupReadyRef.current = false;
         }
-      }, 30000);
+      }, timeoutSeconds * 1000);
 
       // Clear timeout when promise resolves or rejects
       const originalResolve = setupPromiseRef.current.resolve;
