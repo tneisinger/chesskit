@@ -81,7 +81,10 @@ interface Props {
 const GameReview = ({ game }: Props) => {
   const windowSize = useWindowSize();
 
-  const [depth, setDepth] = useState(20);
+  const [depth, setDepth] = useState(() => {
+    const saved = localStorage.getItem('gameAnalysisDepth');
+    return saved ? Number(saved) : 18;
+  });
   const [hasGameLoaded, setHasGameLoaded] = useState(false);
   const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
   const [gameHistory, setGameHistory] = useState<null | Move[]>(null);
@@ -120,6 +123,12 @@ const GameReview = ({ game }: Props) => {
 
   // Set up PGN analyzer
   const pgnAnalyzer = usePgnAnalyzerParallel(depth, 2);
+
+  // Wrap analyzePgn to save depth to localStorage when analysis starts
+  const saveDepthAndAnalyzePgn = useCallback((pgn: string, options: any) => {
+    localStorage.setItem('gameAnalysisDepth', String(depth));
+    return pgnAnalyzer.analyzePgn(pgn, options);
+  }, [depth, pgnAnalyzer.analyzePgn]);
 
   // Set up forcing line finder
   const forcingLineFinder = useForcingLineFinderParallel();
@@ -404,7 +413,7 @@ const GameReview = ({ game }: Props) => {
             {hasGameLoaded && gameHistory != null && (
               <GameAnalysis
                 game={game}
-                analyzePgn={pgnAnalyzer.analyzePgn}
+                analyzePgn={saveDepthAndAnalyzePgn}
                 depth={depth}
                 changeDepth={setDepth}
                 pgnAnalyzerStatus={pgnAnalyzer.status}
