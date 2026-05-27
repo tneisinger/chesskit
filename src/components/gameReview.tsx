@@ -85,6 +85,7 @@ const GameReview = ({ game }: Props) => {
     const saved = localStorage.getItem('gameAnalysisDepth');
     return saved ? Number(saved) : 18;
   });
+  const [currentMoveAnalyzerDepth, setCurrentMoveAnalyzerDepth] = useState(18);
   const [hasGameLoaded, setHasGameLoaded] = useState(false);
   const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
   const [gameHistory, setGameHistory] = useState<null | Move[]>(null);
@@ -118,7 +119,7 @@ const GameReview = ({ game }: Props) => {
 
   const currentMoveAnalyzer = useCurrentMoveAnalyzer(
     currentMove,
-    { depth: 18, numLines: 2 }
+    { depth: currentMoveAnalyzerDepth, numLines: 2 }
   );
 
   // Set up PGN analyzer
@@ -313,6 +314,8 @@ const GameReview = ({ game }: Props) => {
       switchDisabledTooltip='Analyze the game to unlock the engine'
       showMoveJudgements={false}
       colorLineScores={true}
+      depth={currentMoveAnalyzerDepth}
+      changeDepth={setCurrentMoveAnalyzerDepth}
     />
   );
 

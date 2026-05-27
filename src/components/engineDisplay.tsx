@@ -10,6 +10,7 @@ import { colorToMove } from '@/utils/cmchess';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Output as CurrentMoveAnalyzer } from '@/hooks/useCurrentMoveAnalyzer';
 import { AnalyzerStatus } from '@/types/analyzer';
+import SvgIcon, { Svg } from '@/components/svgIcon';
 
 const showDevButtons = false;
 
@@ -24,6 +25,8 @@ export interface Props {
   switchDisabledTooltip?: string;
   showMoveJudgements?: boolean;
   colorLineScores?: boolean;
+  depth?: number;
+  changeDepth?: (newDepth: number) => void;
 }
 
 const EngineDisplay = ({
@@ -37,9 +40,12 @@ const EngineDisplay = ({
   switchDisabledTooltip,
   showMoveJudgements = true,
   colorLineScores = false,
+  depth,
+  changeDepth,
 }: Props) => {
   const [currentEvaluation, setCurrentEvaluation] = useState<PositionEvaluation | undefined>(undefined);
   const [engineNameOrStatus, setEngineNameOrStatus] = useState<string>('engine uninitialized');
+  const [showSettings, setShowSettings] = useState(false);
 
   const makeMoveJudgementString = useCallback((mj?: MoveJudgement): string => {
     if (!currentMoveAnalyzer.isOn) return '';
@@ -184,8 +190,46 @@ const EngineDisplay = ({
     })
   }
 
+  // Settings menu view
+  if (showSettings && depth !== undefined && changeDepth) {
+    return (
+      <div className="flex flex-1 flex-col py-0 px-0 relative">
+        <div className="flex flex-col flex-1 justify-center bg-stone-700 rounded-sm p-4">
+          <div className="flex flex-col items-center gap-4">
+            <h3 className="text-md font-bold">Engine Settings</h3>
+            <div className="flex flex-col items-center w-full">
+              <label htmlFor="engineDepthSlider" className="mb-2 text-sm">
+                Analysis Depth:
+              </label>
+              <div className="flex flex-col items-center w-1/2">
+                <input
+                  id="engineDepthSlider"
+                  className="w-full accent-stone-300"
+                  type="range"
+                  min={16}
+                  max={25}
+                  value={depth}
+                  onChange={(e) => changeDepth(Number(e.target.value))}
+                />
+                <span className="mt-1">{depth}</span>
+              </div>
+            </div>
+          </div>
+          {/* Close button */}
+          <button
+            onClick={() => setShowSettings(false)}
+            className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center hover:bg-stone-600 rounded"
+          >
+            <span className="text-xl leading-none">×</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Normal engine display view
   return (
-    <div className="flex flex-1 flex-col py-0 px-0">
+    <div className="flex flex-1 flex-col py-0 px-0 relative">
       <div className="flex flex-col flex-1 justify-center bg-stone-700 rounded-sm">
         <div className="flex flex-row items-center justify-between min-h-10 px-2">
           <span className="text-xl w-12 text-right">
@@ -260,6 +304,15 @@ const EngineDisplay = ({
             );
           })}
         </div>
+      )}
+      {/* Gear icon button - only show if depth/changeDepth props are provided and analyzer is on */}
+      {depth !== undefined && changeDepth && currentMoveAnalyzer.isOn && (
+        <button
+          onClick={() => setShowSettings(true)}
+          className="absolute bottom-1 right-1 w-6 h-6 flex items-center justify-center hover:bg-stone-600 rounded"
+        >
+          <SvgIcon svg={Svg.GearIcon} width={16} height={16} styles="fill-white" />
+        </button>
       )}
       {showDevButtons && (<button onClick={debug}>debug</button>)}
     </div>

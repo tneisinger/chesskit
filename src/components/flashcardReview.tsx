@@ -160,11 +160,11 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   } = useChessboardEngine();
 
   const fenAnalyzers = useFenAnalyzers();
-  const [engineDepth] = useState(18);
+  const [engineDepth, setEngineDepth] = useState(18);
 
   const currentMoveAnalyzer = useCurrentMoveAnalyzer(
     currentMove,
-    { depth: 18, numLines: 2 }
+    { depth: engineDepth, numLines: 2 }
   );
 
 
@@ -920,8 +920,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       switchDisabledTooltip='Complete the flashcard to unlock the engine'
       showMoveJudgements={false}
       colorLineScores={true}
+      depth={engineDepth}
+      changeDepth={setEngineDepth}
     />
-  ), [currentMoveAnalyzer, fenAnalyzers.evaluations, currentMove, rightColWidth, currentMode]);
+  ), [currentMoveAnalyzer, fenAnalyzers.evaluations, currentMove, rightColWidth, currentMode, engineDepth]);
 
   return (
     <div className="flex flex-col items-center gap-3" style={{ width: mainDivWidth }}>
