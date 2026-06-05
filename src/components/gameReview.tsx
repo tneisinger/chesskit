@@ -438,6 +438,7 @@ const GameReview = ({ game }: Props) => {
               forcingLineFinder={forcingLineFinder}
               isCreatingFlashcard={isCreatingFlashcard}
               changeIsCreatingFlashcard={setIsCreatingFlashcard}
+              depth={depth}
             />
             <button onClick={() => {
               console.log('debug');

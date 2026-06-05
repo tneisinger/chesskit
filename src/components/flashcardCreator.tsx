@@ -39,6 +39,7 @@ interface Props {
   forcingLineFinder: ForcingLineFinder;
   isCreatingFlashcard: boolean;
   changeIsCreatingFlashcard: (b: boolean) => void;
+  depth: number;
 }
 
 const FlashcardCreator = ({
@@ -48,6 +49,7 @@ const FlashcardCreator = ({
   forcingLineFinder,
   isCreatingFlashcard,
   changeIsCreatingFlashcard,
+  depth,
 }: Props) => {
   const [gameFlashcards, setGameFlashcards] = useState<Flashcard[] | null>(null);
   const [awaitingUserConfirm, setAwaitingUserConfirm] = useState(false);
@@ -123,7 +125,7 @@ const FlashcardCreator = ({
       // Stop current analyses and find forcing line
       await fenAnalyzers.stop();
 
-      const options: FindForcingLineOptions = { minDepth: 18, maxLineLength: 11 };
+      const options: FindForcingLineOptions = { minDepth: depth, maxLineLength: 11 };
       const forcingLine = await forcingLineFinder.findForcingLine(evaluation, options);
 
       if (forcingLine.length > 0) {
