@@ -372,3 +372,101 @@ export async function getFlashcardStats(): Promise<{
     return { total: 0, due: 0, learning: 0, mature: 0 };
   }
 }
+
+export interface DailyReviewData {
+  date: string;
+  count: number;
+}
+
+export interface ReviewStatsData {
+  dailyReviews: DailyReviewData[];
+  totalReviews: number;
+  averagePerDay: number;
+  daysInPeriod: number;
+}
+
+/**
+ * Get review statistics for a given time period
+ */
+export async function getReviewStats(days?: number): Promise<ReviewStatsData> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { dailyReviews: [], totalReviews: 0, averagePerDay: 0, daysInPeriod: 0 };
+    }
+
+    const userId = Number(session.user.id);
+
+    // Get all flashcards for the user
+    const allCards = await db.query.flashcards.findMany({
+      where: eq(flashcards.userId, userId),
+    });
+
+    // Filter cards that have been reviewed
+    const reviewedCards = allCards.filter((card) => card.lastReviewedDate !== null);
+
+    // Calculate the start date based on days parameter
+    const now = new Date();
+    let startDate: Date;
+    if (days) {
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - days);
+      startDate.setHours(0, 0, 0, 0);
+    } else {
+      // If no days specified, get all time (use earliest review date)
+      if (reviewedCards.length === 0) {
+        return { dailyReviews: [], totalReviews: 0, averagePerDay: 0, daysInPeriod: 0 };
+      }
+      const earliestReview = reviewedCards.reduce((earliest, card) => {
+        const reviewDate = card.lastReviewedDate!;
+        return reviewDate < earliest ? reviewDate : earliest;
+      }, reviewedCards[0].lastReviewedDate!);
+      startDate = new Date(earliestReview);
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    // Filter reviews within the time period
+    const filteredReviews = reviewedCards.filter((card) => {
+      const reviewDate = card.lastReviewedDate!;
+      return reviewDate >= startDate;
+    });
+
+    // Group reviews by date
+    const reviewsByDate = new Map<string, number>();
+    filteredReviews.forEach((card) => {
+      const reviewDate = new Date(card.lastReviewedDate!);
+      const dateKey = reviewDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      reviewsByDate.set(dateKey, (reviewsByDate.get(dateKey) || 0) + 1);
+    });
+
+    // Create array of all dates in range with counts
+    const dailyReviews: DailyReviewData[] = [];
+    const currentDate = new Date(startDate);
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
+
+    while (currentDate <= endDate) {
+      const dateKey = currentDate.toISOString().split('T')[0];
+      dailyReviews.push({
+        date: dateKey,
+        count: reviewsByDate.get(dateKey) || 0,
+      });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Calculate statistics
+    const totalReviews = filteredReviews.length;
+    const daysInPeriod = dailyReviews.length;
+    const averagePerDay = daysInPeriod > 0 ? totalReviews / daysInPeriod : 0;
+
+    return {
+      dailyReviews,
+      totalReviews,
+      averagePerDay,
+      daysInPeriod,
+    };
+  } catch (error) {
+    console.error("Error fetching review stats:", error);
+    return { dailyReviews: [], totalReviews: 0, averagePerDay: 0, daysInPeriod: 0 };
+  }
+}
