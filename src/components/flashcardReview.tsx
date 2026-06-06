@@ -61,10 +61,20 @@ import { FEN } from 'cm-chess/src/Chess';
 import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
 import { parsePGN } from '@/utils/chess';
 import { Chess as CmChess } from 'cm-chess/src/Chess';
+import { ScrollLock } from '@/components/ScrollLock';
+import { shouldUseMobileLayout } from '@/utils/mobileLayout';
+import IconButton from '@/components/iconButton';
+import { Svg } from '@/components/svgIcon';
 
 const COUNTDOWN_START_TIME = 60 * 5;
 const MOVE_INCREMENT_SECONDS = 5;
 
+enum MobileTab {
+  Feedback = 'Feedback',
+  Details = 'Details',
+  Moves = 'Moves',
+  Engine = 'Engine',
+}
 
 interface Props {
   flashcards: Flashcard[];
@@ -80,16 +90,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [flashcardIndex, setFlashcardIndex] = useState(0);
   const { refreshDueCount } = useFlashcardContext();
 
+  // Declare currentFlashcard early so it's available in all hooks
   const currentFlashcard = flashcards[flashcardIndex];
-
-  if (!currentFlashcard) {
-    return (
-      <div className="text-center py-12 bg-background-page rounded-md">
-        <p className="text-xl mb-2">All flashcards reviewed!</p>
-        <p className="text-gray-400">Great job! Check back later for more reviews.</p>
-      </div>
-    );
-  }
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
@@ -114,6 +116,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const [boardFenOverride, setBoardFenOverride] = useState<string | undefined>(undefined);
   const [isGradingMove, setIsGradingMove] = useState(false);
   const [moveGrade, setMoveGrade] = useState<{ san: string, grade: MoveJudgement } | null>(null);
+  const [selectedMobileTab, setSelectedMobileTab] = useState<MobileTab>(MobileTab.Feedback);
 
   // Used to scroll to the bottom of the MovesDisplay
   const [scrollTrigger, setScrollTrigger] = useState(0);
@@ -161,6 +164,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const fenAnalyzers = useFenAnalyzers();
   const [engineDepth, setEngineDepth] = useState(18);
+  const windowSize = useWindowSize();
 
   const currentMoveAnalyzer = useCurrentMoveAnalyzer(
     currentMove,
@@ -569,6 +573,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
 
   const handleModeBtnClick = useCallback(() => {
+    // Prevent entering Edit mode on mobile
+    if (shouldUseMobileLayout(windowSize) === true) return;
+
     if (currentMode === Mode.Edit) {
       setCurrentMode(Mode.Practice);
       handleReplayFlashcardBtnClick(250);
@@ -579,7 +586,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       discardUnsavedChanges();
       setCurrentMode(Mode.Edit);
     }
-  }, [currentMode, pauseClock, handleReplayFlashcardBtnClick, discardUnsavedChanges]);
+  }, [currentMode, pauseClock, handleReplayFlashcardBtnClick, discardUnsavedChanges, windowSize]);
 
 
   const handleNextFlashcardBtnClick = useCallback(() => {
@@ -854,46 +861,65 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       });
   }, [])
 
-
   // Determine the board size - resize dynamically to fill available space
-  const windowSize = useWindowSize();
+  let boardSize: number;
+  const defaultBoardSize = 750;
+  const isMobileLayout = shouldUseMobileLayout(windowSize) === true;
 
-  const leftColWidthPx = 275;
-  const rightColWidthPx = 275;
-  const columnGap = 8;
-  const edgeGap = 8; // minimum gap along screen edges
-  const maxTotalWidth = 1764;
-  const gapBetweenRows = 12; // gap-3
-  const secondRowHeight = 50; // approximate height for controls/buttons row
+  // Mobile layout: use full width or default
+  if (isMobileLayout) {
+    if (windowSize.width && windowSize.width < defaultBoardSize) {
+      boardSize = windowSize.width;
+    } else {
+      boardSize = defaultBoardSize;
+    }
+  } else {
+    // Desktop layout: calculate based on three-column layout
+    const leftColWidthPx = 275;
+    const rightColWidthPx = 275;
+    const columnGap = 8;
+    const edgeGap = 8; // minimum gap along screen edges
+    const maxTotalWidth = 1764;
+    const gapBetweenRows = 12; // gap-3
+    const secondRowHeight = 50; // approximate height for controls/buttons row
 
-  // Calculate maximum width the board can be
-  const maxBoardWidthFromWindow = windowSize.width
-    ? windowSize.width - leftColWidthPx - rightColWidthPx - (columnGap * 2) - (edgeGap * 2)
-    : maxTotalWidth;
-  const maxBoardWidthFromMaxTotal = maxTotalWidth - leftColWidthPx - rightColWidthPx - (columnGap * 2);
-  const maxBoardWidth = Math.min(maxBoardWidthFromWindow, maxBoardWidthFromMaxTotal);
+    // Calculate maximum width the board can be
+    const maxBoardWidthFromWindow = windowSize.width
+      ? windowSize.width - leftColWidthPx - rightColWidthPx - (columnGap * 2) - (edgeGap * 2)
+      : maxTotalWidth;
+    const maxBoardWidthFromMaxTotal = maxTotalWidth - leftColWidthPx - rightColWidthPx - (columnGap * 2);
+    const maxBoardWidth = Math.min(maxBoardWidthFromWindow, maxBoardWidthFromMaxTotal);
 
-  // Calculate maximum height the board can be
-  const maxBoardHeight = windowSize.height
-    ? windowSize.height - NAV_BAR_HEIGHT - secondRowHeight - gapBetweenRows - edgeGap
-    : maxBoardWidth;
+    // Calculate maximum height the board can be
+    const maxBoardHeight = windowSize.height
+      ? windowSize.height - NAV_BAR_HEIGHT - secondRowHeight - gapBetweenRows - edgeGap
+      : maxBoardWidth;
 
-  // Board must be square, so use the minimum of width and height constraints
-  const boardSize = Math.max(400, Math.min(maxBoardWidth, maxBoardHeight)); // minimum 400px for usability
+    // Board must be square, so use the minimum of width and height constraints
+    boardSize = Math.max(400, Math.min(maxBoardWidth, maxBoardHeight)); // minimum 400px for usability
+  }
 
+  // Desktop layout column widths
+  const leftColWidth = 275;
+  const rightColWidth = 275;
+  const columnGapWidth = 8;
+  const mainDivWidth = leftColWidth + boardSize + rightColWidth + (columnGapWidth * 2);
 
-  const movesDisplay = useMemo(() => (
-    <NewMovesDisplay
-      history={history}
-      currentMove={currentMove}
-      changeCurrentMove={setCurrentMove}
-      useMobileLayout={false}
-      showVariations={true}
-      contextMenu={makeContextMenu()}
-      keyMoves={[history[currentFlashcard.positionIdx - 1]]}
-      scrollToBottom={scrollTrigger}
-    />
-  ), [history, currentMove, currentFlashcard.positionIdx, scrollTrigger]);
+  const movesDisplay = useMemo(() => {
+    if (!currentFlashcard) return null;
+    return (
+      <NewMovesDisplay
+        history={history}
+        currentMove={currentMove}
+        changeCurrentMove={setCurrentMove}
+        useMobileLayout={false}
+        showVariations={true}
+        contextMenu={makeContextMenu()}
+        keyMoves={[history[currentFlashcard.positionIdx - 1]]}
+        scrollToBottom={scrollTrigger}
+      />
+    );
+  }, [history, currentMove, currentFlashcard, scrollTrigger]);
 
 
   const arrowButtons = useMemo(() => (
@@ -905,17 +931,12 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     />
   ), [history, currentMove]);
 
-  const leftColWidth = leftColWidthPx;
-  const rightColWidth = rightColWidthPx;
-  const columnGapWidth = columnGap;
-  const mainDivWidth = leftColWidth + boardSize + rightColWidth + (columnGapWidth * 2);
-
   const engineDisplay = useMemo(() => (
     <EngineDisplay
       currentMoveAnalyzer={currentMoveAnalyzer}
       evaluations={fenAnalyzers.evaluations}
       currentMove={currentMove}
-      maxLineLengthPx={rightColWidth}
+      maxLineLengthPx={isMobileLayout ? (windowSize.width || 0) - 6 : rightColWidth}
       isSwitchDisabled={currentMode === Mode.Practice}
       switchDisabledTooltip='Complete the flashcard to unlock the engine'
       showMoveJudgements={false}
@@ -923,45 +944,287 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       depth={engineDepth}
       changeDepth={setEngineDepth}
     />
-  ), [currentMoveAnalyzer, fenAnalyzers.evaluations, currentMove, rightColWidth, currentMode, engineDepth]);
+  ), [currentMoveAnalyzer, fenAnalyzers.evaluations, currentMove, rightColWidth, currentMode, engineDepth, windowSize, isMobileLayout]);
 
+  // Memoize all the conditional mobile/desktop layout elements
+  const mobileChessboard = useMemo(() => {
+    if (!currentFlashcard) return null;
+    let allowInteraction = true;
+    if (currentMode === Mode.Practice && !isUsersTurn()) {
+      allowInteraction = false;
+    }
+    return (
+      <Chessboard
+        currentMove={currentMove}
+        boardSize={boardSize}
+        orientation={currentFlashcard.userColor}
+        allowInteraction={allowInteraction}
+        playMove={playMove}
+        afterUserMove={handleUserMove}
+        animate={true}
+        markers={markers}
+        fenOverride={boardFenOverride}
+        arrows={arrows}
+      />
+    );
+  }, [currentMove, boardSize, currentFlashcard, currentMode, markers, boardFenOverride, arrows]);
+
+  const mobileHintButtons = useMemo(() => (
+    <HintButtons
+      currentMove={currentMove}
+      giveHint={giveHint}
+      showMove={showMoves}
+      hintButtonText="Hint"
+      showButtonText="Show"
+      buttonSize={ButtonSize.Small}
+    />
+  ), [currentMove]);
+
+  const mobileArrowButtons = useMemo(() => (
+    <ArrowButtons
+      history={history}
+      currentMove={currentMove}
+      changeCurrentMove={setCurrentMove}
+      marginTop={0}
+      excludeStartAndEndBtns={true}
+    />
+  ), [history, currentMove]);
+
+  const mobileFeedbackTab = useMemo(() => {
+    if (!currentFlashcard) return null;
+    return (
+      <div className="w-full p-2">
+        <FlashcardFeedback
+          dueFlashcards={flashcards}
+          flashcardIndex={flashcardIndex}
+          currentMove={currentMove}
+          isFlashcardComplete={hasUserCompletedFlashcard}
+          onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
+          onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
+          onShowMistakeBtnClick={handleShowMistakeBtnClick}
+          numWrongAnswers={wrongAnswerCount}
+          numHintsGiven={numHintsGiven}
+          numShowMovesGiven={numShowMovesGiven}
+          isGradingMove={isGradingMove}
+          moveGrade={moveGrade}
+        />
+      </div>
+    );
+  }, [flashcards, flashcardIndex, currentMove, hasUserCompletedFlashcard, wrongAnswerCount, numHintsGiven, numShowMovesGiven, isGradingMove, moveGrade, currentFlashcard]);
+
+  const mobileDetailsTab = useMemo(() => {
+    if (!currentFlashcard) return null;
+    return (
+      <div className="w-full p-2">
+        <FlashcardDetails flashcard={currentFlashcard} />
+      </div>
+    );
+  }, [currentFlashcard]);
+
+  const desktopStatsHeader = useMemo(() => {
+    if (!currentFlashcard) return null;
+    return (
+      <div className="flex flex-col gap-4 w-full bg-background-page rounded-md p-2 text-center">
+        <h1 className="text-2xl font-bold">Flashcard Review</h1>
+        <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
+        <div className="flex gap-4 text-sm text-gray-400 justify-center">
+          <div>Total: <span className="font-semibold text-foreground">{stats.total}</span></div>
+          <div>Due: <span className="font-semibold text-foreground">{stats.due}</span></div>
+        </div>
+      </div>
+    );
+  }, [flashcardIndex, flashcards.length, stats.total, stats.due, currentFlashcard]);
+
+  const desktopFlashcardDetails = useMemo(() => {
+    if (!currentFlashcard) return null;
+    return <FlashcardDetails flashcard={currentFlashcard} />;
+  }, [currentFlashcard]);
+
+  const desktopFlashcardFeedback = useMemo(() => {
+    if (!currentFlashcard) return null;
+    return (
+      <FlashcardFeedback
+        dueFlashcards={flashcards}
+        flashcardIndex={flashcardIndex}
+        currentMove={currentMove}
+        isFlashcardComplete={hasUserCompletedFlashcard}
+        onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
+        onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
+        onShowMistakeBtnClick={handleShowMistakeBtnClick}
+        numWrongAnswers={wrongAnswerCount}
+        numHintsGiven={numHintsGiven}
+        numShowMovesGiven={numShowMovesGiven}
+        isGradingMove={isGradingMove}
+        moveGrade={moveGrade}
+      />
+    );
+  }, [flashcards, flashcardIndex, currentMove, hasUserCompletedFlashcard, wrongAnswerCount, numHintsGiven, numShowMovesGiven, isGradingMove, moveGrade, currentFlashcard]);
+
+  const desktopEditButtons = useMemo(() => {
+    if (currentMode !== Mode.Edit) return null;
+    return (
+      <FlashcardEditButtons
+        onDiscardChangesBtnClick={discardUnsavedChanges}
+        onSaveChangesBtnClick={saveFlashcardPgnChanges}
+        onDeleteFlashcardBtnClick={() => setShowDeleteFlashcardModal(true)}
+        doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
+        showSaveAndUndoBtns={areLinesForcing === true}
+      />
+    );
+  }, [currentMode, history, areLinesForcing]);
+
+  const desktopHintButtons = useMemo(() => (
+    <HintButtons
+      currentMove={currentMove}
+      giveHint={giveHint}
+      showMove={showMoves}
+      hintButtonText="Show Hint"
+      showButtonText="Show Move"
+      buttonSize={ButtonSize.Normal}
+    />
+  ), [currentMove]);
+
+  const desktopModeSwitchButtons = useMemo(() => {
+    if (!currentFlashcard) return null;
+    return (
+      <>
+        {currentMode !== Mode.Edit && (
+          <Button
+            onClick={handleModeBtnClick}
+            disabled={!hasUserCompletedFlashcard}
+          >
+            Edit Flashcard
+          </Button>
+        )}
+        {currentMode === Mode.Edit && (
+          <div className="flex flex-row gap-4">
+            <Button onClick={handleModeBtnClick}>
+              Replay
+            </Button>
+            {(hasUserCompletedFlashcard && flashcardIndex < flashcards.length - 1) && (
+              <Button buttonStyle={ButtonStyle.Primary} onClick={handleNextFlashcardBtnClick}>
+                Next Flashcard
+              </Button>
+            )}
+          </div>
+        )}
+      </>
+    );
+  }, [currentMode, hasUserCompletedFlashcard, flashcardIndex, flashcards.length, currentFlashcard]);
+
+  // Early return if no flashcard - MUST be after ALL hooks (including useMemos)
+  if (!currentFlashcard) {
+    return (
+      <div className="text-center py-12 bg-background-page rounded-md">
+        <p className="text-xl mb-2">All flashcards reviewed!</p>
+        <p className="text-gray-400">Great job! Check back later for more reviews.</p>
+      </div>
+    );
+  }
+
+  // Mobile Layout
+  if (isMobileLayout) {
+    const divHeight = (windowSize.height || 0) - NAV_BAR_HEIGHT;
+
+    return (
+      <ScrollLock>
+        <div
+          style={{ height: divHeight }}
+          className="flex flex-col items-center justify-start w-full"
+        >
+          {/* Header */}
+          <div className="py-1 text-center">
+            <h2 className="text-xl font-bold">Flashcard {flashcardIndex + 1} of {flashcards.length}</h2>
+          </div>
+
+          {/* Chessboard with modals */}
+          <div className="relative" style={{ width: boardSize }}>
+            <BlinkOverlay blinkCount={wrongAnswerBlinkTrigger} />
+            <AltMoveModal
+              show={showAltMoveModal}
+              onClose={() => {
+                setShowAltMoveModal(false);
+                performWrongAnswerActions({ indicateThatTheMoveWasWrong: false });
+              }}
+            />
+            <DeleteFlashcardModal
+              show={showDeleteFlashcardModal}
+              onClose={() => {
+                setShowDeleteFlashcardModal(false);
+                setDeleteStatus(DeleteStatus.NotStarted);
+              }}
+              onNextFlashcardBtnClick={() => console.log('next flashcard')}
+              onConfirmedFlashcardDelete={handleConfirmedFlashcardDelete}
+              deleteStatus={deleteStatus}
+            />
+            {mobileChessboard}
+          </div>
+
+          {/* Controls row */}
+          <div className="p-2 flex flex-row w-full justify-between items-center" style={{ width: boardSize }}>
+            <div className="flex-1 flex justify-start">
+              {mobileHintButtons}
+            </div>
+            <div className="flex-1 flex justify-center">
+              {mobileArrowButtons}
+            </div>
+            <div className="flex-1 flex justify-end">
+              <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
+            </div>
+          </div>
+
+          {/* Tabbed content area */}
+          <div className="flex flex-1 w-[calc(100vw-20px)] rounded-md bg-background-page overflow-y-scroll overflow-x-hidden">
+            {selectedMobileTab === MobileTab.Feedback && mobileFeedbackTab}
+            {selectedMobileTab === MobileTab.Details && mobileDetailsTab}
+            {selectedMobileTab === MobileTab.Moves && movesDisplay}
+            {selectedMobileTab === MobileTab.Engine && engineDisplay}
+          </div>
+
+          {/* Bottom navigation bar */}
+          <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]">
+            <IconButton
+              icon={Svg.Check}
+              onClick={() => setSelectedMobileTab(MobileTab.Feedback)}
+              text={'Feedback'}
+              isHighlighted={selectedMobileTab === MobileTab.Feedback}
+            />
+            <IconButton
+              icon={Svg.Puzzle}
+              onClick={() => setSelectedMobileTab(MobileTab.Details)}
+              text={'Details'}
+              isHighlighted={selectedMobileTab === MobileTab.Details}
+            />
+            <IconButton
+              icon={Svg.SwoopyArrow}
+              onClick={() => setSelectedMobileTab(MobileTab.Moves)}
+              text={'Moves'}
+              isHighlighted={selectedMobileTab === MobileTab.Moves}
+            />
+            <IconButton
+              icon={Svg.Lightbulb}
+              onClick={() => setSelectedMobileTab(MobileTab.Engine)}
+              text={'Engine'}
+              isHighlighted={selectedMobileTab === MobileTab.Engine}
+            />
+          </div>
+        </div>
+      </ScrollLock>
+    );
+  }
+
+  // Desktop Layout
   return (
-    <div className="flex flex-col items-center gap-3" style={{ width: mainDivWidth }}>
+    <div className="flex flex-col items-center gap-3 mt-3" style={{ width: mainDivWidth }}>
       {/* First row  */}
       <div className="flex flex-row w-full max-w-[1768px]">
 
         {/* Left Column */}
         <div className="flex justify-start" style={{width: rightColWidth + columnGapWidth}}>
           <div className="flex flex-col gap-2" style={{width: rightColWidth, height: boardSize }}>
-            {useMemo(() => (
-              <div className="flex flex-col gap-4 w-full bg-background-page rounded-md p-2 text-center">
-                <h1 className="text-2xl font-bold">Flashcard Review</h1>
-                <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
-                <div className="flex gap-4 text-sm text-gray-400 justify-center">
-                  <div>Total: <span className="font-semibold text-foreground">{stats.total}</span></div>
-                  <div>Due: <span className="font-semibold text-foreground">{stats.due}</span></div>
-                </div>
-              </div>
-            ), [flashcardIndex, flashcards.length, stats.total, stats.due])}
-            {useMemo(() => (
-              <FlashcardDetails flashcard={currentFlashcard} />
-            ), [currentFlashcard])}
-            {useMemo(() => (
-              <FlashcardFeedback
-                dueFlashcards={flashcards}
-                flashcardIndex={flashcardIndex}
-                currentMove={currentMove}
-                isFlashcardComplete={hasUserCompletedFlashcard}
-                onReplayFlashcardBtnClick={handleReplayFlashcardBtnClick}
-                onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
-                onShowMistakeBtnClick={handleShowMistakeBtnClick}
-                numWrongAnswers={wrongAnswerCount}
-                numHintsGiven={numHintsGiven}
-                numShowMovesGiven={numShowMovesGiven}
-                isGradingMove={isGradingMove}
-                moveGrade={moveGrade}
-              />
-            ), [flashcards, flashcardIndex, currentMove, hasUserCompletedFlashcard, wrongAnswerCount, numHintsGiven, numShowMovesGiven, isGradingMove, moveGrade])}
+            {desktopStatsHeader}
+            {desktopFlashcardDetails}
+            {desktopFlashcardFeedback}
           </div>
         </div>
 
@@ -985,26 +1248,18 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
             onConfirmedFlashcardDelete={handleConfirmedFlashcardDelete}
             deleteStatus={deleteStatus}
           />
-          {useMemo(() => {
-            let allowInteraction = true;
-            if (currentMode === Mode.Practice && !isUsersTurn()) {
-              allowInteraction = false;
-            }
-            return (
-              <Chessboard
-                currentMove={currentMove}
-                boardSize={boardSize}
-                orientation={currentFlashcard.userColor}
-                allowInteraction={allowInteraction}
-                playMove={playMove}
-                afterUserMove={handleUserMove}
-                animate={true}
-                markers={markers}
-                fenOverride={boardFenOverride}
-                arrows={arrows}
-              />
-            );
-          }, [currentMove, boardSize, currentFlashcard.userColor, currentMode, markers, boardFenOverride, arrows])}
+          <Chessboard
+            currentMove={currentMove}
+            boardSize={boardSize}
+            orientation={currentFlashcard.userColor}
+            allowInteraction={currentMode === Mode.Practice ? isUsersTurn() : true}
+            playMove={playMove}
+            afterUserMove={handleUserMove}
+            animate={true}
+            markers={markers}
+            fenOverride={boardFenOverride}
+            arrows={arrows}
+          />
         </div>
 
         {/* Right column */}
@@ -1017,20 +1272,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
               <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
                 {movesDisplay}
               </div>
-              {useMemo(() => {
-                if (currentMode !== Mode.Edit) return null;
-                return (
-                  <>
-                    <FlashcardEditButtons
-                      onDiscardChangesBtnClick={discardUnsavedChanges}
-                      onSaveChangesBtnClick={saveFlashcardPgnChanges}
-                      onDeleteFlashcardBtnClick={() => setShowDeleteFlashcardModal(true)}
-                      doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
-                      showSaveAndUndoBtns={areLinesForcing === true}
-                    />
-                  </>
-                );
-              }, [currentMode, history, areLinesForcing])}
+              {desktopEditButtons}
             </div>
           </div>
         </div>
@@ -1051,42 +1293,10 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
           <div className="flex justify-center">
             <div className="flex flex-1 justify-between items-center">
               <div className="basis-32">
-                {useMemo(() => (
-                  <HintButtons
-                    currentMove={currentMove}
-                    giveHint={giveHint}
-                    showMove={showMoves}
-                    hintButtonText="Show Hint"
-                    showButtonText="Show Move"
-                    buttonSize={ButtonSize.Normal}
-                  />
-                ), [currentMove])}
+                {desktopHintButtons}
               </div>
               <div className="ml-auto mr-auto">
-                {useMemo(() => (
-                  <>
-                    {currentMode !== Mode.Edit && (
-                      <Button
-                        onClick={handleModeBtnClick}
-                        disabled={!hasUserCompletedFlashcard}
-                      >
-                        Edit Flashcard
-                      </Button>
-                    )}
-                    {currentMode === Mode.Edit && (
-                      <div className="flex flex-row gap-4">
-                        <Button onClick={handleModeBtnClick}>
-                          Replay
-                        </Button>
-                        {(hasUserCompletedFlashcard && flashcardIndex < flashcards.length - 1) && (
-                          <Button buttonStyle={ButtonStyle.Primary} onClick={handleNextFlashcardBtnClick}>
-                            Next Flashcard
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ), [currentMode, hasUserCompletedFlashcard, flashcardIndex, flashcards.length])}
+                {desktopModeSwitchButtons}
               </div>
               <div className="flex justify-end basis-32">
                 <CountdownClock remainingTime={remainingTime} isPaused={isPaused} />
