@@ -4,9 +4,7 @@ import Link from 'next/link';
 import { getOpening } from '@/utils/bookPositions';
 import { makeDateStringYYMMDD, makeDateStringDM } from '@/utils';
 import DotsSpinner from '@/components/dotsSpinner';
-import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import { makeReadableTimeControl } from '@/utils/chess';
-import useWindowSize from '@/hooks/useWindowSize';
 import { parse as parsePGN } from 'pgn-parser';
 
 interface Column {
@@ -18,6 +16,7 @@ interface Column {
 interface Props {
   selectedGameIds: number[];
   changeSelectedGameIds: (newGameIds: number[]) => void;
+  isMobile: boolean;
   isOdd?: boolean;
   game?: GameData;
 }
@@ -25,6 +24,7 @@ interface Props {
 const GamesTableRow = ({
   game,
   isOdd,
+  isMobile,
   changeSelectedGameIds,
   selectedGameIds,
 }: Props) => {
@@ -32,10 +32,8 @@ const GamesTableRow = ({
 
   const timeout = useRef(0);
 
-  const windowSize = useWindowSize();
-
   useEffect(() => {
-    if (game) {
+    if (game && !isMobile) {
       if (game.id === undefined) {
         throw new Error('Cannot create game link if game.id is undefined');
       }
@@ -46,7 +44,7 @@ const GamesTableRow = ({
       }, 0);
     }
     return () => window.clearTimeout(timeout.current);
-  }, [game]);
+  }, [game, isMobile]);
 
   const getOpponent = (game: GameData): string => {
     let opponent = '';
@@ -66,8 +64,6 @@ const GamesTableRow = ({
     linkToGame?: boolean,
     extraClasses?: string[],
   ) => {
-    const isMobile = shouldUseMobileLayout(windowSize);
-
     // Base classes for table cell
     let classes = ['inline-block'];
 
@@ -146,7 +142,7 @@ const GamesTableRow = ({
       priority: 2,
       makeDataDiv: (game, key) => {
         const date = new Date(game.startTime);
-        const dateString = shouldUseMobileLayout(windowSize) ? makeDateStringDM(date) : makeDateStringYYMMDD(date);
+        const dateString = isMobile ? makeDateStringDM(date) : makeDateStringYYMMDD(date);
         const dateSpan = <span className="w-[8ch] block text-left">{dateString}</span>;
         return makeTableDataDiv(dateSpan, key, true, []);
       }
@@ -207,7 +203,7 @@ const GamesTableRow = ({
     }
   ];
 
-  if (shouldUseMobileLayout(windowSize)) {
+  if (isMobile) {
     columns = columns.filter((c) => c.priority <= 5);
   }
 
