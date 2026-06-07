@@ -16,10 +16,10 @@ export default async function FlashcardsPage() {
 
   if (stats.total === 0) {
     return (
-      <div className="text-center py-8 bg-background-page rounded-md mt-4 p-4">
+      <div className="text-center py-8 bg-background-page rounded-md mt-4 p-4 max-w-[95vw]">
         <p className="text-xl mb-2 font-bold">You haven't created any flashcards</p>
         <p className="text-gray-300">
-          Create flashcards in <Link href='/game-review' className={"text-white underline"}>Game Review</Link>
+          Create flashcards in <Link href='/game-review' className="text-white underline whitespace-nowrap">Game Review</Link>
         </p>
       </div>
     )
@@ -28,10 +28,10 @@ export default async function FlashcardsPage() {
   return (
     <div>
       {dueFlashcards.length === 0 ? (
-        <div className="text-center py-8 bg-background-page rounded-md mt-4 p-4">
+        <div className="text-center py-8 bg-background-page rounded-md mt-4 p-4 max-w-[95vw]">
           <p className="text-xl mb-2 font-bold">No flashcards due for review</p>
           <p className="text-gray-300">
-            Come back later or create new flashcards in <Link href='/game-review' className={"text-white underline"}>Game Review</Link>
+            Come back later or create new flashcards in <Link href='/game-review' className="text-white underline whitespace-nowrap">Game Review</Link>
           </p>
         </div>
       ) : (
