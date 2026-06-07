@@ -125,3 +125,8 @@ export function makeDateStringYYMMDD(date: Date): string {
   const formattedDate = date.toLocaleDateString('en-CA');
   return formattedDate.substring(2).replace(/-/g, '/');
 }
+
+// Create a date string in the format D/M
+export function makeDateStringDM(date: Date): string {
+  return `${date.getDate()}/${date.getMonth() + 1}`;
+}

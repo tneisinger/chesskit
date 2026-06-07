@@ -62,14 +62,14 @@ export default function GameReviewPage() {
       <div className="py-4">
         <h3 className="text-center text-2xl">Imported Games</h3>
       </div>
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 flex flex-row justify-center">
         <GamesTable
           games={userGames}
           selectedGameIds={selectedGameIds}
           changeSelectedGameIds={setSelectedGameIds}
         />
       </div>
-      <div className="py-2 flex flex-row gap-4 items-center justify-between">
+      <div className="py-2 flex flex-row gap-4 items-center justify-between pr-3">
         <div className="flex flex-row">
           <DeleteGamesControlPanel
             selectedGameIds={selectedGameIds}

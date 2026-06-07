@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PieceColor, GameData, GameResult } from '@/types/chess';
 import Link from 'next/link';
 import { getOpening } from '@/utils/bookPositions';
-import { makeDateStringYYMMDD } from '@/utils';
+import { makeDateStringYYMMDD, makeDateStringDM } from '@/utils';
 import DotsSpinner from '@/components/dotsSpinner';
 import { shouldUseMobileLayout } from '@/utils/mobileLayout';
 import { makeReadableTimeControl } from '@/utils/chess';
@@ -81,8 +81,8 @@ const GamesTableRow = ({
     } else {
       // Flexible width columns
       if (isMobile) {
-        // Mobile: 5 flexible columns (excluding checkbox)
-        classes.push('w-[calc((100%-60px)/5)]');
+        // Mobile: 4 flexible columns (excluding checkbox)
+        classes.push('w-[calc((100%-60px)/4)]');
       } else {
         // Desktop: 7 flexible columns (excluding checkbox and opening)
         classes.push('w-[calc((100%-220px-60px)/7)]');
@@ -146,8 +146,8 @@ const GamesTableRow = ({
       priority: 2,
       makeDataDiv: (game, key) => {
         const date = new Date(game.startTime);
-        const yymmdd = makeDateStringYYMMDD(date);
-        const dateSpan = <span className="w-[8ch] block text-left">{yymmdd}</span>;
+        const dateString = shouldUseMobileLayout(windowSize) ? makeDateStringDM(date) : makeDateStringYYMMDD(date);
+        const dateSpan = <span className="w-[8ch] block text-left">{dateString}</span>;
         return makeTableDataDiv(dateSpan, key, true, []);
       }
     },
@@ -161,7 +161,7 @@ const GamesTableRow = ({
     },
     {
       name: 'Color',
-      priority: 4,
+      priority: 5.5,
       makeDataDiv: (game, key) => makeTableDataDiv(game.userColor.toLowerCase(), key, true),
     },
     {
