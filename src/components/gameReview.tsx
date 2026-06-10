@@ -27,9 +27,13 @@ import usePrevious from '@/hooks/usePrevious';
 import { updateGameAnalysis } from '@/app/game-review/actions';
 import FlashcardCreator from './flashcardCreator';
 import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
-import { makeEvaluationsArray } from '@/utils/chess';
+
+const DEFAULT_ANALYSIS_DEPTH = 18;
 
 enum MobileTab {
+  Analysis = 'Analysis',
+  Details = 'Details',
+  Flashcards = 'Flashcards',
   Moves = 'Moves',
   Engine = 'Engine',
 }
@@ -82,8 +86,12 @@ const GameReview = ({ game }: Props) => {
   const windowSize = useWindowSize();
 
   const [depth, setDepth] = useState(() => {
-    const saved = localStorage.getItem('gameAnalysisDepth');
-    return saved ? Number(saved) : 18;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gameAnalysisDepth');
+      return saved ? Number(saved) : DEFAULT_ANALYSIS_DEPTH;
+    } else {
+    return DEFAULT_ANALYSIS_DEPTH
+    }
   });
   const [currentMoveAnalyzerDepth, setCurrentMoveAnalyzerDepth] = useState(18);
   const [hasGameLoaded, setHasGameLoaded] = useState(false);
@@ -97,7 +105,7 @@ const GameReview = ({ game }: Props) => {
     arrows: [],
     nextBoardMoveSound: null,
     isChessboardMoving: false,
-    selectedMobileTab: MobileTab.Moves,
+    selectedMobileTab: MobileTab.Analysis,
   };
 
   const [s, dispatch] = useReducer(reducer, initialState);
@@ -324,7 +332,6 @@ const GameReview = ({ game }: Props) => {
       history={history}
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
-      useMobileLayout={useMobile}
       showVariations={true}
     />
   );
@@ -348,14 +355,77 @@ const GameReview = ({ game }: Props) => {
           className='flex flex-col items-center justify-center w-full h-full'
         >
           {chessboardDiv}
-          <div className="p-2 flex flex-row w-screen justify-center">
+          <div className="p-2 flex flex-row w-screen justify-center items-center gap-4">
             <div>{arrowButtons}</div>
           </div>
           <div className="flex flex-1 w-[calc(100vw-20px)] rounded-md bg-background-page overflow-y-scroll overflow-x-hidden">
+            {s.selectedMobileTab === MobileTab.Analysis && hasGameLoaded && gameHistory != null && (
+              <div className="w-full p-2">
+                <GameAnalysis
+                  game={game}
+                  analyzePgn={saveDepthAndAnalyzePgn}
+                  depth={depth}
+                  changeDepth={setDepth}
+                  pgnAnalyzerStatus={pgnAnalyzer.status}
+                  pgnAnalysisProgress={pgnAnalyzer.progress}
+                  isGameEvaluationComplete={isGameEvaluationComplete}
+                  gameEvaluation={gameEvaluation}
+                  currentMove={currentMove}
+                  changeCurrentMove={setCurrentMove}
+                  gameHistory={gameHistory}
+                  width={(windowSize.width || 400) - 24}
+                />
+              </div>
+            )}
+            {s.selectedMobileTab === MobileTab.Details && (
+              <div className="w-full p-2">
+                <GameDetails game={game} orientation={game.userColor} />
+              </div>
+            )}
+            {s.selectedMobileTab === MobileTab.Flashcards && (
+              <div className="w-full p-2">
+                <FlashcardCreator
+                  game={game}
+                  currentMove={currentMove}
+                  hasGameBeenAnalyzed={isGameEvaluationComplete}
+                  forcingLineFinder={forcingLineFinder}
+                  isCreatingFlashcard={isCreatingFlashcard}
+                  changeIsCreatingFlashcard={setIsCreatingFlashcard}
+                  depth={depth}
+                />
+              </div>
+            )}
             {s.selectedMobileTab === MobileTab.Moves && movesDisplay}
             {s.selectedMobileTab === MobileTab.Engine && engineDisplay}
           </div>
           <div className="flex flex-row w-full justify-around items-center bg-[#1b1a18] min-h-[55px]">
+            <IconButton
+              icon={Svg.AreaChart}
+              onClick={() => dispatch({
+                type: 'changeSelectedMobileTab',
+                value: MobileTab.Analysis,
+              })}
+              text={'Analysis'}
+              isHighlighted={s.selectedMobileTab === MobileTab.Analysis}
+            />
+            <IconButton
+              icon={Svg.Book}
+              onClick={() => dispatch({
+                type: 'changeSelectedMobileTab',
+                value: MobileTab.Details,
+              })}
+              text={'Details'}
+              isHighlighted={s.selectedMobileTab === MobileTab.Details}
+            />
+            <IconButton
+              icon={Svg.Star}
+              onClick={() => dispatch({
+                type: 'changeSelectedMobileTab',
+                value: MobileTab.Flashcards,
+              })}
+              text={'Flashcards'}
+              isHighlighted={s.selectedMobileTab === MobileTab.Flashcards}
+            />
             <IconButton
               icon={Svg.SwoopyArrow}
               onClick={() => dispatch({
@@ -440,13 +510,6 @@ const GameReview = ({ game }: Props) => {
               changeIsCreatingFlashcard={setIsCreatingFlashcard}
               depth={depth}
             />
-            <button onClick={() => {
-              console.log('debug');
-              console.log(makeEvaluationsArray(fenAnalyzers.evaluations));
-              console.log(fenAnalyzers.status);
-            }}>
-              debug
-            </button>
           </div>
         </div>
       </div>
