@@ -417,15 +417,17 @@ const GameReview = ({ game }: Props) => {
               text={'Details'}
               isHighlighted={s.selectedMobileTab === MobileTab.Details}
             />
-            <IconButton
-              icon={Svg.Star}
-              onClick={() => dispatch({
-                type: 'changeSelectedMobileTab',
-                value: MobileTab.Flashcards,
-              })}
-              text={'Flashcards'}
-              isHighlighted={s.selectedMobileTab === MobileTab.Flashcards}
-            />
+            {isGameEvaluationComplete && (
+              <IconButton
+                icon={Svg.Star}
+                onClick={() => dispatch({
+                  type: 'changeSelectedMobileTab',
+                  value: MobileTab.Flashcards,
+                })}
+                text={'Flashcards'}
+                isHighlighted={s.selectedMobileTab === MobileTab.Flashcards}
+              />
+            )}
             <IconButton
               icon={Svg.SwoopyArrow}
               onClick={() => dispatch({
@@ -435,15 +437,17 @@ const GameReview = ({ game }: Props) => {
               text={'Moves'}
               isHighlighted={s.selectedMobileTab === MobileTab.Moves}
             />
-            <IconButton
-              icon={Svg.Lightbulb}
-              onClick={() => dispatch({
-                type: 'changeSelectedMobileTab',
-                value: MobileTab.Engine,
-              })}
-              text={'Engine'}
-              isHighlighted={s.selectedMobileTab === MobileTab.Engine}
-            />
+            {isGameEvaluationComplete && (
+              <IconButton
+                icon={Svg.Lightbulb}
+                onClick={() => dispatch({
+                  type: 'changeSelectedMobileTab',
+                  value: MobileTab.Engine,
+                })}
+                text={'Engine'}
+                isHighlighted={s.selectedMobileTab === MobileTab.Engine}
+              />
+            )}
           </div>
         </div>
       </ScrollLock>
