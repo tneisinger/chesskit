@@ -601,6 +601,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
   const handleShowMistakeBtnClick = useCallback(() => {
     const fc = flashcards[flashcardIndex];
+    if (fc.movePlayedInGame == undefined) return;
     const from = fc.movePlayedInGame.lan.slice(0,2);
     const to = fc.movePlayedInGame.lan.slice(2,4);
     if (currentMove === history[fc.positionIdx - 1]) {

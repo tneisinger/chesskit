@@ -140,7 +140,6 @@ export const flashcards = sqliteTable("flashcards", {
     .notNull()
     .$type<ScoredMove[]>(),
   movePlayedInGame: text("move_played_in_game", { mode: "json" })
-    .notNull()
     .$type<{ san: string, lan: string}>(),
   gameUrl: text("game_url"),
 	areLinesForcing: integer("are_lines_forcing", { mode: "boolean" }).notNull(),

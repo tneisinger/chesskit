@@ -21,7 +21,7 @@ export interface CreateFlashcardInput {
   positionIdx: number;
   userColor: PieceColor;
   bestMoves: ScoredMove[];
-  movePlayedInGame: { san: string, lan: string };
+  movePlayedInGame?: { san: string, lan: string };
   gameUrl?: string;
   areLinesForcing: boolean;
 }

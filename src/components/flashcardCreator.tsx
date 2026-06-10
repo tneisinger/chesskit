@@ -17,6 +17,7 @@ import {
 } from '@/utils/chess';
 import {
   addShortMoveLinesToCmChess,
+  areMovesEqual,
   colorToMove,
   getColor,
   getLineFromCmMove,
@@ -34,6 +35,7 @@ import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
 
 interface Props {
   game: GameData;
+  gameHistory: null | Move[];
   currentMove: Move | undefined;
   hasGameBeenAnalyzed: boolean;
   forcingLineFinder: ForcingLineFinder;
@@ -44,6 +46,7 @@ interface Props {
 
 const FlashcardCreator = ({
   game,
+  gameHistory,
   currentMove,
   hasGameBeenAnalyzed,
   forcingLineFinder,
@@ -73,11 +76,9 @@ const FlashcardCreator = ({
     // Return false if it is not the user's turn
     if (game.userColor === getColor(move)) return false;
 
-    // If there is no next move, then there is no move to judge.
-    if (move.next == undefined) return false;
-
     // A flashcard is recommended if the move was worse than an inaccuracy
     if (isFlashcardRecommended) {
+      if (move.next == undefined) return false;
       const j = makeMoveJudgement(move.fen, move.next.fen, evaluations);
       if (j == undefined) return false;
       return isMoveJudgementWorseThan(MoveJudgement.Inaccurate, j);
@@ -96,8 +97,9 @@ const FlashcardCreator = ({
       flashcardMove = parent;
     }
     if (!isPositionFlashcardWorthy(flashcardMove)) return null;
-    return flashcardMove;
-  }, [currentMove, isPositionFlashcardWorthy]);
+    const gameMove = gameHistory?.find(m => areMovesEqual(m, flashcardMove));
+    return gameMove ? gameMove : null;
+  }, [currentMove, isPositionFlashcardWorthy, gameHistory]);
 
   const makeFlashcardData = useCallback(async (): Promise<CreateFlashcardInput> => {
     const flashcardMove = getFlashcardMove();
@@ -157,7 +159,13 @@ const FlashcardCreator = ({
     if (flashcardPev == undefined) throw new Error('flashcardPev was undefined');
     if (flashcardPev.lines.length < 2) throw new Error('Not enough evaluation lines to make flashcard');
 
-    if (flashcardMove.next == undefined) throw new Error('flashcardMove.next was undefined');
+    let movePlayedInGame = undefined;
+    if (flashcardMove.next != undefined) {
+      movePlayedInGame = {
+        san: flashcardMove.next.san,
+        lan: flashcardMove.next.from + flashcardMove.next.to,
+      }
+    }
 
     return {
       gameId: game.id,
@@ -165,7 +173,7 @@ const FlashcardCreator = ({
       positionIdx: flashcardMove.ply,
       userColor: game.userColor,
       bestMoves: getScoredBestMovesFromPev(flashcardPev),
-      movePlayedInGame: { san: flashcardMove.next.san, lan: (flashcardMove.next.from + flashcardMove.next.to)},
+      movePlayedInGame,
       gameUrl: game.url,
       areLinesForcing,
     }
@@ -175,9 +183,14 @@ const FlashcardCreator = ({
   const makeFlashcardPositionHtml = useCallback((): ReactElement => {
     const flashcardMove = getFlashcardMove();
     if (flashcardMove == null) return <></>;
-    if (flashcardMove.next == undefined) throw new Error('flashcardMove.next was undefined');
-    const mj = getMoveJudgement(flashcardMove.next, convertEvaluationsToGameEvals(evaluations));
-    const color = getMoveJudgementColor(mj);
+
+    // If there is no next move, use gray as the color for the position. Otherwise, base the color on the move judgement of the next move.
+    let color: string | undefined = '#ededed'
+    if (flashcardMove.next != undefined) {
+      const mj = getMoveJudgement(flashcardMove.next, convertEvaluationsToGameEvals(evaluations));
+      color = getMoveJudgementColor(mj);
+    }
+
     const moveNumberString = makeMoveNumberString(flashcardMove.fen);
     return <span className="ml-1 font-bold">{moveNumberString} <span style={{ color, marginLeft: 4 }}>{flashcardMove.san}</span></span>;
   }, [getFlashcardMove]);

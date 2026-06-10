@@ -65,6 +65,20 @@ const FlashcardFeedback = ({
   }, [moveGrade]);
 
 
+  const fc = getCurrentFlashcard();
+
+  const showMistakeBtn = ((fc == null || fc.movePlayedInGame == null) ? (
+    <></>
+  ) : (
+    <Button
+      buttonSize={ButtonSize.Small}
+      buttonStyle={ButtonStyle.Danger}
+      onClick={onShowMistakeBtnClick}
+    >
+      Show game mistake
+    </Button>
+  ));
+
   // Component return statements:
 
   if (isGradingMove) return wrapContent(
@@ -95,13 +109,7 @@ const FlashcardFeedback = ({
         </Button>
       </div>
       <div>
-        <Button
-          buttonSize={ButtonSize.Small}
-          buttonStyle={ButtonStyle.Danger}
-          onClick={onShowMistakeBtnClick}
-        >
-          Show game mistake
-        </Button>
+        {showMistakeBtn}
       </div>
     </>
   );
@@ -134,13 +142,7 @@ const FlashcardFeedback = ({
         </Button>
       </div>
       <div>
-        <Button
-          buttonSize={ButtonSize.Small}
-          buttonStyle={ButtonStyle.Danger}
-          onClick={onShowMistakeBtnClick}
-        >
-          Show game mistake
-        </Button>
+        {showMistakeBtn}
       </div>
 
     </>
@@ -152,8 +154,6 @@ const FlashcardFeedback = ({
       {renderMoveGradeFeedback()}
     </div>
   );
-
-  const fc = getCurrentFlashcard();
 
   if (!isFlashcardComplete && fc != null) return wrapContent(
     <div className="flex flex-col">

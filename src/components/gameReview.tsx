@@ -386,6 +386,7 @@ const GameReview = ({ game }: Props) => {
               <div className="w-full p-2">
                 <FlashcardCreator
                   game={game}
+                  gameHistory={gameHistory}
                   currentMove={currentMove}
                   hasGameBeenAnalyzed={isGameEvaluationComplete}
                   forcingLineFinder={forcingLineFinder}
@@ -507,6 +508,7 @@ const GameReview = ({ game }: Props) => {
           <div style={{ width: rightColWidth }}>
             <FlashcardCreator
               game={game}
+              gameHistory={gameHistory}
               currentMove={currentMove}
               hasGameBeenAnalyzed={isGameEvaluationComplete}
               forcingLineFinder={forcingLineFinder}
