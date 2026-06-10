@@ -20,6 +20,11 @@
 <!-- entypo entypo-forward -->
 <!-- bootstrap bootstrap-retweet -->
 <!-- elusive-iconfont elusive-bookmark -->
+<!-- ant-design ant-area-chart -->
+<!-- ant-design ant-book -->
+<!-- ant-design ant-pushpin -->
+<!-- ant-design ant-star -->
+<!-- ant-design ant-tag -->
 
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1"
   style="width:0;height:0;position:absolute;overflow:hidden;">
@@ -141,6 +146,26 @@
     <symbol viewBox="0 0 731.25 1200" aria-labelledby="aysi-elusive-bookmark-title" id="si-elusive-bookmark">
       <title id="aysi-elusive-bookmark-title">icon bookmark</title>
       <path d="M0 0v1200l365.625-365.625L731.25 1200V0H0z"/>
+    </symbol>
+    <symbol viewBox="0 0 1024 1024" aria-labelledby="agsi-ant-area-chart-title" id="si-ant-area-chart">
+      <title id="agsi-ant-area-chart-title">icon area-chart</title>
+      <path d="M992 960H96q-13 0-22.5-9.5T64 928V32q0-13-9.5-22.5T32 0 9.5 9.5 0 32v928q0 26 19 45t45 19h928q13 0 22.5-9.5t9.5-22.5-9.5-22.5T992 960zm-94-448L659 273q-9-9-22.5-9t-22.5 9L475 412 263 200q-7-7-17-8h-22q-13 0-22.5 9.5T192 224l2 544q0 27 18.5 45.5T258 832h576q26 0 45-19t19-45V512z"/>
+    </symbol>
+    <symbol viewBox="0 0 768 1024" aria-labelledby="apsi-ant-book-title" id="si-ant-book">
+      <title id="apsi-ant-book-title">icon book</title>
+      <path d="M576 354q0 13-9.5 22.5T544 386H224q-13 0-22.5-9.5T192 354t9.5-22.5T224 322h320q13 0 22.5 9.5T576 354zm0 192q0 13-9.5 22.5T544 578H224q-13 0-22.5-9.5T192 546t9.5-22.5T224 514h320q13 0 22.5 9.5T576 546zm0 192q0 13-9.5 22.5T544 770H224q-13 0-22.5-9.5T192 738t9.5-22.5T224 706h320q13 0 22.5 9.5T576 738zM704 64H576V32q0-13-9-22.5T544.5 0t-23 9.5T512 32v32h-95V32q0-13-9.5-22.5t-23-9.5T362 9.5 353 32v32h-96V32q0-13-9.5-22.5T225 0t-22.5 9.5T193 32v32H64q-26 0-45 19T0 128v832q0 26 19 45t45 19h640q26 0 45-19t19-45V128q0-26-19-45t-45-19zm-9 888H73V137h120v23q0 13 9.5 22.5T225 192t22.5-9.5T257 160v-23h96v23q0 13 9 22.5t22.5 9.5 23-9.5T417 160v-23h95v23q0 13 9.5 22.5t23 9.5 22.5-9.5 9-22.5v-23h119v815z"/>
+    </symbol>
+    <symbol viewBox="0 0 894.5 894.5" aria-labelledby="fisi-ant-pushpin-title" id="si-ant-pushpin">
+      <title id="fisi-ant-pushpin-title">icon pushpin</title>
+      <path d="M884.5 838.5l-223-223 206-207q11-11 10-26t-13-25q-72-58-163-74t-175 12l-215-170q2-60-30-110-9-13-25-14.5t-27 9.5l-219 219q-11 11-9.5 27t14.5 24q50 33 110 31l170 215q-28 84-11.5 175.5t74.5 163.5q10 12 25 13t26-10l206-207 223 223q10 10 23.5 10t23-9.5 9.5-23-10-23.5z"/>
+    </symbol>
+    <symbol viewBox="0 0 1026.666748046875 1024" aria-labelledby="gcsi-ant-star-title" id="si-ant-star">
+      <title id="gcsi-ant-star-title">icon star</title>
+      <path d="M1021.833 385.5q-6.5-21.5-23-36t-38.5-17.5l-262-40-117-248q-10-20-28-32t-40-12-40 12-28 32l-117 248-262 40q-22 3-38.5 17.5t-23 36-1.5 43 21 37.5l190 193-45 273q-4 22 4 43t26 34q20 15 44 15 19 0 36-9l234-129 235 129q16 9 35 9 25 0 44-15 18-13 26-34t4-43l-44-273 189-193q16-15 21-37t-1.5-43.5z"/>
+    </symbol>
+    <symbol viewBox="0 0 1024 1024" aria-labelledby="gksi-ant-tag-title" id="si-ant-tag">
+      <title id="gksi-ant-tag-title">icon tag</title>
+      <path d="M1000 566L455 16Q439 0 416 0H85Q50 0 25 24.5T0 84v340q0 22 16 38l544 537q25 25 60 25t60-25l319-315q25-24 25-58.5t-24-59.5zM248 376q-53 0-90.5-37.5T120 248t37.5-90.5T248 120t90.5 37.5T376 248t-37.5 90.5T248 376zm.5-192q-26.5 0-45.5 19t-19 45.5 19 45 45.5 18.5 45-18.5 18.5-45-18.5-45.5-45-19z"/>
     </symbol>
   </defs>
 </svg>

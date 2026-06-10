@@ -21,7 +21,12 @@ export enum Svg {
   Pawn = 'si-bootstrap-pawn',
   SwoopyArrow = 'si-entypo-forward',
   Rotate = 'si-bootstrap-retweet',
-  Bookmark = 'si-elusive-bookmark'
+  Bookmark = 'si-elusive-bookmark',
+  AreaChart = 'si-ant-area-chart',
+  Book = 'si-ant-book',
+  Pushpin = 'si-ant-pushpin',
+  Star = 'si-ant-star',
+  Tag = 'si-ant-tag'
 }
 
 interface Props {
