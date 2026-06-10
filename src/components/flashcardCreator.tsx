@@ -196,7 +196,7 @@ const FlashcardCreator = ({
 
   const doesFlashcardAlreadyExistForThisPosition = useCallback((): boolean => {
     if (currentMove == undefined) return false;
-    if (gameFlashcards == null) throw new Error('gameFlashcards was null');
+    if (gameFlashcards == null) return false; // Still loading, assume no flashcard exists yet
     return gameFlashcards.map((fc) => fc.positionIdx).includes(currentMove.ply);
   }, [currentMove, gameFlashcards]);
 
