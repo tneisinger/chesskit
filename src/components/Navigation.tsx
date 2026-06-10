@@ -78,9 +78,19 @@ export default function Navigation() {
 	};
 
 	// Render badge for flashcards link
-	const renderFlashcardBadge = () => {
+	const renderFlashcardBadge = (isForMobile: boolean = false) => {
 		if (!isLoggedIn || dueFlashcardsCount === 0) return null;
 
+		if (isForMobile) {
+			// Mobile: position inline to the right of the text
+			return (
+				<span className="absolute ml-2 top-3.25 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 inline-flex items-center justify-center px-1.5">
+					{dueFlashcardsCount}
+				</span>
+			);
+		}
+
+		// Desktop: position absolutely at top-right
 		return (
 			<span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
 				{dueFlashcardsCount}
@@ -107,13 +117,18 @@ export default function Navigation() {
 					{/* Left side - Mobile hamburger + brand */}
 					<div className="flex items-center">
 						{isMobile && (
-							<button
-								onClick={toggleMobileMenu}
-								className="absolute left-4 p-2 hover:bg-foreground/10 rounded"
-								aria-label="Toggle menu"
-							>
-								<SvgIcon styles={'invert-75'} svg={Svg.Hamburger} width={20} height={20} />
-							</button>
+              <>
+                <button
+                  onClick={toggleMobileMenu}
+                  className="absolute left-4 p-2 hover:bg-foreground/10 rounded"
+                  aria-label="Toggle menu"
+                >
+                  <SvgIcon styles={'invert-75'} svg={Svg.Hamburger} width={20} height={20} />
+                </button>
+                <span className="absolute left-8.5 -top-1">
+                  {renderFlashcardBadge(true)}
+                </span>
+              </>
 						)}
 
 						<Link href="/" className="text-2xl font-bold text-foreground hover:text-foreground/80 no-underline">
@@ -233,7 +248,7 @@ export default function Navigation() {
 										} ${link.href === '/flashcards' ? 'relative' : ''}`}
 									>
 										{link.label}
-										{link.href === '/flashcards' && renderFlashcardBadge()}
+										{link.href === '/flashcards' && renderFlashcardBadge(true)}
 									</Link>
 								))}
 							</div>
