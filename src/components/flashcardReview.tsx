@@ -994,7 +994,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const mobileFeedbackTab = useMemo(() => {
     if (!currentFlashcard) return null;
     return (
-      <div className="w-full p-2">
+      <div className="w-full">
         <FlashcardFeedback
           dueFlashcards={flashcards}
           flashcardIndex={flashcardIndex}
@@ -1008,6 +1008,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
           numShowMovesGiven={numShowMovesGiven}
           isGradingMove={isGradingMove}
           moveGrade={moveGrade}
+          useMobileLayout={true}
         />
       </div>
     );
@@ -1016,7 +1017,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   const mobileDetailsTab = useMemo(() => {
     if (!currentFlashcard) return null;
     return (
-      <div className="w-full p-2">
+      <div className="w-full">
         <FlashcardDetails flashcard={currentFlashcard} />
       </div>
     );

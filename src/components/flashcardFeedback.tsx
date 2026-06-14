@@ -19,6 +19,7 @@ interface Props {
   numWrongAnswers: number;
   numHintsGiven?: number;
   numShowMovesGiven?: number;
+  useMobileLayout?: boolean;
 }
 
 const FlashcardFeedback = ({
@@ -34,6 +35,7 @@ const FlashcardFeedback = ({
   numWrongAnswers,
   numHintsGiven,
   numShowMovesGiven,
+  useMobileLayout = false,
 }: Props) => {
 
   const getCurrentFlashcard = useCallback((): Flashcard | null => {
@@ -43,11 +45,18 @@ const FlashcardFeedback = ({
     return fc;
   }, [dueFlashcards, flashcardIndex])
 
-  const wrapContent = (content: ReactElement): ReactElement => (
-    <div className='flex flex-col w-full flex-1 bg-background-page p-6 rounded-md text-center gap-4 justify-center'>
-      {content}
-    </div>
-  );
+  const wrapContent = (content: ReactElement): ReactElement => {
+    if (useMobileLayout) return (
+      <div className='flex flex-col w-full h-full flex-1 bg-background-page p-6 rounded-md text-center gap-3 justify-center items-center'>
+        {content}
+      </div>
+    );
+    return (
+      <div className='flex flex-col w-full flex-1 bg-background-page p-6 rounded-md text-center gap-4 justify-center'>
+        {content}
+      </div>
+    );
+  };
 
   const renderBestMove = useCallback((): ReactElement => {
     const fc = getCurrentFlashcard();
