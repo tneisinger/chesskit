@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getFlashcardStats } from '@/app/flashcards/actions';
+import { getDailyFlashcardLimit, getDailyReviewProgress } from '@/app/user/actions';
 import { useSession } from 'next-auth/react';
 
 interface FlashcardContextType {
@@ -18,8 +19,28 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
 
   const refreshDueCount = async () => {
     if (isLoggedIn) {
-      const stats = await getFlashcardStats();
-      setDueCount(stats.due);
+      const [stats, limitResult, progressResult] = await Promise.all([
+        getFlashcardStats(),
+        getDailyFlashcardLimit(),
+        getDailyReviewProgress(),
+      ]);
+
+      // Calculate badge count with daily limit and progress
+      const limit = limitResult.success ? limitResult.limit : null;
+      const reviewedToday = progressResult.success ? progressResult.count || 0 : 0;
+
+      let displayCount: number;
+
+      if (limit && limit > 0) {
+        // With limit: show min(dueCount, max(0, limit - reviewedToday))
+        const remainingLimit = Math.max(0, limit - reviewedToday);
+        displayCount = Math.min(stats.due, remainingLimit);
+      } else {
+        // No limit: show actual due count
+        displayCount = stats.due;
+      }
+
+      setDueCount(displayCount);
     } else {
       setDueCount(0);
     }
@@ -29,8 +50,28 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchCount = async () => {
       if (isLoggedIn) {
-        const stats = await getFlashcardStats();
-        setDueCount(stats.due);
+        const [stats, limitResult, progressResult] = await Promise.all([
+          getFlashcardStats(),
+          getDailyFlashcardLimit(),
+          getDailyReviewProgress(),
+        ]);
+
+        // Calculate badge count with daily limit and progress
+        const limit = limitResult.success ? limitResult.limit : null;
+        const reviewedToday = progressResult.success ? progressResult.count || 0 : 0;
+
+        let displayCount: number;
+
+        if (limit && limit > 0) {
+          // With limit: show min(dueCount, max(0, limit - reviewedToday))
+          const remainingLimit = Math.max(0, limit - reviewedToday);
+          displayCount = Math.min(stats.due, remainingLimit);
+        } else {
+          // No limit: show actual due count
+          displayCount = stats.due;
+        }
+
+        setDueCount(displayCount);
       } else {
         setDueCount(0);
       }

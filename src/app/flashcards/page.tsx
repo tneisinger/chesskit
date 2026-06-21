@@ -1,4 +1,5 @@
-import { getDueFlashcards, getFlashcardStats } from './actions';
+import { getDueFlashcards, getFlashcardStats, getTotalDueCount } from './actions';
+import { getDailyFlashcardLimit } from '@/app/user/actions';
 import FlashcardReview from '@/components/flashcardReview';
 import Link from "next/link";
 import type { Viewport } from 'next';
@@ -13,6 +14,9 @@ export const viewport: Viewport = {
 export default async function FlashcardsPage() {
   const dueFlashcards = await getDueFlashcards();
   const stats = await getFlashcardStats();
+  const totalDue = await getTotalDueCount();
+  const limitResult = await getDailyFlashcardLimit();
+  const limit = limitResult.success ? limitResult.limit : null;
 
   if (stats.total === 0) {
     return (

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { flashcards } from "@/db/schema";
+import { flashcards, users } from "@/db/schema";
 import { eq, and, lte, asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { PieceColor, ScoredMove } from "@/types/chess";
@@ -14,6 +14,8 @@ import {
 } from "@/utils/supermemo2";
 import type { Flashcard } from "@/db/schema";
 import type { Score } from "@/utils/stockfish";
+import { prioritizeFlashcards } from "@/utils/flashcardPriority";
+import { incrementDailyReviewCount } from "@/app/user/actions";
 
 export interface CreateFlashcardInput {
   gameId?: number;
@@ -86,8 +88,11 @@ export async function createFlashcard(
 
 /**
  * Get all flashcards due for review (next_review_date <= today)
+ * @param options.applyDailyLimit - Whether to apply the user's daily limit (default: true)
  */
-export async function getDueFlashcards(): Promise<Flashcard[]> {
+export async function getDueFlashcards(
+  options?: { applyDailyLimit?: boolean }
+): Promise<Flashcard[]> {
   try {
     const session = await auth();
     if (!session?.user) return [];
@@ -103,6 +108,23 @@ export async function getDueFlashcards(): Promise<Flashcard[]> {
       ),
       orderBy: [asc(flashcards.nextReviewDate)],
     });
+
+    // Apply daily limit if enabled (default: true)
+    const applyLimit = options?.applyDailyLimit !== false;
+
+    if (applyLimit) {
+      // Fetch user preferences to get daily limit
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+      });
+
+      const dailyLimit = user?.preferences?.dailyFlashcardLimit;
+
+      // If limit exists and is exceeded, prioritize cards
+      if (dailyLimit && dailyLimit > 0 && dueCards.length > dailyLimit) {
+        return prioritizeFlashcards(dueCards, dailyLimit);
+      }
+    }
 
     return dueCards;
   } catch (error) {
@@ -207,6 +229,9 @@ export async function reviewFlashcard(
         updatedAt: new Date(),
       })
       .where(eq(flashcards.id, id));
+
+    // Increment daily review count for badge tracking
+    await incrementDailyReviewCount();
 
     return { success: true };
   } catch (error) {
@@ -370,6 +395,32 @@ export async function getFlashcardStats(): Promise<{
   } catch (error) {
     console.error("Error fetching flashcard stats:", error);
     return { total: 0, due: 0, learning: 0, mature: 0 };
+  }
+}
+
+/**
+ * Get the total count of due flashcards without applying the daily limit
+ */
+export async function getTotalDueCount(): Promise<number> {
+  try {
+    const session = await auth();
+    if (!session?.user) return 0;
+
+    const userId = Number(session.user.id);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    const dueCards = await db.query.flashcards.findMany({
+      where: and(
+        eq(flashcards.userId, userId),
+        lte(flashcards.nextReviewDate, today)
+      ),
+    });
+
+    return dueCards.length;
+  } catch (error) {
+    console.error("Error fetching total due count:", error);
+    return 0;
   }
 }
 

@@ -161,6 +161,12 @@ export default function Navigation() {
 						<div className="flex items-center gap-2">
 							{isLoggedIn ? (
 								<>
+									<Link
+										href="/user/settings"
+										className="px-4 py-1.5 rounded bg-background-page text-foreground/80 hover:bg-foreground/10 hover:text-foreground transition-colors no-underline"
+									>
+										Settings
+									</Link>
 									<span className="text-foreground/70 mr-2">
 										{session.user?.username}
 									</span>
@@ -251,6 +257,21 @@ export default function Navigation() {
 										{link.href === '/flashcards' && renderFlashcardBadge(true)}
 									</Link>
 								))}
+
+								{/* Settings link (authenticated users only) */}
+								{isLoggedIn && (
+									<Link
+										href="/user/settings"
+										onClick={closeMobileMenu}
+										className={`px-4 py-3 rounded transition-colors no-underline ${
+											isActiveLink('/user/settings')
+												? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
+												: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
+										}`}
+									>
+										Settings
+									</Link>
+								)}
 							</div>
 
 							{/* Auth buttons (mobile) */}

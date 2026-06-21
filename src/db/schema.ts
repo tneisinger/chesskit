@@ -17,6 +17,11 @@ export const users = sqliteTable("users", {
 		darkMode?: boolean;
 		soundEnabled?: boolean;
 		boardTheme?: string;
+		dailyFlashcardLimit?: number | null;
+		dailyReviewProgress?: {
+			date: string; // YYYY-MM-DD format
+			count: number;
+		};
 	}>(),
 	chesscomUsername: text("chesscom_username"),
 	lichessUsername: text("lichess_username"),
