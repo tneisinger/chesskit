@@ -18,23 +18,50 @@ interface NavLink {
 	requiresAuth?: boolean;
 }
 
-const publicNavLinks: NavLink[] = [
+interface SubLink {
+	href: string;
+	label: string;
+}
+
+interface NavLinkWithSubmenu extends NavLink {
+	submenu?: SubLink[];
+}
+
+const publicNavLinks: NavLinkWithSubmenu[] = [
 	{ href: '/', label: 'Home' },
 	{ href: '/openings', label: 'Openings' },
 	{ href: '/game-review', label: 'Game Review' },
-	{ href: '/flashcards', label: 'Flashcards' },
+	{
+		href: '/flashcards',
+		label: 'Flashcards',
+		submenu: [
+			{ href: '/flashcards/review', label: 'Review' },
+			{ href: '/flashcards/browse', label: 'Browse' },
+			{ href: '/flashcards/stats', label: 'Stats' },
+		],
+	},
 ];
 
-const authenticatedNavLinks: NavLink[] = [
+const authenticatedNavLinks: NavLinkWithSubmenu[] = [
 	{ href: '/', label: 'Home' },
 	{ href: '/openings', label: 'Openings' },
 	{ href: '/my-repertoire', label: 'My Repertoire', requiresAuth: true },
 	{ href: '/game-review', label: 'Game Review' },
-	{ href: '/flashcards', label: 'Flashcards' },
+	{
+		href: '/flashcards',
+		label: 'Flashcards',
+		submenu: [
+			{ href: '/flashcards/review', label: 'Review' },
+			{ href: '/flashcards/browse', label: 'Browse' },
+			{ href: '/flashcards/stats', label: 'Stats' },
+		],
+	},
 ];
 
 export default function Navigation() {
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+	const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+	const [mobileExpandedMenu, setMobileExpandedMenu] = useState<string | null>(null);
 	const pathname = usePathname();
 	const { width } = useWindowSize();
 	const { data: session, status } = useSession();
@@ -64,6 +91,7 @@ export default function Navigation() {
 
 	const closeMobileMenu = () => {
 		setIsMobileMenuOpen(false);
+		setMobileExpandedMenu(null);
 	};
 
 	const isActiveLink = (href: string) => {
@@ -78,8 +106,17 @@ export default function Navigation() {
 	};
 
 	// Render badge for flashcards link
-	const renderFlashcardBadge = (isForMobile: boolean = false) => {
+	const renderFlashcardBadge = (isForMobile: boolean = false, isSubmenu: boolean = false) => {
 		if (!isLoggedIn || dueFlashcardsCount === 0) return null;
+
+		if (isSubmenu) {
+			// Submenu: inline badge
+			return (
+				<span className="ml-2 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 inline-flex items-center justify-center px-1.5">
+					{dueFlashcardsCount}
+				</span>
+			);
+		}
 
 		if (isForMobile) {
 			// Mobile: position inline to the right of the text
@@ -138,20 +175,78 @@ export default function Navigation() {
 						{/* Desktop Navigation Links */}
 						{!isMobile && (
 							<div className="flex items-center gap-1 ml-8">
-								{navLinks.map((link) => (
-									<Link
-										key={link.href}
-										href={link.href}
-										className={`px-4 rounded transition-colors no-underline ${
-											isActiveLink(link.href)
-												? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
-												: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
-										} ${link.href === '/flashcards' ? 'relative' : ''}`}
-									>
-										{link.label}
-										{link.href === '/flashcards' && renderFlashcardBadge()}
-									</Link>
-								))}
+								{navLinks.map((link) => {
+									if (link.submenu) {
+										// Render dropdown menu
+										return (
+											<div
+												key={link.href}
+												className="relative"
+												onMouseEnter={() => setOpenSubmenu(link.href)}
+												onMouseLeave={() => setOpenSubmenu(null)}
+											>
+												<Link
+													href={link.href}
+													className={`px-4 py-2 rounded transition-colors no-underline flex items-center gap-1 ${
+														isActiveLink(link.href)
+															? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
+															: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
+													} ${link.href === '/flashcards' ? 'relative' : ''}`}
+												>
+													{link.label}
+													{link.href === '/flashcards' && renderFlashcardBadge()}
+													<svg
+														className="w-4 h-4"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															strokeLinecap="round"
+															strokeLinejoin="round"
+															strokeWidth={2}
+															d="M19 9l-7 7-7-7"
+														/>
+													</svg>
+												</Link>
+												{openSubmenu === link.href && (
+													<div className="absolute top-full left-0 mt-0 bg-background-page border border-foreground/20 rounded shadow-lg min-w-[160px] z-50">
+														{link.submenu.map((sublink) => (
+															<Link
+																key={sublink.href}
+																href={sublink.href}
+																className={`block px-4 py-2 transition-colors no-underline first:rounded-t last:rounded-b ${
+																	pathname === sublink.href
+																		? 'bg-btn-normal text-foreground font-semibold'
+																		: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
+																}`}
+															>
+																<span className="flex items-center">
+																	{sublink.label}
+																	{sublink.href === '/flashcards/review' && renderFlashcardBadge(false, true)}
+																</span>
+															</Link>
+														))}
+													</div>
+												)}
+											</div>
+										);
+									}
+									// Render regular link
+									return (
+										<Link
+											key={link.href}
+											href={link.href}
+											className={`px-4 py-2 rounded transition-colors no-underline ${
+												isActiveLink(link.href)
+													? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
+													: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
+											}`}
+										>
+											{link.label}
+										</Link>
+									);
+								})}
 							</div>
 						)}
 					</div>
@@ -242,21 +337,78 @@ export default function Navigation() {
 
 							{/* Drawer Links */}
 							<div className="flex flex-col p-2">
-								{navLinks.map((link) => (
-									<Link
-										key={link.href}
-										href={link.href}
-										onClick={closeMobileMenu}
-										className={`px-4 py-3 rounded transition-colors no-underline ${
-											isActiveLink(link.href)
-												? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
-												: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
-										} ${link.href === '/flashcards' ? 'relative' : ''}`}
-									>
-										{link.label}
-										{link.href === '/flashcards' && renderFlashcardBadge(true)}
-									</Link>
-								))}
+								{navLinks.map((link) => {
+									if (link.submenu) {
+										// Render expandable menu item
+										const isExpanded = mobileExpandedMenu === link.href;
+										return (
+											<div key={link.href} className="flex flex-col">
+												<button
+													onClick={() => setMobileExpandedMenu(isExpanded ? null : link.href)}
+													className={`px-4 py-3 rounded transition-colors text-left flex items-center justify-between ${
+														isActiveLink(link.href)
+															? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
+															: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
+													} ${link.href === '/flashcards' ? 'relative' : ''}`}
+												>
+													<span>
+														{link.label}
+														{link.href === '/flashcards' && renderFlashcardBadge(true)}
+													</span>
+													<svg
+														className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															strokeLinecap="round"
+															strokeLinejoin="round"
+															strokeWidth={2}
+															d="M19 9l-7 7-7-7"
+														/>
+													</svg>
+												</button>
+												{isExpanded && (
+													<div className="flex flex-col pl-4 mt-1">
+														{link.submenu.map((sublink) => (
+															<Link
+																key={sublink.href}
+																href={sublink.href}
+																onClick={closeMobileMenu}
+																className={`px-4 py-2 rounded transition-colors no-underline ${
+																	pathname === sublink.href
+																		? 'bg-btn-normal text-foreground font-semibold'
+																		: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
+																}`}
+															>
+																<span className="flex items-center">
+																	{sublink.label}
+																	{sublink.href === '/flashcards/review' && renderFlashcardBadge(false, true)}
+																</span>
+															</Link>
+														))}
+													</div>
+												)}
+											</div>
+										);
+									}
+									// Render regular link
+									return (
+										<Link
+											key={link.href}
+											href={link.href}
+											onClick={closeMobileMenu}
+											className={`px-4 py-3 rounded transition-colors no-underline ${
+												isActiveLink(link.href)
+													? 'bg-btn-normal hover:bg-btn-normal-hover text-foreground font-semibold'
+													: 'text-foreground/80 hover:bg-foreground/10 hover:text-foreground'
+											}`}
+										>
+											{link.label}
+										</Link>
+									);
+								})}
 
 								{/* Settings link (authenticated users only) */}
 								{isLoggedIn && (

@@ -1,46 +1,62 @@
-import { getDueFlashcards, getFlashcardStats, getTotalDueCount } from './actions';
-import { getDailyFlashcardLimit } from '@/app/user/actions';
-import FlashcardReview from '@/components/flashcardReview';
-import Link from "next/link";
-import type { Viewport } from 'next';
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-}
+import Link from 'next/link';
+import { getFlashcardStats } from './actions';
 
 export default async function FlashcardsPage() {
-  const dueFlashcards = await getDueFlashcards();
   const stats = await getFlashcardStats();
-  const totalDue = await getTotalDueCount();
-  const limitResult = await getDailyFlashcardLimit();
-  const limit = limitResult.success ? limitResult.limit : null;
-
-  if (stats.total === 0) {
-    return (
-      <div className="text-center py-8 bg-background-page rounded-md mt-4 p-4 max-w-[95vw]">
-        <p className="text-xl mb-2 font-bold">You haven't created any flashcards</p>
-        <p className="text-gray-300">
-          Create flashcards in <Link href='/game-review' className="text-white underline whitespace-nowrap">Game Review</Link>
-        </p>
-      </div>
-    )
-  }
 
   return (
-    <div>
-      {dueFlashcards.length === 0 ? (
-        <div className="text-center py-8 bg-background-page rounded-md mt-4 p-4 max-w-[95vw]">
-          <p className="text-xl mb-2 font-bold">No flashcards due for review</p>
+    <div className="max-w-4xl mx-auto p-4 mt-4">
+      <h1 className="text-3xl font-bold text-center mb-8">Flashcards</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Review Card */}
+        <Link
+          href="/flashcards/review"
+          className="bg-background-page rounded-lg p-6 hover:bg-foreground/5 transition-colors border border-foreground/10 no-underline"
+        >
+          <div className="flex flex-col items-center text-center">
+            <h2 className="text-2xl font-bold mb-2 text-foreground">Review</h2>
+            <p className="text-foreground/70 mt-3">
+              Review due flashcards
+            </p>
+          </div>
+        </Link>
+
+        {/* Browse Card */}
+        <Link
+          href="/flashcards/browse"
+          className="bg-background-page rounded-lg p-6 hover:bg-foreground/5 transition-colors border border-foreground/10 no-underline"
+        >
+          <div className="flex flex-col items-center text-center">
+            <h2 className="text-2xl font-bold mb-2 text-foreground">Browse</h2>
+            <p className="text-foreground/70 mt-3">
+              {stats.total > 0
+                ? `Browse all ${stats.total} ${stats.total === 1 ? 'flashcard' : 'flashcards'}`
+                : 'Browse your flashcards'}
+            </p>
+          </div>
+        </Link>
+
+        {/* Stats Card */}
+        <Link
+          href="/flashcards/stats"
+          className="bg-background-page rounded-lg p-6 hover:bg-foreground/5 transition-colors border border-foreground/10 no-underline"
+        >
+          <div className="flex flex-col items-center text-center">
+            <h2 className="text-2xl font-bold mb-2 text-foreground">Stats</h2>
+            <p className="text-foreground/70 mt-3">
+              View your review statistics and progress
+            </p>
+          </div>
+        </Link>
+      </div>
+
+      {stats.total === 0 && (
+        <div className="mt-8 bg-background-page rounded-md p-6 text-center border border-foreground/10">
+          <p className="text-xl mb-2 font-bold">You haven't created any flashcards</p>
           <p className="text-gray-300">
-            Come back later or create new flashcards in <Link href='/game-review' className="text-white underline whitespace-nowrap">Game Review</Link>
+            Create flashcards in <Link href='/game-review' className="text-white underline whitespace-nowrap">Game Review</Link>
           </p>
-        </div>
-      ) : (
-        <div>
-          <FlashcardReview flashcards={dueFlashcards} stats={stats} />
         </div>
       )}
     </div>
