@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { flashcards, users } from "@/db/schema";
-import { eq, and, lte, asc } from "drizzle-orm";
+import { eq, and, lte, asc, count, desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { PieceColor, ScoredMove } from "@/types/chess";
 import {
@@ -519,5 +519,58 @@ export async function getReviewStats(days?: number): Promise<ReviewStatsData> {
   } catch (error) {
     console.error("Error fetching review stats:", error);
     return { dailyReviews: [], totalReviews: 0, averagePerDay: 0, daysInPeriod: 0 };
+  }
+}
+
+/**
+ * Get paginated flashcards for the current user
+ */
+export async function getPaginatedFlashcards(
+  page: number = 1,
+  pageSize: number = 100
+): Promise<{
+  flashcards: Flashcard[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { flashcards: [], total: 0, page, pageSize, totalPages: 0 };
+    }
+
+    const userId = Number(session.user.id);
+    const offset = (page - 1) * pageSize;
+
+    // Get total count
+    const totalResult = await db
+      .select({ count: count() })
+      .from(flashcards)
+      .where(eq(flashcards.userId, userId));
+
+    const total = totalResult[0]?.count || 0;
+
+    // Get paginated flashcards, ordered by most recently created first
+    const userFlashcards = await db.query.flashcards.findMany({
+      where: eq(flashcards.userId, userId),
+      orderBy: [desc(flashcards.createdAt)],
+      limit: pageSize,
+      offset: offset,
+    });
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      flashcards: userFlashcards,
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
+  } catch (error) {
+    console.error("Error fetching paginated flashcards:", error);
+    return { flashcards: [], total: 0, page, pageSize, totalPages: 0 };
   }
 }
