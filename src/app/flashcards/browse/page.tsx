@@ -13,6 +13,7 @@ import { Chess as ChessJS } from 'chess.js';
 import { parse } from 'pgn-parser';
 import { getFenParts } from '@/utils/chess';
 import { Move } from 'cm-chess/src/Chess';
+import { makeAltFensWithEnPassantSquares } from '@/utils/bookPositions';
 
 const PAGE_SIZE = 50;
 const MAX_PLY_DEPTH_TO_CHECK = 6;
@@ -100,14 +101,13 @@ export default function BrowseFlashcardsPage() {
             break;
           }
 
-          // Check FEN with both en passant options
-          const fenWithoutEp = chessjs.fen();
-          const fenWithEp = chessjs.fen({ forceEnpassantSquare: true });
+          // Check FEN
+          const fen = chessjs.fen();
+          if (fen === targetFen) return true;
 
-          // If either FEN matches, this flashcard passes the filter
-          if (fenWithoutEp === targetFen || fenWithEp === targetFen) {
-            return true;
-          }
+          // Check altFens with EnPassantSquares
+          const altFens = makeAltFensWithEnPassantSquares(fen);
+          if (altFens.includes(targetFen)) return true;
         }
 
         return false;
