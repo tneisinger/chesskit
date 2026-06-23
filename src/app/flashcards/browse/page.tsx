@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getPaginatedFlashcards, FlashcardFilters } from '../actions';
 import type { Flashcard } from '@/db/schema';
 import Button, { ButtonSize } from '@/components/button';
@@ -9,11 +9,17 @@ import useWindowSize from '@/hooks/useWindowSize';
 import Chessboard from '@/components/Chessboard';
 import { PieceColor } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
+import { Chess as ChessJS } from 'chess.js';
+import { parse } from 'pgn-parser';
+import { getFenParts } from '@/utils/chess';
+import { Move } from 'cm-chess/src/Chess';
 
 const PAGE_SIZE = 50;
+const MAX_PLY_DEPTH_TO_CHECK = 6;
 
 export default function BrowseFlashcardsPage() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [unfilteredFlashcards, setUnfilteredFlashcards] = useState<Flashcard[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
@@ -32,6 +38,9 @@ export default function BrowseFlashcardsPage() {
     maxMoveNumber: undefined,
   });
 
+  // Board position filter state
+  const [appliedBoardPosition, setAppliedBoardPosition] = useState<Move | undefined>(undefined);
+
   // Temporary input state (updates while typing, doesn't trigger filter until blur)
   const [tempMinMove, setTempMinMove] = useState<string>('');
   const [tempMaxMove, setTempMaxMove] = useState<string>('');
@@ -43,23 +52,97 @@ export default function BrowseFlashcardsPage() {
     reset,
   } = useChessboardEngine();
 
-  useEffect(() => {
-    console.log('new current move');
-    console.log(currentMove);
-  }, [currentMove]);
+  // Check if board position has changed (to enable/disable Apply button)
+  const hasBoardPositionChanged = useMemo(() => {
+    // On initial load, current position is starting position but not considered "changed"
+    if (!appliedBoardPosition && currentMove?.ply === 0) return false;
+    if (!currentMove && !appliedBoardPosition) return false;
+    if (!currentMove || !appliedBoardPosition) return true;
+    return currentMove.fen !== appliedBoardPosition.fen;
+  }, [currentMove, appliedBoardPosition]);
+
+  // Filter flashcards by board position
+  const filterFlashcardsByBoardPosition = (flashcardList: Flashcard[], targetFen: string): Flashcard[] => {
+    const targetFenParts = getFenParts(targetFen);
+    const targetFullMoveNumber = targetFenParts.fullMoveNumber;
+    const maxPlyToCheck = (targetFullMoveNumber - 1) * 2 + MAX_PLY_DEPTH_TO_CHECK;
+
+    return flashcardList.filter((flashcard) => {
+      try {
+        // Parse the PGN
+        const parsed = parse(flashcard.pgn);
+        if (!parsed || parsed.length === 0 || !parsed[0].moves) {
+          return false;
+        }
+
+        const moves = parsed[0].moves;
+        const chessjs = new ChessJS();
+
+        // Check each move in the flashcard
+        for (let i = 0; i < moves.length; i++) {
+          const move = moves[i];
+
+          // Play the move
+          const result = chessjs.move(move.move);
+          if (!result) {
+            // Invalid move, skip this flashcard
+            return false;
+          }
+
+          // Get current ply after the move
+          const currentMoveNumber = chessjs.moveNumber();
+          const currentPly = chessjs.turn() === 'w'
+            ? (currentMoveNumber - 1) * 2 + 1  // Just played black's move
+            : (currentMoveNumber - 1) * 2;      // Just played white's move
+
+          // Stop checking if we're too deep
+          if (currentPly > maxPlyToCheck) {
+            break;
+          }
+
+          // Check FEN with both en passant options
+          const fenWithoutEp = chessjs.fen();
+          const fenWithEp = chessjs.fen({ forceEnpassantSquare: true });
+
+          // If either FEN matches, this flashcard passes the filter
+          if (fenWithoutEp === targetFen || fenWithEp === targetFen) {
+            return true;
+          }
+        }
+
+        return false;
+      } catch (error) {
+        console.error('Error filtering flashcard:', error);
+        return false;
+      }
+    });
+  };
 
   useEffect(() => {
     const fetchFlashcards = async () => {
       setIsLoading(true);
       const result = await getPaginatedFlashcards(currentPage, PAGE_SIZE, filters);
-      setFlashcards(result.flashcards);
-      setTotalPages(result.totalPages);
-      setTotal(result.total);
+
+      // Store unfiltered results
+      setUnfilteredFlashcards(result.flashcards);
+
+      // Apply board position filter if one is set
+      if (appliedBoardPosition?.fen) {
+        const filtered = filterFlashcardsByBoardPosition(result.flashcards, appliedBoardPosition.fen);
+        setFlashcards(filtered);
+        setTotal(filtered.length);
+        setTotalPages(Math.ceil(filtered.length / PAGE_SIZE));
+      } else {
+        setFlashcards(result.flashcards);
+        setTotal(result.total);
+        setTotalPages(result.totalPages);
+      }
+
       setIsLoading(false);
     };
 
     fetchFlashcards();
-  }, [currentPage, filters]);
+  }, [currentPage, filters, appliedBoardPosition]);
 
   // Sync temp input state with actual filter state
   // Convert ply numbers back to move numbers for display
@@ -163,6 +246,24 @@ export default function BrowseFlashcardsPage() {
     setBoardOrientation((prev) =>
       prev === PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE
     );
+  };
+
+  const handleApplyBoardPosition = () => {
+    if (currentMove) {
+      setAppliedBoardPosition(currentMove);
+      setCurrentPage(1);
+    }
+  };
+
+  const handleResetBoard = () => {
+    reset();
+    setAppliedBoardPosition(undefined);
+    setCurrentPage(1);
+  };
+
+  const handleClearAllFilters = () => {
+    handleClearFilters();
+    handleResetBoard();
   };
 
   if (isLoading) {
@@ -270,14 +371,15 @@ export default function BrowseFlashcardsPage() {
             Flip Board
           </Button>
           <Button
-            onClick={reset}
+            onClick={handleResetBoard}
             buttonSize={ButtonSize.Small}
           >
             Reset
           </Button>
           <Button
-            onClick={() => console.log('apply')}
+            onClick={handleApplyBoardPosition}
             buttonSize={ButtonSize.Small}
+            disabled={!hasBoardPositionChanged}
           >
             Apply
           </Button>
@@ -286,11 +388,11 @@ export default function BrowseFlashcardsPage() {
         {/* Clear Filters Button */}
         <div className="mt-3 pt-3 pb-2 w-full flex flex-row justify-center">
           <Button
-            onClick={handleClearFilters}
+            onClick={handleClearAllFilters}
             buttonSize={ButtonSize.Small}
             className="w-full"
           >
-            Clear Filters
+            Clear All Filters
           </Button>
         </div>
       </div>
