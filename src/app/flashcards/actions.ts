@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { flashcards, users } from "@/db/schema";
-import { eq, and, lte, asc, count, desc } from "drizzle-orm";
+import { eq, and, lte, asc, count, desc, sql, or, gte } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { PieceColor, ScoredMove } from "@/types/chess";
 import {
@@ -522,12 +522,19 @@ export async function getReviewStats(days?: number): Promise<ReviewStatsData> {
   }
 }
 
+export interface FlashcardFilters {
+  colors?: PieceColor[];
+  minMoveNumber?: number;
+  maxMoveNumber?: number;
+}
+
 /**
- * Get paginated flashcards for the current user
+ * Get paginated flashcards for the current user with optional filters
  */
 export async function getPaginatedFlashcards(
   page: number = 1,
-  pageSize: number = 100
+  pageSize: number = 100,
+  filters?: FlashcardFilters
 ): Promise<{
   flashcards: Flashcard[];
   total: number;
@@ -544,21 +551,46 @@ export async function getPaginatedFlashcards(
     const userId = Number(session.user.id);
     const offset = (page - 1) * pageSize;
 
+    // Build where conditions
+    const whereConditions = [eq(flashcards.userId, userId)];
+
+    // Apply filters
+    if (filters?.colors && filters.colors.length > 0) {
+      const colorConditions = filters.colors.map((color) =>
+        eq(flashcards.userColor, color)
+      );
+      if (colorConditions.length === 1) {
+        whereConditions.push(colorConditions[0]);
+      } else {
+        // OR condition for multiple colors
+        whereConditions.push(or(...colorConditions)!);
+      }
+    }
+
+    if (filters?.minMoveNumber !== undefined) {
+      whereConditions.push(gte(flashcards.positionIdx, filters.minMoveNumber));
+    }
+
+    if (filters?.maxMoveNumber !== undefined) {
+      whereConditions.push(lte(flashcards.positionIdx, filters.maxMoveNumber));
+    }
+
     // Get total count
     const totalResult = await db
       .select({ count: count() })
       .from(flashcards)
-      .where(eq(flashcards.userId, userId));
+      .where(and(...whereConditions));
 
     const total = totalResult[0]?.count || 0;
 
     // Get paginated flashcards, ordered by most recently created first
-    const userFlashcards = await db.query.flashcards.findMany({
-      where: eq(flashcards.userId, userId),
-      orderBy: [desc(flashcards.createdAt)],
-      limit: pageSize,
-      offset: offset,
-    });
+    const userFlashcards = await db
+      .select()
+      .from(flashcards)
+      .where(and(...whereConditions))
+      .orderBy(desc(flashcards.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
     const totalPages = Math.ceil(total / pageSize);
 
