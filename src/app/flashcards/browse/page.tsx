@@ -191,86 +191,78 @@ export default function BrowseFlashcardsPage() {
   // Helper to render filter content
   const renderFilterContent = () => (
     <>
-      {/* Clear Filters Button */}
-      <div className="mb-4">
-        <Button
-          onClick={handleClearFilters}
-          buttonSize={ButtonSize.Small}
-          className="w-full"
-        >
-          Clear Filters
-        </Button>
-      </div>
+      <div className="px-4">
 
-      {/* Color Filter */}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium mb-2 text-gray-300">Color</h3>
-        <div className="space-y-2">
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={filters.colors?.includes(PieceColor.WHITE) || false}
-              onChange={() => handleColorToggle(PieceColor.WHITE)}
-              className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 bg-gray-700 cursor-pointer"
-            />
-            <span className="ml-2">White</span>
-          </label>
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={filters.colors?.includes(PieceColor.BLACK) || false}
-              onChange={() => handleColorToggle(PieceColor.BLACK)}
-              className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 bg-gray-700 cursor-pointer"
-            />
-            <span className="ml-2">Black</span>
-          </label>
-        </div>
-      </div>
-
-      {/* Move Number Range Filter */}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium mb-2 text-gray-300">Move Number</h3>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <label className="text-xs text-gray-400 block mb-1">Min</label>
-            <input
-              type="number"
-              min="0"
-              placeholder="No min"
-              value={tempMinMove}
-              onChange={(e) => handleMinMoveChange(e.target.value)}
-              onBlur={handleMinMoveBlur}
-              className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        {/* Color Filter */}
+        <div className="mb-6">
+          <h3 className="text-sm font-medium mb-2 text-gray-300">Color</h3>
+          <div className="flex flex-row gap-4">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.colors?.includes(PieceColor.WHITE) || false}
+                onChange={() => handleColorToggle(PieceColor.WHITE)}
+                className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 bg-gray-700 cursor-pointer"
+              />
+              <span className="ml-2">White</span>
+            </label>
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.colors?.includes(PieceColor.BLACK) || false}
+                onChange={() => handleColorToggle(PieceColor.BLACK)}
+                className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 bg-gray-700 cursor-pointer"
+              />
+              <span className="ml-2">Black</span>
+            </label>
           </div>
-          <div className="flex-1">
-            <label className="text-xs text-gray-400 block mb-1">Max</label>
-            <input
-              type="number"
-              min="0"
-              placeholder="No max"
-              value={tempMaxMove}
-              onChange={(e) => handleMaxMoveChange(e.target.value)}
-              onBlur={handleMaxMoveBlur}
-              className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        </div>
+
+        {/* Move Number Range Filter */}
+        <div className="mb-6">
+          <h3 className="text-sm font-medium mb-2 text-gray-300">Move Number</h3>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-gray-400 block mb-1">Min</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="No min"
+                value={tempMinMove}
+                onChange={(e) => handleMinMoveChange(e.target.value)}
+                onBlur={handleMinMoveBlur}
+                className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-gray-400 block mb-1">Max</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="No max"
+                value={tempMaxMove}
+                onChange={(e) => handleMaxMoveChange(e.target.value)}
+                onBlur={handleMaxMoveBlur}
+                className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Board Position Filter */}
-      <div className="mb-4">
-        <h3 className="text-sm font-medium mb-2 text-gray-300">Filter by board position</h3>
-        <div className="w-full aspect-square mb-2">
+      <div className="mb-0">
+        <h3 className="text-sm font-medium text-center mb-2 text-gray-300">Filter by board position</h3>
+        <div className="w-full flex flex-row justify-center mb-2">
           <Chessboard
             currentMove={currentMove}
-            boardSize={300}
+            boardSize={310}
             orientation={boardOrientation}
             playMove={playMove}
             animate={false}
           />
         </div>
-        <div className="flex flex-row gap-3">
+        <div className="flex w-full flex-row justify-between px-2">
           <Button
             onClick={handleFlipBoard}
             buttonSize={ButtonSize.Small}
@@ -282,6 +274,23 @@ export default function BrowseFlashcardsPage() {
             buttonSize={ButtonSize.Small}
           >
             Reset
+          </Button>
+          <Button
+            onClick={() => console.log('apply')}
+            buttonSize={ButtonSize.Small}
+          >
+            Apply
+          </Button>
+        </div>
+
+        {/* Clear Filters Button */}
+        <div className="mt-3 pt-3 pb-2 w-full flex flex-row justify-center">
+          <Button
+            onClick={handleClearFilters}
+            buttonSize={ButtonSize.Small}
+            className="w-full"
+          >
+            Clear Filters
           </Button>
         </div>
       </div>
@@ -296,8 +305,8 @@ export default function BrowseFlashcardsPage() {
         {/* Filter Sidebar - Desktop Only */}
         {!isMobile && (
           <aside className="w-80 flex-shrink-0">
-            <div className="bg-background-page rounded-md p-4 sticky top-4">
-              <h2 className="text-xl font-semibold mb-4">Filters</h2>
+            <div className="bg-background-page rounded-md py-2 sticky top-4">
+                <h2 className="text-xl font-semibold text-center mb-2">Filters</h2>
               {renderFilterContent()}
             </div>
           </aside>
