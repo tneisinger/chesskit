@@ -522,10 +522,13 @@ export async function getReviewStats(days?: number): Promise<ReviewStatsData> {
   }
 }
 
+export type GamePhase = 'Opening' | 'MiddleGame' | 'EndGame';
+
 export interface FlashcardFilters {
   colors?: PieceColor[];
   minMoveNumber?: number;
   maxMoveNumber?: number;
+  gamePhases?: GamePhase[];
 }
 
 /**

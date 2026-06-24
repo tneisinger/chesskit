@@ -554,6 +554,11 @@ export function getMaterialCount(fen: string): { white: number, black: number } 
   return result;
 }
 
+export function isEndgame(fen: string): boolean {
+  const { white, black } = getMaterialCount(fen);
+  return white <= 14 && black <= 14;
+}
+
 function scoreFenPieceChar(char: string): { value: number; color: PieceColor } | null {
   if (char.length > 1) throw new Error('Expected a single character');
   if (char === 'p') return { value: 1, color: PieceColor.BLACK };

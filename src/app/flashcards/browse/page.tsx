@@ -11,9 +11,11 @@ import { PieceColor } from '@/types/chess';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import { Chess as ChessJS } from 'chess.js';
 import { parse } from 'pgn-parser';
-import { getFenParts } from '@/utils/chess';
+import { getFenParts, isEndgame } from '@/utils/chess';
 import { Move } from 'cm-chess/src/Chess';
 import { makeAltFensWithEnPassantSquares } from '@/utils/bookPositions';
+import type { GamePhase } from '../actions';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 const PAGE_SIZE = 50;
 const MAX_PLY_DEPTH_TO_CHECK = 6;
@@ -37,6 +39,7 @@ export default function BrowseFlashcardsPage() {
     colors: [],
     minMoveNumber: undefined,
     maxMoveNumber: undefined,
+    gamePhases: [],
   });
 
   // Board position filter state
@@ -60,6 +63,66 @@ export default function BrowseFlashcardsPage() {
     if (!currentMove || !appliedBoardPosition) return true;
     return currentMove.fen !== appliedBoardPosition.fen;
   }, [currentMove, appliedBoardPosition]);
+
+  // Determine the game phase of a flashcard
+  const determineGamePhase = (flashcard: Flashcard): GamePhase | null => {
+    try {
+      // Opening phase: positionIdx <= 26
+      if (flashcard.positionIdx <= 26) {
+        return 'Opening';
+      }
+
+      // For End Game and Middle Game, we need to get the FEN at positionIdx
+      const parsed = parse(flashcard.pgn);
+      if (!parsed || parsed.length === 0 || !parsed[0].moves) {
+        return null;
+      }
+
+      const moves = parsed[0].moves;
+      const chessjs = new ChessJS();
+
+      // Play moves up to positionIdx
+      for (let i = 0; i < moves.length; i++) {
+        const move = moves[i];
+        const result = chessjs.move(move.move);
+        if (!result) {
+          return null;
+        }
+
+        // Calculate current ply after the move
+        const currentMoveNumber = chessjs.moveNumber();
+        const currentPly = chessjs.turn() === 'w'
+          ? (currentMoveNumber - 1) * 2 + 1
+          : (currentMoveNumber - 1) * 2;
+
+        // If we've reached the positionIdx, check if it's endgame
+        if (currentPly === flashcard.positionIdx) {
+          const fen = chessjs.fen();
+          return isEndgame(fen) ? 'EndGame' : 'MiddleGame';
+        }
+
+        // If we've passed it, something is wrong
+        if (currentPly > flashcard.positionIdx) {
+          return null;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error determining game phase:', error);
+      return null;
+    }
+  };
+
+  // Filter flashcards by game phase
+  const filterFlashcardsByGamePhase = (flashcardList: Flashcard[], selectedPhases: GamePhase[]): Flashcard[] => {
+    if (selectedPhases.length === 0) return flashcardList;
+
+    return flashcardList.filter((flashcard) => {
+      const phase = determineGamePhase(flashcard);
+      return phase !== null && selectedPhases.includes(phase);
+    });
+  };
 
   // Filter flashcards by board position
   const filterFlashcardsByBoardPosition = (flashcardList: Flashcard[], targetFen: string): Flashcard[] => {
@@ -121,17 +184,35 @@ export default function BrowseFlashcardsPage() {
     const fetchFlashcards = async () => {
       setIsLoading(true);
 
-      // If board position filter is active, fetch ALL matching flashcards
-      // Otherwise, use normal pagination
-      if (appliedBoardPosition?.fen) {
-        // Fetch all flashcards matching the other filters (no pagination)
-        const result = await getPaginatedFlashcards(1, 10000, filters);
+      // Check if client-side filtering is needed
+      const needsClientSideFiltering =
+        appliedBoardPosition?.fen ||
+        (filters.gamePhases && filters.gamePhases.length > 0);
+
+      if (needsClientSideFiltering) {
+        // Fetch all flashcards matching the server-side filters (no pagination)
+        // Don't include gamePhases in server filters since we handle it client-side
+        const serverFilters = {
+          colors: filters.colors,
+          minMoveNumber: filters.minMoveNumber,
+          maxMoveNumber: filters.maxMoveNumber,
+        };
+        const result = await getPaginatedFlashcards(1, 10000, serverFilters);
 
         // Store all unfiltered results
         setUnfilteredFlashcards(result.flashcards);
 
-        // Apply board position filter to all results
-        const filtered = filterFlashcardsByBoardPosition(result.flashcards, appliedBoardPosition.fen);
+        let filtered = result.flashcards;
+
+        // Apply board position filter if active
+        if (appliedBoardPosition?.fen) {
+          filtered = filterFlashcardsByBoardPosition(filtered, appliedBoardPosition.fen);
+        }
+
+        // Apply game phase filter if active
+        if (filters.gamePhases && filters.gamePhases.length > 0) {
+          filtered = filterFlashcardsByGamePhase(filtered, filters.gamePhases);
+        }
 
         // Handle pagination client-side
         const startIdx = (currentPage - 1) * PAGE_SIZE;
@@ -200,6 +281,18 @@ export default function BrowseFlashcardsPage() {
     setCurrentPage(1); // Reset to first page when filter changes
   };
 
+  const handleGamePhaseToggle = (phase: GamePhase) => {
+    setFilters((prev) => {
+      const phases = prev.gamePhases || [];
+      const isSelected = phases.includes(phase);
+      const newPhases = isSelected
+        ? phases.filter((p) => p !== phase)
+        : [...phases, phase];
+      return { ...prev, gamePhases: newPhases };
+    });
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
   const handleMinMoveChange = (value: string) => {
     setTempMinMove(value);
   };
@@ -248,6 +341,7 @@ export default function BrowseFlashcardsPage() {
       colors: [],
       minMoveNumber: undefined,
       maxMoveNumber: undefined,
+      gamePhases: [],
     });
     setTempMinMove('');
     setTempMaxMove('');
@@ -288,7 +382,7 @@ export default function BrowseFlashcardsPage() {
     );
   }
 
-  if (total === 0 && !filters.colors?.length && !filters.minMoveNumber && !filters.maxMoveNumber) {
+  if (total === 0 && !filters.colors?.length && !filters.minMoveNumber && !filters.maxMoveNumber && !filters.gamePhases?.length && !appliedBoardPosition) {
     return (
       <div className="max-w-7xl mx-auto p-4 mt-4">
         <div className="bg-background-page rounded-md p-8 text-center">
@@ -360,6 +454,68 @@ export default function BrowseFlashcardsPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Game Phase Filter */}
+        <div className="mb-6">
+          <h3 className="text-sm font-medium mb-2 text-gray-300">Game Phase</h3>
+          <Tooltip.Provider delayDuration={300}>
+            <div className="flex flex-row gap-4">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.gamePhases?.includes('Opening') || false}
+                  onChange={() => handleGamePhaseToggle('Opening')}
+                  className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 bg-gray-700 cursor-pointer"
+                />
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <span className="ml-2 underline decoration-dotted decoration-gray-500 underline-offset-2">Opening</span>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      className="bg-gray-800 text-white text-xs px-3 py-2 rounded shadow-lg border border-gray-700 max-w-xs z-50"
+                      sideOffset={5}
+                    >
+                      Positions before move 14.
+                      <Tooltip.Arrow className="fill-gray-800" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.gamePhases?.includes('MiddleGame') || false}
+                  onChange={() => handleGamePhaseToggle('MiddleGame')}
+                  className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 bg-gray-700 cursor-pointer"
+                />
+                <span className="ml-2">Middle</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.gamePhases?.includes('EndGame') || false}
+                  onChange={() => handleGamePhaseToggle('EndGame')}
+                  className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 bg-gray-700 cursor-pointer"
+                />
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <span className="ml-2 underline decoration-dotted decoration-gray-500 underline-offset-2">End</span>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      className="bg-gray-800 text-white text-xs px-3 py-2 rounded shadow-lg border border-gray-700 max-w-xs z-50"
+                      sideOffset={5}
+                    >
+                      Both sides have 14 points of material or less.
+                      <Tooltip.Arrow className="fill-gray-800" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              </label>
+            </div>
+          </Tooltip.Provider>
         </div>
       </div>
 
