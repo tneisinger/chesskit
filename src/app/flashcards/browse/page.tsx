@@ -46,7 +46,6 @@ export default function BrowseFlashcardsPage() {
   const [tempMinMove, setTempMinMove] = useState<string>('');
   const [tempMaxMove, setTempMaxMove] = useState<string>('');
 
-
   const {
     currentMove,
     playMove,
@@ -121,18 +120,31 @@ export default function BrowseFlashcardsPage() {
   useEffect(() => {
     const fetchFlashcards = async () => {
       setIsLoading(true);
-      const result = await getPaginatedFlashcards(currentPage, PAGE_SIZE, filters);
 
-      // Store unfiltered results
-      setUnfilteredFlashcards(result.flashcards);
-
-      // Apply board position filter if one is set
+      // If board position filter is active, fetch ALL matching flashcards
+      // Otherwise, use normal pagination
       if (appliedBoardPosition?.fen) {
+        // Fetch all flashcards matching the other filters (no pagination)
+        const result = await getPaginatedFlashcards(1, 10000, filters);
+
+        // Store all unfiltered results
+        setUnfilteredFlashcards(result.flashcards);
+
+        // Apply board position filter to all results
         const filtered = filterFlashcardsByBoardPosition(result.flashcards, appliedBoardPosition.fen);
-        setFlashcards(filtered);
+
+        // Handle pagination client-side
+        const startIdx = (currentPage - 1) * PAGE_SIZE;
+        const endIdx = startIdx + PAGE_SIZE;
+        const paginatedFiltered = filtered.slice(startIdx, endIdx);
+
+        setFlashcards(paginatedFiltered);
         setTotal(filtered.length);
         setTotalPages(Math.ceil(filtered.length / PAGE_SIZE));
       } else {
+        // Normal server-side pagination
+        const result = await getPaginatedFlashcards(currentPage, PAGE_SIZE, filters);
+        setUnfilteredFlashcards(result.flashcards);
         setFlashcards(result.flashcards);
         setTotal(result.total);
         setTotalPages(result.totalPages);
