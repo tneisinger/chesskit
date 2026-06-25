@@ -128,8 +128,11 @@ export default function useForcingLineFinderParallel(): Output {
     const fens = generateFens(pev, options.maxLineLength);
 
     if (fens.length === 0) {
-      console.error('No positions to analyze');
-      return Promise.resolve([]);
+      // No positions to analyze. This happens when the first move is checkmate or ends the line.
+      // Return the initial move we already identified.
+      const firstMoveLan = pev.lines[0].lanLine.trim().split(' ')[0];
+      const result = [lanToShortMove(firstMoveLan)];
+      return Promise.resolve(result);
     }
 
     // Cancel any ongoing analysis

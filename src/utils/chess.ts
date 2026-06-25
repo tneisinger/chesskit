@@ -1119,6 +1119,12 @@ export function doesOnlyOneGoodMoveExist(pev: PositionEvaluation): boolean {
 
     const legalMoves = chessjs.moves();
     if (legalMoves.length !== 1) {
+      // If there are multiple legal moves but only one evaluation line, check if it's a
+      // forced mate. When the best move delivers checkmate (mate in 1), the engine often
+      // returns only one line since checkmate is overwhelmingly better than any alternative.
+      if (pev.lines[0].score.key === 'mate' && Math.abs(pev.lines[0].score.value) === 1) {
+        return true;
+      }
       throw new Error(`Expected at least 2 lines to compare, but got ${pev.lines.length}`);
     }
 
