@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getPaginatedFlashcards, FlashcardFilters } from '../actions';
+import { getPaginatedFlashcards, FlashcardFilters, startPracticeSession, getPracticeSessionCount } from '../actions';
 import type { Flashcard } from '@/db/schema';
 import Button, { ButtonSize } from '@/components/button';
+import { useRouter } from 'next/navigation';
 import FlashcardPreview from '@/components/flashcardPreview';
 import useWindowSize from '@/hooks/useWindowSize';
 import Chessboard from '@/components/Chessboard';
@@ -48,6 +49,13 @@ export default function BrowseFlashcardsPage() {
   // Temporary input state (updates while typing, doesn't trigger filter until blur)
   const [tempMinMove, setTempMinMove] = useState<string>('');
   const [tempMaxMove, setTempMaxMove] = useState<string>('');
+
+  // Practice session state
+  const [showPracticeWarningModal, setShowPracticeWarningModal] = useState(false);
+  const [existingPracticeCount, setExistingPracticeCount] = useState(0);
+  const [isStartingPractice, setIsStartingPractice] = useState(false);
+
+  const router = useRouter();
 
   const {
     currentMove,
@@ -372,6 +380,78 @@ export default function BrowseFlashcardsPage() {
     handleResetBoard();
   };
 
+  const handleStartPracticeClick = async () => {
+    // Check if there's an existing practice session
+    const count = await getPracticeSessionCount();
+    setExistingPracticeCount(count);
+
+    if (count > 0) {
+      // Show warning modal
+      setShowPracticeWarningModal(true);
+    } else {
+      // Start practice session directly
+      await startPracticeSessionWithCurrentFilters();
+    }
+  };
+
+  const startPracticeSessionWithCurrentFilters = async () => {
+    setIsStartingPractice(true);
+
+    try {
+      // Need to fetch all flashcard IDs that match the current filters
+      // Determine if we need client-side filtering
+      const needsClientSideFiltering =
+        appliedBoardPosition?.fen ||
+        (filters.gamePhases && filters.gamePhases.length > 0);
+
+      let allFlashcardIds: number[] = [];
+
+      if (needsClientSideFiltering) {
+        // Fetch all flashcards and apply client-side filters
+        const serverFilters = {
+          colors: filters.colors,
+          minMoveNumber: filters.minMoveNumber,
+          maxMoveNumber: filters.maxMoveNumber,
+        };
+        const result = await getPaginatedFlashcards(1, 10000, serverFilters);
+
+        let filtered = result.flashcards;
+
+        // Apply board position filter if active
+        if (appliedBoardPosition?.fen) {
+          filtered = filterFlashcardsByBoardPosition(filtered, appliedBoardPosition.fen);
+        }
+
+        // Apply game phase filter if active
+        if (filters.gamePhases && filters.gamePhases.length > 0) {
+          filtered = filterFlashcardsByGamePhase(filtered, filters.gamePhases);
+        }
+
+        allFlashcardIds = filtered.map((fc) => fc.id);
+      } else {
+        // Use server-side filtering
+        const result = await getPaginatedFlashcards(1, 10000, filters);
+        allFlashcardIds = result.flashcards.map((fc) => fc.id);
+      }
+
+      // Start the practice session
+      const startResult = await startPracticeSession(allFlashcardIds);
+
+      if (startResult.success) {
+        // Navigate to practice page
+        router.push('/flashcards/practice');
+      } else {
+        alert(`Error: ${startResult.error}`);
+      }
+    } catch (error) {
+      console.error('Error starting practice session:', error);
+      alert('An error occurred while starting the practice session');
+    } finally {
+      setIsStartingPractice(false);
+      setShowPracticeWarningModal(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto p-4 mt-4">
@@ -610,9 +690,19 @@ export default function BrowseFlashcardsPage() {
               <span className="text-sm">
                 Page {currentPage} of {totalPages}
               </span>
-              <span>
-                {total} flashcard{total !== 1 ? 's' : ''}
-              </span>
+              {total <= 200 ? (
+                <Button
+                  onClick={handleStartPracticeClick}
+                  buttonSize={ButtonSize.Small}
+                  disabled={isStartingPractice || total === 0}
+                >
+                  {isStartingPractice ? 'Starting...' : `Review ${total} Flashcard${total !== 1 ? 's' : ''}`}
+                </Button>
+              ) : (
+                <span>
+                  {total} flashcard{total !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
             <Button
               onClick={handleNextPage}
@@ -645,6 +735,41 @@ export default function BrowseFlashcardsPage() {
           )}
         </div>
       </div>
+
+      {/* Practice Session Warning Modal */}
+      {showPracticeWarningModal && (
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50"></div>
+
+          {/* Modal */}
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-background-page rounded-lg shadow-xl max-w-md w-full p-6">
+              <h2 className="text-xl font-bold mb-4">Replace Practice Session?</h2>
+              <p className="text-gray-300 mb-6">
+                You have an existing practice session with {existingPracticeCount} flashcard{existingPracticeCount !== 1 ? 's' : ''}.
+                Starting a new practice session will replace the old one.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  onClick={() => setShowPracticeWarningModal(false)}
+                  buttonSize={ButtonSize.Small}
+                  disabled={isStartingPractice}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={startPracticeSessionWithCurrentFilters}
+                  buttonSize={ButtonSize.Small}
+                  disabled={isStartingPractice}
+                >
+                  {isStartingPractice ? 'Starting...' : 'Replace & Start'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Mobile Filter Drawer */}
       {isMobile && showMobileFilters && (

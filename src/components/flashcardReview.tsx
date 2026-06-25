@@ -17,7 +17,7 @@ import HintButtons from '@/components/hintButtons';
 import { Arrow } from '@/components/cmChessboard';
 import { MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers';
 import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
-import { reviewFlashcard, updateFlashcardPgn, deleteFlashcard } from '@/app/flashcards/actions';
+import { reviewFlashcard, updateFlashcardPgn, deleteFlashcard, removePracticeFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
@@ -84,9 +84,10 @@ interface Props {
     learning: number;
     mature: number;
   };
+  isPracticeMode?: boolean;
 }
 
-const FlashcardReview = ({ flashcards, stats }: Props) => {
+const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) => {
   const [flashcardIndex, setFlashcardIndex] = useState(0);
   const { refreshDueCount } = useFlashcardContext();
 
@@ -218,7 +219,8 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (!hasUserCompletedFlashcard) return null;
     if (isReplay) return null;
     if (moveGrade == null) {
-      throw new Error('moveGrade was null');
+      // throw new Error('moveGrade was null');
+      return ReviewQuality.Again;
     }
 
     if (wrongAnswerCount > 0) return ReviewQuality.Again;
@@ -254,9 +256,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
 
       if (result.success) {
         await refreshDueCount();
-        } else {
-          router.refresh();
+
+        // If in practice mode, remove this flashcard from the practice session
+        if (isPracticeMode) {
+          await removePracticeFlashcard(currentFlashcard.id);
         }
+      } else {
+        router.refresh();
+      }
     } catch (error) {
       console.error('Error saving flashcard solve result:', error);
       alert('An error occurred while submitting review');
@@ -701,8 +708,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
       const cmHistory = cmchess.current.history();
       setCurrentMove(cmHistory[cmHistory.length - 1]);
       setOpponentFirstMove(opponentMove);
-
-      setLines(makeLineStatsRecord(fc.pgn))
+      setLines(makeLineStatsRecord(fc.pgn));
       setBoardFenOverride(undefined);
     } else {
       setMoveJudgements([]);
@@ -1027,7 +1033,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
     if (!currentFlashcard) return null;
     return (
       <div className="flex flex-col gap-4 w-full bg-background-page rounded-md p-2 text-center">
-        <h1 className="text-2xl font-bold">Flashcard Review</h1>
+        <h1 className="text-2xl font-bold">{isPracticeMode ? 'Practice Session' : 'Flashcard Review'}</h1>
         <p>Card {flashcardIndex + 1} of {flashcards.length}</p>
         <div className="flex gap-4 text-sm text-gray-400 justify-center">
           <div>Total: <span className="font-semibold text-foreground">{stats.total}</span></div>
@@ -1035,7 +1041,7 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         </div>
       </div>
     );
-  }, [flashcardIndex, flashcards.length, stats.total, stats.due, currentFlashcard]);
+  }, [flashcardIndex, flashcards.length, stats.total, stats.due, currentFlashcard, isPracticeMode]);
 
   const desktopFlashcardDetails = useMemo(() => {
     if (!currentFlashcard) return null;
@@ -1118,8 +1124,14 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
   if (!currentFlashcard) {
     return (
       <div className="text-center py-12 bg-background-page rounded-md">
-        <p className="text-xl mb-2">All flashcards reviewed!</p>
-        <p className="text-gray-400">Great job! Check back later for more reviews.</p>
+        <p className="text-xl mb-2">
+          {isPracticeMode ? 'Practice session complete!' : 'All flashcards reviewed!'}
+        </p>
+        <p className="text-gray-400">
+          {isPracticeMode
+            ? 'Great job! Start a new practice session from Browse Flashcards.'
+            : 'Great job! Check back later for more reviews.'}
+        </p>
       </div>
     );
   }
@@ -1136,7 +1148,9 @@ const FlashcardReview = ({ flashcards, stats }: Props) => {
         >
           {/* Header */}
           <div className="py-1 text-center">
-            <h2 className="text-xl font-bold">Flashcard {flashcardIndex + 1} of {flashcards.length}</h2>
+            <h2 className="text-xl font-bold">
+              {isPracticeMode ? 'Practice' : 'Review'} {flashcardIndex + 1} of {flashcards.length}
+            </h2>
           </div>
 
           {/* Chessboard with modals */}

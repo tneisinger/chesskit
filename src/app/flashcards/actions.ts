@@ -609,3 +609,189 @@ export async function getPaginatedFlashcards(
     return { flashcards: [], total: 0, page, pageSize, totalPages: 0 };
   }
 }
+
+/**
+ * Start a new practice session with the given flashcard IDs
+ */
+export async function startPracticeSession(
+  flashcardIds: number[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in" };
+    }
+
+    const userId = Number(session.user.id);
+
+    // Get current user preferences
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    // Update preferences with practice session flashcard IDs
+    await db
+      .update(users)
+      .set({
+        preferences: {
+          ...user.preferences,
+          practiceSessionFlashcardIds: flashcardIds,
+        },
+      })
+      .where(eq(users.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error starting practice session:", error);
+    return { success: false, error: "Failed to start practice session" };
+  }
+}
+
+/**
+ * Get flashcards for the current practice session
+ */
+export async function getPracticeSessionFlashcards(): Promise<Flashcard[]> {
+  try {
+    const session = await auth();
+    if (!session?.user) return [];
+
+    const userId = Number(session.user.id);
+
+    // Get user's practice session flashcard IDs
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user || !user.preferences?.practiceSessionFlashcardIds) {
+      return [];
+    }
+
+    const flashcardIds = user.preferences.practiceSessionFlashcardIds;
+
+    if (flashcardIds.length === 0) {
+      return [];
+    }
+
+    // Fetch flashcards by IDs
+    const practiceFlashcards = await db.query.flashcards.findMany({
+      where: and(
+        eq(flashcards.userId, userId),
+        or(...flashcardIds.map((id) => eq(flashcards.id, id)))
+      ),
+      orderBy: [asc(flashcards.createdAt)],
+    });
+
+    return practiceFlashcards;
+  } catch (error) {
+    console.error("Error fetching practice session flashcards:", error);
+    return [];
+  }
+}
+
+/**
+ * Remove a flashcard from the current practice session
+ */
+export async function removePracticeFlashcard(
+  flashcardId: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in" };
+    }
+
+    const userId = Number(session.user.id);
+
+    // Get current user preferences
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    const currentIds = user.preferences?.practiceSessionFlashcardIds || [];
+    const updatedIds = currentIds.filter((id) => id !== flashcardId);
+
+    // Update preferences
+    await db
+      .update(users)
+      .set({
+        preferences: {
+          ...user.preferences,
+          practiceSessionFlashcardIds: updatedIds,
+        },
+      })
+      .where(eq(users.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error removing practice flashcard:", error);
+    return { success: false, error: "Failed to remove flashcard from practice session" };
+  }
+}
+
+/**
+ * Clear the current practice session
+ */
+export async function clearPracticeSession(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in" };
+    }
+
+    const userId = Number(session.user.id);
+
+    // Get current user preferences
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    // Clear practice session
+    await db
+      .update(users)
+      .set({
+        preferences: {
+          ...user.preferences,
+          practiceSessionFlashcardIds: [],
+        },
+      })
+      .where(eq(users.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error clearing practice session:", error);
+    return { success: false, error: "Failed to clear practice session" };
+  }
+}
+
+/**
+ * Get the count of flashcards in the current practice session
+ */
+export async function getPracticeSessionCount(): Promise<number> {
+  try {
+    const session = await auth();
+    if (!session?.user) return 0;
+
+    const userId = Number(session.user.id);
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    return user?.preferences?.practiceSessionFlashcardIds?.length || 0;
+  } catch (error) {
+    console.error("Error getting practice session count:", error);
+    return 0;
+  }
+}
