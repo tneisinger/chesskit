@@ -219,8 +219,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
     if (!hasUserCompletedFlashcard) return null;
     if (isReplay) return null;
     if (moveGrade == null) {
-      // throw new Error('moveGrade was null');
-      return ReviewQuality.Again;
+      throw new Error('moveGrade was null');
     }
 
     if (wrongAnswerCount > 0) return ReviewQuality.Again;
