@@ -19,7 +19,7 @@ const FlashcardDetails = ({ flashcard }: Props) => {
             )}
             {flashcard.gameUrl != null && (
               <a target="_blank" rel="noopener noreferrer" href={flashcard.gameUrl} className="underline">
-                View on {(new URL(flashcard.gameUrl)).hostname}
+                View on {(new URL(flashcard.gameUrl)).hostname.replace(/^www\./, '')}
               </a>
             )}
           </div>
