@@ -1168,7 +1168,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
                 setShowDeleteFlashcardModal(false);
                 setDeleteStatus(DeleteStatus.NotStarted);
               }}
-              onNextFlashcardBtnClick={() => console.log('next flashcard')}
+              onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
               onConfirmedFlashcardDelete={handleConfirmedFlashcardDelete}
               deleteStatus={deleteStatus}
             />
@@ -1259,7 +1259,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
               setShowDeleteFlashcardModal(false);
               setDeleteStatus(DeleteStatus.NotStarted);
             }}
-            onNextFlashcardBtnClick={() => console.log('next flashcard')}
+            onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
             onConfirmedFlashcardDelete={handleConfirmedFlashcardDelete}
             deleteStatus={deleteStatus}
           />
