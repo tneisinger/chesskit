@@ -100,6 +100,7 @@ export async function getDueFlashcards(
     const userId = Number(session.user.id);
     const today = new Date();
     today.setHours(23, 59, 59, 999); // End of day
+    const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD - use consistent date string format
 
     const dueCards = await db.query.flashcards.findMany({
       where: and(
@@ -113,16 +114,32 @@ export async function getDueFlashcards(
     const applyLimit = options?.applyDailyLimit !== false;
 
     if (applyLimit) {
-      // Fetch user preferences to get daily limit
+      // Fetch user preferences to get daily limit, extra review count, and progress
       const user = await db.query.users.findFirst({
         where: eq(users.id, userId),
       });
 
       const dailyLimit = user?.preferences?.dailyFlashcardLimit;
+      const extraReviewCount = user?.preferences?.extraReviewCount ?? 0;
+      const progress = user?.preferences?.dailyReviewProgress;
 
-      // If limit exists and is exceeded, prioritize cards
-      if (dailyLimit && dailyLimit > 0 && dueCards.length > dailyLimit) {
-        return prioritizeFlashcards(dueCards, dailyLimit);
+      // Calculate how many cards have been reviewed today
+      const reviewedToday = progress?.date === todayStr ? progress.count : 0;
+
+      // Calculate effective limit (daily limit + extra review count)
+      if (dailyLimit && dailyLimit > 0) {
+        const effectiveLimit = dailyLimit + extraReviewCount;
+        const remainingAllowed = Math.max(0, effectiveLimit - reviewedToday);
+
+        // If the user has reached their limit, return empty array
+        if (remainingAllowed === 0) {
+          return [];
+        }
+
+        // If there are more cards than remaining allowed, prioritize them
+        if (dueCards.length > remainingAllowed) {
+          return prioritizeFlashcards(dueCards, remainingAllowed);
+        }
       }
     }
 

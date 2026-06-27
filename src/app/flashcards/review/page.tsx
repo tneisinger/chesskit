@@ -1,6 +1,7 @@
 import { getDueFlashcards, getFlashcardStats, getTotalDueCount } from '../actions';
-import { getDailyFlashcardLimit } from '@/app/user/actions';
+import { getDailyFlashcardLimit, checkDailyLimitReached } from '@/app/user/actions';
 import FlashcardReview from '@/components/flashcardReview';
+import FlashcardReviewComplete from '@/components/flashcardReviewComplete';
 import Link from "next/link";
 import type { Viewport } from 'next';
 
@@ -17,6 +18,7 @@ export default async function FlashcardsPage() {
   const totalDue = await getTotalDueCount();
   const limitResult = await getDailyFlashcardLimit();
   const limit = limitResult.success ? limitResult.limit : null;
+  const dailyLimitStatus = await checkDailyLimitReached();
 
   if (stats.total === 0) {
     return (
@@ -27,6 +29,24 @@ export default async function FlashcardsPage() {
         </p>
       </div>
     )
+  }
+
+  // Check if user has completed their daily limit
+  // Show completion screen when limit is reached and no cards are available from getDueFlashcards
+  if (
+    dailyLimitStatus.success &&
+    dailyLimitStatus.limitReached &&
+    dailyLimitStatus.dailyLimit != null &&
+    dueFlashcards.length === 0 &&
+    totalDue > 0
+  ) {
+    return (
+      <FlashcardReviewComplete
+        totalDue={totalDue}
+        dailyLimit={dailyLimitStatus.dailyLimit}
+        reviewedToday={dailyLimitStatus.reviewedToday ?? 0}
+      />
+    );
   }
 
   return (

@@ -264,3 +264,124 @@ export async function incrementDailyReviewCount(): Promise<{
     return { success: false, error: "Failed to increment daily review count" };
   }
 }
+
+/**
+ * Check if the user has reached their daily flashcard limit.
+ * Returns false if no limit is set or if an extra review session is active.
+ */
+export async function checkDailyLimitReached(): Promise<{
+  success: boolean;
+  limitReached?: boolean;
+  reviewedToday?: number;
+  dailyLimit?: number | null;
+  extraReviewCount?: number;
+  error?: string;
+}> {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in" };
+    }
+
+    const userId = Number(session.user.id);
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    const dailyLimit = user.preferences?.dailyFlashcardLimit;
+    const today = new Date().toISOString().split('T')[0];
+    const progress = user.preferences?.dailyReviewProgress;
+    const extraReviewCount = user.preferences?.extraReviewCount ?? 0;
+
+    // No limit set = never reached
+    if (!dailyLimit || dailyLimit <= 0) {
+      return {
+        success: true,
+        limitReached: false,
+        reviewedToday: progress?.date === today ? progress.count : 0,
+        dailyLimit: null,
+        extraReviewCount: 0,
+      };
+    }
+
+    const reviewedToday = progress?.date === today ? progress.count : 0;
+    const effectiveLimit = dailyLimit + extraReviewCount;
+    const limitReached = reviewedToday >= effectiveLimit;
+
+    return {
+      success: true,
+      limitReached,
+      reviewedToday,
+      dailyLimit,
+      extraReviewCount,
+    };
+  } catch (error) {
+    console.error("Error checking daily limit:", error);
+    return { success: false, error: "Failed to check daily limit" };
+  }
+}
+
+/**
+ * Add to the extra review count for the current user.
+ * This allows users to review additional flashcards beyond their daily limit.
+ * The count resets at the start of each new day.
+ */
+export async function addExtraReviewCount(
+  count: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return { success: false, error: "You must be logged in" };
+    }
+
+    if (count < 1 || !Number.isInteger(count)) {
+      return {
+        success: false,
+        error: "Extra review count must be a positive integer"
+      };
+    }
+
+    const userId = Number(session.user.id);
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const progress = user.preferences?.dailyReviewProgress;
+
+    // Reset extra review count if it's a new day
+    let currentExtraCount = user.preferences?.extraReviewCount ?? 0;
+    if (progress?.date !== today) {
+      currentExtraCount = 0;
+    }
+
+    // Add to the extra review count
+    const updatedPreferences = {
+      ...user.preferences,
+      extraReviewCount: currentExtraCount + count,
+    };
+
+    await db
+      .update(users)
+      .set({ preferences: updatedPreferences })
+      .where(eq(users.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error adding extra review count:", error);
+    return { success: false, error: "Failed to add extra review count" };
+  }
+}
