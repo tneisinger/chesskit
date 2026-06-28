@@ -23,6 +23,7 @@ export const users = sqliteTable("users", {
 			count: number;
 		};
 		practiceSessionFlashcardIds?: number[];
+    extraReviewCount?: number;
 	}>(),
 	chesscomUsername: text("chesscom_username"),
 	lichessUsername: text("lichess_username"),

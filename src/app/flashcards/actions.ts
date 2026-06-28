@@ -17,6 +17,18 @@ import type { Score } from "@/utils/stockfish";
 import { prioritizeFlashcards } from "@/utils/flashcardPriority";
 import { incrementDailyReviewCount } from "@/app/user/actions";
 
+/**
+ * Get today's date string in YYYY-MM-DD format using the server's local timezone.
+ * This ensures consistency across all daily tracking features.
+ */
+function getLocalDateString(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export interface CreateFlashcardInput {
   gameId?: number;
   pgn: string;
@@ -100,7 +112,8 @@ export async function getDueFlashcards(
     const userId = Number(session.user.id);
     const today = new Date();
     today.setHours(23, 59, 59, 999); // End of day
-    const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD - use consistent date string format
+    const todayStr = getLocalDateString();
+    console.log(`Fetching due flashcards for user ${userId} on ${todayStr}`)
 
     const dueCards = await db.query.flashcards.findMany({
       where: and(
@@ -120,11 +133,12 @@ export async function getDueFlashcards(
       });
 
       const dailyLimit = user?.preferences?.dailyFlashcardLimit;
-      const extraReviewCount = user?.preferences?.extraReviewCount ?? 0;
       const progress = user?.preferences?.dailyReviewProgress;
 
-      // Calculate how many cards have been reviewed today
+      // Calculate how many cards have been reviewed today and extra review count
+      // Both reset on new day
       const reviewedToday = progress?.date === todayStr ? progress.count : 0;
+      const extraReviewCount = progress?.date === todayStr ? (progress.extraReviewCount ?? 0) : 0;
 
       // Calculate effective limit (daily limit + extra review count)
       if (dailyLimit && dailyLimit > 0) {

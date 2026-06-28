@@ -7,6 +7,18 @@ import { auth } from "@/lib/auth";
 import { ChessWebsite } from "@/types/chess";
 
 /**
+ * Get today's date string in YYYY-MM-DD format using the server's local timezone.
+ * This ensures consistency across all daily tracking features.
+ */
+function getLocalDateString(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Save the chess.com or Lichess username for the current user.
  */
 export async function saveChessUsername(
@@ -170,6 +182,7 @@ export async function setDailyFlashcardLimit(
 export async function getDailyReviewProgress(): Promise<{
   success: boolean;
   count?: number;
+  extraReviewCount?: number;
   error?: string;
 }> {
   try {
@@ -189,15 +202,19 @@ export async function getDailyReviewProgress(): Promise<{
       return { success: false, error: "User not found" };
     }
 
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = getLocalDateString();
     const progress = user.preferences?.dailyReviewProgress;
 
-    // If no progress or different day, count is 0
+    // If no progress or different day, count and extraReviewCount are 0
     if (!progress || progress.date !== today) {
-      return { success: true, count: 0 };
+      return { success: true, count: 0, extraReviewCount: 0 };
     }
 
-    return { success: true, count: progress.count };
+    return {
+      success: true,
+      count: progress.count,
+      extraReviewCount: progress.extraReviewCount ?? 0
+    };
   } catch (error) {
     console.error("Error getting daily review progress:", error);
     return { success: false, error: "Failed to get daily review progress" };
@@ -231,17 +248,20 @@ export async function incrementDailyReviewCount(): Promise<{
       return { success: false, error: "User not found" };
     }
 
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = getLocalDateString();
     const currentProgress = user.preferences?.dailyReviewProgress;
 
     let newCount: number;
+    let extraReviewCount = 0;
 
     // If no progress or different day, start fresh at 1
     if (!currentProgress || currentProgress.date !== today) {
       newCount = 1;
+      extraReviewCount = 0; // Reset on new day
     } else {
-      // Same day, increment
+      // Same day, increment and preserve extraReviewCount
       newCount = currentProgress.count + 1;
+      extraReviewCount = currentProgress.extraReviewCount ?? 0;
     }
 
     // Update preferences
@@ -250,6 +270,7 @@ export async function incrementDailyReviewCount(): Promise<{
       dailyReviewProgress: {
         date: today,
         count: newCount,
+        extraReviewCount,
       },
     };
 
@@ -295,9 +316,8 @@ export async function checkDailyLimitReached(): Promise<{
     }
 
     const dailyLimit = user.preferences?.dailyFlashcardLimit;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const progress = user.preferences?.dailyReviewProgress;
-    const extraReviewCount = user.preferences?.extraReviewCount ?? 0;
 
     // No limit set = never reached
     if (!dailyLimit || dailyLimit <= 0) {
@@ -310,7 +330,10 @@ export async function checkDailyLimitReached(): Promise<{
       };
     }
 
+    // Get today's progress or default to 0 for both count and extraReviewCount
     const reviewedToday = progress?.date === today ? progress.count : 0;
+    const extraReviewCount = progress?.date === today ? (progress.extraReviewCount ?? 0) : 0;
+
     const effectiveLimit = dailyLimit + extraReviewCount;
     const limitReached = reviewedToday >= effectiveLimit;
 
@@ -359,19 +382,26 @@ export async function addExtraReviewCount(
       return { success: false, error: "User not found" };
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    const progress = user.preferences?.dailyReviewProgress;
+    const today = getLocalDateString();
+    const currentProgress = user.preferences?.dailyReviewProgress;
 
-    // Reset extra review count if it's a new day
-    let currentExtraCount = user.preferences?.extraReviewCount ?? 0;
-    if (progress?.date !== today) {
-      currentExtraCount = 0;
+    // Get current values or start fresh if it's a new day
+    let reviewCount = 0;
+    let currentExtraCount = 0;
+
+    if (currentProgress?.date === today) {
+      reviewCount = currentProgress.count;
+      currentExtraCount = currentProgress.extraReviewCount ?? 0;
     }
 
     // Add to the extra review count
     const updatedPreferences = {
       ...user.preferences,
-      extraReviewCount: currentExtraCount + count,
+      dailyReviewProgress: {
+        date: today,
+        count: reviewCount,
+        extraReviewCount: currentExtraCount + count,
+      },
     };
 
     await db
