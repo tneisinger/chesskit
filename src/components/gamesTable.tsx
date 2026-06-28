@@ -26,13 +26,13 @@ const GamesTable = ({
   );
 
   return (
-    <div className="flex flex-col w-full max-w-[95vw] h-full">
+    <div className="flex flex-col justify-center w-full max-w-[95vw] h-full">
       <GamesTableRow
         changeSelectedGameIds={changeSelectedGameIds}
         selectedGameIds={selectedGameIds}
         isMobile={isMobile}
       />
-      <div className="min-h-0 flex-1 rounded-b-md overflow-x-hidden overflow-y-scroll">
+      <div className="min-h-0 rounded-b-md overflow-x-hidden overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-neutral-700 [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full">
         {games.map((game, i) =>
           <GamesTableRow
             key={game.gameId}
