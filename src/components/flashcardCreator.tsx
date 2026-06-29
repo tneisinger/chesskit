@@ -230,9 +230,10 @@ const FlashcardCreator = ({
 
   const shouldDisableFlashcardBtn = useCallback((): boolean => {
     if (doesFlashcardAlreadyExistForThisPosition()) return true;
+    if (getFlashcardMove() == null) return true;
     if (isPositionFlashcardRelevant()) return false;
     return true;
-  }, [isPositionFlashcardRelevant, doesFlashcardAlreadyExistForThisPosition]);
+  }, [isPositionFlashcardRelevant, doesFlashcardAlreadyExistForThisPosition, getFlashcardMove]);
 
 
   const hasFlashcardBeenCreatedForThisPositionOrVariation = useCallback((): boolean => {
