@@ -7,6 +7,8 @@ import DotsSpinner from '@/components/dotsSpinner';
 import { makeReadableTimeControl } from '@/utils/chess';
 import { parse as parsePGN } from 'pgn-parser';
 
+const MAX_OPPONENT_NAME_LENGTH = 15;
+
 interface Column {
   name: string;
   priority: number;
@@ -53,6 +55,10 @@ const GamesTableRow = ({
     }
     if (game.userColor === PieceColor.BLACK && game.whiteName) {
       opponent = game.whiteName;
+    }
+
+    if (opponent.length > MAX_OPPONENT_NAME_LENGTH) {
+      opponent = opponent.slice(0, MAX_OPPONENT_NAME_LENGTH - 3) + '...';
     }
 
     return opponent;
