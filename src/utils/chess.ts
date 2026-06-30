@@ -471,6 +471,21 @@ export function makeMoveJudgement(
 
     const score1 = makeEvaluationScore(evalBefore);
     const score2 = makeEvaluationScore(evalAfter);
+
+    // Special case: if mate is 0, the game is over (checkmate was delivered)
+    // We need to determine if the move that led to this position was good or bad
+    if (score2.key === 'mate' && score2.value === 0) {
+      // When mate is 0, the side to move in fen2 is the side that got checkmated
+      const colorToMoveInFen2 = getNextToPlay(fen2);
+
+      // If the color that moved (from fen1) is NOT the color to move in fen2,
+      // then the move delivered checkmate (excellent move)
+      if (colorToMoveInFen2 !== color) {
+        return MoveJudgement.Excellent;
+      }
+      // Otherwise, it's a very bad situation (though this shouldn't normally happen)
+    }
+
     return judgeShift(povDiff(color, score1, score2));
   }
 }
