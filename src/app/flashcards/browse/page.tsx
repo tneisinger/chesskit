@@ -75,8 +75,8 @@ export default function BrowseFlashcardsPage() {
   // Determine the game phase of a flashcard
   const determineGamePhase = (flashcard: Flashcard): GamePhase | null => {
     try {
-      // Opening phase: positionIdx <= 26
-      if (flashcard.positionIdx <= 26) {
+      // Opening phase: positionIdx < 25
+      if (flashcard.positionIdx < 25) {
         return 'Opening';
       }
 
@@ -557,7 +557,7 @@ export default function BrowseFlashcardsPage() {
                       className="bg-gray-800 text-white text-xs px-3 py-2 rounded shadow-lg border border-gray-700 max-w-xs z-50"
                       sideOffset={5}
                     >
-                      Positions before move 14.
+                      Positions before move 13.
                       <Tooltip.Arrow className="fill-gray-800" />
                     </Tooltip.Content>
                   </Tooltip.Portal>
