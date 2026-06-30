@@ -3,6 +3,8 @@ import FlashcardReview from '@/components/flashcardReview';
 import Link from "next/link";
 import type { Viewport } from 'next';
 
+export const dynamic = 'force-dynamic';
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,

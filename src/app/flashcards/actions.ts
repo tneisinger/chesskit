@@ -113,7 +113,6 @@ export async function getDueFlashcards(
     const today = new Date();
     today.setHours(23, 59, 59, 999); // End of day
     const todayStr = getLocalDateString();
-    console.log(`Fetching due flashcards for user ${userId} on ${todayStr}`)
 
     const dueCards = await db.query.flashcards.findMany({
       where: and(

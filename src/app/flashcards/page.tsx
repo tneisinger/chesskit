@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { getFlashcardStats } from './actions';
 
+export const dynamic = 'force-dynamic';
+
 export default async function FlashcardsPage() {
   const stats = await getFlashcardStats();
 
