@@ -52,7 +52,7 @@
     "@types/react-dom": "19.2.3",
     "@types/string-hash": "^1.1.3",
     "@vitest/ui": "^4.0.16",
-    "baseline-browser-mapping": "^2.10.37",
+    "baseline-browser-mapping": "^2.10.40",
     "drizzle-kit": "^0.31.6",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
