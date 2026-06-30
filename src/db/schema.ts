@@ -21,9 +21,9 @@ export const users = sqliteTable("users", {
 		dailyReviewProgress?: {
 			date: string; // YYYY-MM-DD format
 			count: number;
+			extraReviewCount?: number;
 		};
 		practiceSessionFlashcardIds?: number[];
-    extraReviewCount?: number;
 	}>(),
 	chesscomUsername: text("chesscom_username"),
 	lichessUsername: text("lichess_username"),
