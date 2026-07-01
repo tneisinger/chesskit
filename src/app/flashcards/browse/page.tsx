@@ -49,6 +49,10 @@ export default function BrowseFlashcardsPage() {
   // Temporary input state (updates while typing, doesn't trigger filter until blur)
   const [tempMinMove, setTempMinMove] = useState<string>('');
   const [tempMaxMove, setTempMaxMove] = useState<string>('');
+  const [tempMaxDaysOld, setTempMaxDaysOld] = useState<string>('');
+
+  // Days old filter state
+  const [maxDaysOld, setMaxDaysOld] = useState<number | undefined>(undefined);
 
   // Practice session state
   const [showPracticeWarningModal, setShowPracticeWarningModal] = useState(false);
@@ -132,6 +136,18 @@ export default function BrowseFlashcardsPage() {
     });
   };
 
+  // Filter flashcards by creation date
+  const filterFlashcardsByDaysOld = (flashcardList: Flashcard[], maxDays: number): Flashcard[] => {
+    const now = Date.now();
+    const maxAgeMs = maxDays * 24 * 60 * 60 * 1000;
+
+    return flashcardList.filter((flashcard) => {
+      const createdAt = new Date(flashcard.createdAt).getTime();
+      const ageMs = now - createdAt;
+      return ageMs <= maxAgeMs;
+    });
+  };
+
   // Filter flashcards by board position
   const filterFlashcardsByBoardPosition = (flashcardList: Flashcard[], targetFen: string): Flashcard[] => {
     const targetFenParts = getFenParts(targetFen);
@@ -195,7 +211,8 @@ export default function BrowseFlashcardsPage() {
       // Check if client-side filtering is needed
       const needsClientSideFiltering =
         appliedBoardPosition?.fen ||
-        (filters.gamePhases && filters.gamePhases.length > 0);
+        (filters.gamePhases && filters.gamePhases.length > 0) ||
+        maxDaysOld !== undefined;
 
       if (needsClientSideFiltering) {
         // Fetch all flashcards matching the server-side filters (no pagination)
@@ -222,6 +239,11 @@ export default function BrowseFlashcardsPage() {
           filtered = filterFlashcardsByGamePhase(filtered, filters.gamePhases);
         }
 
+        // Apply days old filter if active
+        if (maxDaysOld !== undefined) {
+          filtered = filterFlashcardsByDaysOld(filtered, maxDaysOld);
+        }
+
         // Handle pagination client-side
         const startIdx = (currentPage - 1) * PAGE_SIZE;
         const endIdx = startIdx + PAGE_SIZE;
@@ -243,7 +265,7 @@ export default function BrowseFlashcardsPage() {
     };
 
     fetchFlashcards();
-  }, [currentPage, filters, appliedBoardPosition]);
+  }, [currentPage, filters, appliedBoardPosition, maxDaysOld]);
 
   // Sync temp input state with actual filter state
   // Convert ply numbers back to move numbers for display
@@ -264,6 +286,15 @@ export default function BrowseFlashcardsPage() {
       setTempMaxMove('');
     }
   }, [filters.minMoveNumber, filters.maxMoveNumber]);
+
+  // Sync temp days old state
+  useEffect(() => {
+    if (maxDaysOld !== undefined) {
+      setTempMaxDaysOld(maxDaysOld.toString());
+    } else {
+      setTempMaxDaysOld('');
+    }
+  }, [maxDaysOld]);
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
@@ -344,6 +375,25 @@ export default function BrowseFlashcardsPage() {
     }
   };
 
+  const handleMaxDaysOldChange = (value: string) => {
+    setTempMaxDaysOld(value);
+  };
+
+  const handleMaxDaysOldBlur = () => {
+    if (tempMaxDaysOld === '') {
+      if (maxDaysOld !== undefined) {
+        setMaxDaysOld(undefined);
+        setCurrentPage(1);
+      }
+    } else {
+      const days = parseInt(tempMaxDaysOld, 10);
+      if (days !== maxDaysOld) {
+        setMaxDaysOld(days);
+        setCurrentPage(1);
+      }
+    }
+  };
+
   const handleClearFilters = () => {
     setFilters({
       colors: [],
@@ -353,6 +403,8 @@ export default function BrowseFlashcardsPage() {
     });
     setTempMinMove('');
     setTempMaxMove('');
+    setMaxDaysOld(undefined);
+    setTempMaxDaysOld('');
     setCurrentPage(1);
   };
 
@@ -402,7 +454,8 @@ export default function BrowseFlashcardsPage() {
       // Determine if we need client-side filtering
       const needsClientSideFiltering =
         appliedBoardPosition?.fen ||
-        (filters.gamePhases && filters.gamePhases.length > 0);
+        (filters.gamePhases && filters.gamePhases.length > 0) ||
+        maxDaysOld !== undefined;
 
       let allFlashcardIds: number[] = [];
 
@@ -425,6 +478,11 @@ export default function BrowseFlashcardsPage() {
         // Apply game phase filter if active
         if (filters.gamePhases && filters.gamePhases.length > 0) {
           filtered = filterFlashcardsByGamePhase(filtered, filters.gamePhases);
+        }
+
+        // Apply days old filter if active
+        if (maxDaysOld !== undefined) {
+          filtered = filterFlashcardsByDaysOld(filtered, maxDaysOld);
         }
 
         allFlashcardIds = filtered.map((fc) => fc.id);
@@ -462,7 +520,7 @@ export default function BrowseFlashcardsPage() {
     );
   }
 
-  if (total === 0 && !filters.colors?.length && !filters.minMoveNumber && !filters.maxMoveNumber && !filters.gamePhases?.length && !appliedBoardPosition) {
+  if (total === 0 && !filters.colors?.length && !filters.minMoveNumber && !filters.maxMoveNumber && !filters.gamePhases?.length && !appliedBoardPosition && !maxDaysOld) {
     return (
       <div className="max-w-7xl mx-auto p-4 mt-4">
         <div className="bg-background-page rounded-md p-8 text-center">
@@ -597,6 +655,23 @@ export default function BrowseFlashcardsPage() {
             </div>
           </Tooltip.Provider>
         </div>
+
+        {/* Days Old Filter */}
+        <div className="mb-6">
+          <h3 className="text-sm font-medium mb-2 text-gray-300">Created In Last</h3>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              placeholder="All time"
+              value={tempMaxDaysOld}
+              onChange={(e) => handleMaxDaysOldChange(e.target.value)}
+              onBlur={handleMaxDaysOldBlur}
+              className="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-400">days</span>
+          </div>
+        </div>
       </div>
 
       {/* Board Position Filter */}
@@ -648,25 +723,25 @@ export default function BrowseFlashcardsPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold p-3 text-center">Browse Flashcards</h1>
+    <div className="max-w-7xl mx-auto h-screen flex flex-col">
+      <h1 className="text-2xl font-bold p-3 text-center flex-shrink-0">Browse Flashcards</h1>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 flex-1 min-h-0">
         {/* Filter Sidebar - Desktop Only */}
         {!isMobile && (
-          <aside className="w-80 flex-shrink-0">
-            <div className="bg-background-page rounded-md py-2 sticky top-4">
-                <h2 className="text-xl font-semibold text-center mb-2">Filters</h2>
+          <aside className="w-80 flex-shrink-0 overflow-y-auto">
+            <div className="bg-background-page rounded-md pb-2">
+                <h2 className="text-xl font-semibold text-center mb-2 py-1 bg-stone-700 rounded-t-md">Filters</h2>
               {renderFilterContent()}
             </div>
           </aside>
         )}
 
         {/* Main Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col min-h-0">
           {/* Mobile Filter Button */}
           {isMobile && (
-            <div className="mb-4">
+            <div className="mb-4 flex-shrink-0">
               <Button
                 onClick={() => setShowMobileFilters(true)}
                 buttonSize={ButtonSize.Small}
@@ -678,7 +753,7 @@ export default function BrowseFlashcardsPage() {
           )}
 
           {/* Pagination Controls - Top */}
-          <div className="flex justify-between items-center mb-4 bg-background-page p-2 rounded">
+          <div className="flex justify-between items-center bg-background-page p-2 rounded flex-shrink-0">
             <Button
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
@@ -715,13 +790,13 @@ export default function BrowseFlashcardsPage() {
 
           {/* Flashcards Grid - Scrollable */}
           {total === 0 ? (
-            <div className="bg-background-page rounded-md p-8 text-center">
+            <div className="bg-background-page rounded-md p-8 text-center flex-shrink-0">
               <p className="text-xl text-gray-300">
                 No flashcards match the selected filters
               </p>
             </div>
           ) : (
-            <div className="overflow-y-auto max-h-[calc(100vh-175px)] bg-background [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:invisible">
+            <div className="overflow-y-auto flex-1 py-2 bg-background [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:invisible">
               <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-2'}`}>
                 {flashcards.map((flashcard) => (
                   <FlashcardPreview
@@ -781,29 +856,29 @@ export default function BrowseFlashcardsPage() {
           ></div>
 
           {/* Drawer */}
-          <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-background-page z-50 overflow-y-auto shadow-xl">
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Filters</h2>
-                <button
-                  onClick={() => setShowMobileFilters(false)}
-                  className="text-gray-400 hover:text-white"
+          <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-background-page z-50 shadow-xl flex flex-col">
+            <div className="flex justify-between items-center p-3 bg-stone-700 flex-shrink-0 mb-2">
+              <h2 className="text-xl font-semibold">Filters</h2>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1">
               {renderFilterContent()}
             </div>
           </div>

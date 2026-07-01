@@ -67,7 +67,7 @@ export default function FlashcardPreview({
 }: FlashcardPreviewProps) {
   const moves = getFirstNMoves(flashcard.pgn, flashcard.positionIdx);
   const difficulty = getDifficulty(flashcard.easinessFactor, flashcard.repetitions);
-  const previewSize = useMobileLayout ? 150 : 225;
+  const previewSize = useMobileLayout ? 200 : 225;
 
   return (
     <Link
