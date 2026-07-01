@@ -17,24 +17,29 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Ensure WASM files have correct MIME type
+      {
+        source: '/stockfish18/:path*.wasm',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/wasm',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+        ],
+      },
     ];
   },
 
-  webpack: (config, { isServer }) => {
-    // Handle WASM files
-    config.experiments = {
-      ...config.experiments,
-      asyncWebAssembly: true,
-    };
-
-    // Add rule for .wasm files
-    config.module.rules.push({
-      test: /\.wasm$/,
-      type: 'webassembly/async',
-    });
-
-    return config;
-  },
+  // Note: Removed webpack WASM config - files in public/ should be served as static assets
+  // and NOT processed by webpack. The webpack config was causing WASM files to be corrupted.
 };
 
 export default nextConfig;
