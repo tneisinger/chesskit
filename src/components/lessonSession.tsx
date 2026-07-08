@@ -26,16 +26,14 @@ import { assertUnreachable, getRandom } from '@/utils';
 import useChessboardEngine from '@/hooks/useChessboardEngine';
 import {
   areMovesEqual,
-  convertSanLineToLanLine,
   convertLanLineToShortMoves,
-  lanToShortMove,
   areLinesEqual,
   makePgnFromHistory,
 } from '@/utils/chess';
 import Chessboard from '@/components/Chessboard'
 import BlinkOverlay from '@/components/blinkOverlay';
-import EvalerDisplay from '@/components/evalerDisplay';
-import MovesDisplay from '@/components/movesDisplay';
+import EngineDisplay from '@/components/engineDisplay';
+import NewMovesDisplay from './newMovesDisplay';
 import ArrowButtons from '@/components/arrowButtons';
 import IconButton from '@/components/iconButton';
 import { Svg } from '@/components/svgIcon';
@@ -46,7 +44,6 @@ import useWindowSize from '@/hooks/useWindowSize';
 import { getLinesFromPGN } from '@/utils/pgn';
 import usePrevious from '@/hooks/usePrevious';
 import LessonSessionInfo from '@/components/lessonSessionInfo';
-import useEvaler from '@/hooks/useChessEvaler';
 import LessonChapters from '@/components/lessonChapters';
 import { NAV_BAR_HEIGHT } from '@/lib/constants';
 import EditLessonControls from '@/components/editLessonControls';
@@ -57,6 +54,9 @@ import type { Viewport } from 'next'
 import { saveOpeningModeToLocalStorage, loadOpeningModeFromLocalStorage } from '@/utils/localStorage';
 import { useSearchParams } from 'next/navigation';
 import { getNextMoves, getRelevantLessonLines, makeLineStatsRecord } from '@/utils/lesson';
+import { useFenAnalyzers } from '@/contexts/FenAnalyzersContext';
+import useEngineArrowCreator from '@/hooks/useEngineArrowCreator';
+import useCurrentMoveAnalyzer from '@/hooks/useCurrentMoveAnalyzer';
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -190,6 +190,11 @@ interface SetMarkers {
   markers: Marker[],
 }
 
+interface SetArrows {
+  type: 'setArrows',
+  arrows: Arrow[],
+}
+
 interface ClearMarkersAndSetArrows {
   type: 'clearMarkersAndSetArrows',
   arrows: Arrow[],
@@ -258,6 +263,7 @@ type Action =
   | ClearMoveSound
   | SetIsChessboardMoving
   | RemoveAllMarkersAndArrows
+  | SetArrows
   | TriggerWrongAnswerBlink
   | DeclareEvaluating
   | DeclareEvaluationComplete
@@ -312,6 +318,9 @@ function reducer(s: State, a: Action): State {
       break;
     case 'setMarkers':
       newState = { ...s, markers: a.markers };
+      break;
+    case 'setArrows':
+      newState = { ...s, arrows: a.arrows };
       break;
     case 'clearMarkersAndSetArrows':
       newState = { ...s, markers: [], arrows: a.arrows };
@@ -462,6 +471,10 @@ const LessonSession = ({
   allowEdits = false,
 }: Props) => {
 
+  const fenAnalyzers = useFenAnalyzers();
+
+  const [currentMoveAnalyzerDepth, setCurrentMoveAnalyzerDepth] = useState(18);
+
   const {
     cmchess,
     history,
@@ -473,6 +486,19 @@ const LessonSession = ({
     undoLastMove,
     deleteMove,
   } = useChessboardEngine();
+
+  const currentMoveAnalyzer = useCurrentMoveAnalyzer(
+    currentMove,
+    { depth: currentMoveAnalyzerDepth, numLines: 2 }
+  );
+
+  useEngineArrowCreator(
+    currentMoveAnalyzer.isOn,
+    fenAnalyzers.evaluations,
+    currentMoveAnalyzer.latestEvaluations,
+    currentMove,
+    (newArrows) => dispatch({ type: 'setArrows', arrows: newArrows })
+  );
 
   const [s, dispatch] = useReducer(reducer, initialState);
 
@@ -509,20 +535,6 @@ const LessonSession = ({
       boardSize = Math.min(maxBoardWidth, maxBoardHeight);
     }
   }
-
-  const {
-    setupEvalerForNewGame,
-    gameEvals,
-    fenBeingEvaluated,
-    evalDepth,
-    engineName,
-    lines: engineLines,
-    numLines,
-  } = useEvaler(s.isEvaluatorOn, currentMove, { numLines: 2 });
-
-  const resetEvaler = useCallback(() => {
-    setupEvalerForNewGame();
-  }, []);
 
   const afterChessboardMoveDo = useRef<((() => void)[])>([]);
 
@@ -709,6 +721,8 @@ const LessonSession = ({
     if (!allowEdits && nextMode === Mode.Edit) throw new Error('Edits are not allowed');
     dispatch({ type: 'changeMode', lessonTitle: lesson.title, mode: nextMode })
 
+    currentMoveAnalyzer.setIsOn(false);
+
     // To avoid code repitition, define this function here. This function will setup a
     // timeout to run the restart logic after a short wait. This function will either run
     // afterChessBoardMoveDo, or not. See below.
@@ -739,7 +753,7 @@ const LessonSession = ({
 
       setCurrentMove(undefined);
     }
-  }, [reset, allowEdits, s.fallbackMode]);
+  }, [reset, allowEdits, s.fallbackMode, currentMoveAnalyzer]);
 
   const openAddNewChapterModal = useCallback(() => {
     dispatch({ type: 'showNewChapterModal', show: true });
@@ -854,7 +868,7 @@ const LessonSession = ({
       }
       if (s.mode === Mode.Edit) nextMode = Mode.Edit;
 
-      resetEvaler();
+      currentMoveAnalyzer.setIsOn(false);
       reset();
       dispatch({
         type: 'setupNewLesson',
@@ -896,7 +910,7 @@ const LessonSession = ({
       performUpdate({ keepLines: true });
       return;
     }
-  }, [lesson, prevLesson, resetEvaler, s.mode, s.lines, s.hasFirstLoadCompleted, s.currentChapterIdx, s.linesChapterIdx])
+  }, [lesson, prevLesson, currentMoveAnalyzer, s.mode, s.lines, s.hasFirstLoadCompleted, s.currentChapterIdx, s.linesChapterIdx])
 
   useEffect(() => {
     // If currentMove hasn't actually changed, do nothing
@@ -1085,23 +1099,6 @@ const LessonSession = ({
     };
   }, [currentMove, isOpponentsTurn, playMove, s.lineProgressIdx, s.lines, s.currentChapterIdx])
 
-  // If we have a best move from the engine and the engine is on, show the move
-  // on the board with an arrow
-  useEffect(() => {
-    if (s.isEvaluatorOn && currentMove && engineLines[currentMove.fen]) {
-      const posLines = engineLines[currentMove.fen];
-      const best = posLines.find((l) => l.multipv === 1);
-      if (best == undefined || best.lanLine.length < 1) return;
-      const engineMove = lanToShortMove(best.lanLine[0]);
-      const arrow = {
-        type: blueArrowType,
-        from: engineMove.from,
-        to: engineMove.to
-      };
-      dispatch({ type: 'clearMarkersAndSetArrows', arrows: [arrow] })
-    }
-  }, [s.isEvaluatorOn, engineLines, currentMove])
-
   useEffect(() => {
     if (s.mode === Mode.Edit && prevMode !== Mode.Edit) {
       putAllLessonLinesInHistory();
@@ -1110,6 +1107,21 @@ const LessonSession = ({
       putAllLessonLinesInHistory();
     }
   }, [s.mode, prevMode, putAllLessonLinesInHistory, s.currentChapterIdx, prevChapterIdx]);
+
+  
+  // On first load: setup workers and clear evaluations
+  useEffect(() => {
+    fenAnalyzers.setupWorkers()
+      .then(() => fenAnalyzers.newGame())
+      .then(() => fenAnalyzers.setEvaluations({}))
+      .catch((error) => {
+        if (error.message?.includes('terminated during setup')) {
+          console.log('Worker setup cancelled due to navigation');
+        } else {
+          console.error('Error setting up workers:', error);
+        }
+      });
+  }, [])
 
   const chessboard = (
     <div className="relative">
@@ -1194,21 +1206,18 @@ const LessonSession = ({
   }
 
   const engineDisplay = (
-      <EvalerDisplay
-        isEngineOn={s.isEvaluatorOn}
-        setIsEngineOn={(b) => dispatch({ type: 'setIsEvaluatorOn', value: b })}
-        gameEvals={gameEvals}
-        currentMove={currentMove}
-        evalerMaxDepth={evalDepth}
-        engineName={engineName}
-        engineLines={engineLines}
-        isEvaluating={fenBeingEvaluated !== null}
-        maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
-        numLines={numLines}
-        isSwitchDisabled={s.mode === Mode.Learn || s.mode === Mode.Practice}
-        switchDisabledMsg={'Complete the line to unlock the engine'}
-        showMoveJudgements={false}
-      />
+    <EngineDisplay
+      currentMoveAnalyzer={currentMoveAnalyzer}
+      evaluations={fenAnalyzers.evaluations}
+      currentMove={currentMove}
+      maxLineLengthPx={shouldUseMobileLayout(windowSize) ? windowSize.width! - 6 : 275}
+      isSwitchDisabled={s.mode === Mode.Learn || s.mode === Mode.Practice}
+      switchDisabledTooltip='Complete the line to unlock the engine'
+      showMoveJudgements={false}
+      colorLineScores={true}
+      depth={currentMoveAnalyzerDepth}
+      changeDepth={setCurrentMoveAnalyzerDepth}
+    />
   )
 
   const lessonSessionInfo = (
@@ -1240,11 +1249,10 @@ const LessonSession = ({
   );
 
   const movesDisplay = (
-    <MovesDisplay
+    <NewMovesDisplay
       history={history}
       currentMove={currentMove}
       changeCurrentMove={setCurrentMove}
-      useMobileLayout={shouldUseMobileLayout(windowSize)}
       showVariations={s.mode !== Mode.Practice}
     />
   );
@@ -1353,14 +1361,12 @@ const LessonSession = ({
           <div className="ml-2 w-[275px]">
             <div
               style={{ height: boardSize }}
-              className="flex flex-col flex-1 items-center w-full"
+              className="flex flex-col flex-1 items-center w-full gap-2"
             >
               <div className="flex bg-background-page w-full rounded-md min-h-4">
                 {engineDisplay}
               </div>
-              <div
-                className="my-1 rounded-md p-1 w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar bg-background-page"
-              >
+              <div className="flex flex-col w-full flex-1 min-h-0 overflow-y-scroll no-scrollbar">
                 {movesDisplay}
               </div>
               {allowEdits && (
