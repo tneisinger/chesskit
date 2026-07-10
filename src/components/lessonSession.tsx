@@ -916,11 +916,11 @@ const LessonSession = ({
     // If currentMove hasn't actually changed, do nothing
     if (areCmMovesEqual(currentMove, previousMove)) return;
 
-    // If there are markers or arrows on the board, remove them
-    if (s.markers.length > 0 || s.arrows.length > 0) {
-      dispatch({ type: 'removeAllMarkersAndArrows' });
+    // If there are markers on the board, remove them
+    if (s.markers.length > 0) {
+      dispatch({ type: 'setMarkers', markers: []})
     }
-  }, [currentMove, previousMove, s.markers.length, s.arrows.length]);
+  }, [currentMove, previousMove, s.markers]);
 
   useEffect(() => {
     // If we're in practice mode and the currentMove hasn't changed, make sure that
