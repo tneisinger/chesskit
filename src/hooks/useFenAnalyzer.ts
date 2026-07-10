@@ -224,7 +224,7 @@ export default function useFenAnalyzer(initialSettings?: StockfishSettings): Out
         if (setupPromiseRef.current) {
           setStatus(AnalyzerStatus.Uninitialized);
           setupPromiseRef.current.reject(
-            new Error(`Stockfish ${settings.id} Worker setup timed out after {timeoutSeconds} seconds`)
+            new Error(`Stockfish ${settings.id} Worker setup timed out after ${timeoutSeconds} seconds`)
           );
           setupPromiseRef.current = null;
           isWaitingForSetupReadyRef.current = false;

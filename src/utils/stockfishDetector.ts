@@ -85,6 +85,30 @@ function isMobileDevice(): boolean {
 }
 
 /**
+ * Detects if device may have memory constraints that warrant using lite version
+ */
+function shouldUseLiteForMemory(): boolean {
+	// Check if device memory is reported and is low (< 8GB)
+	const deviceMemory = (navigator as any).deviceMemory;
+	if (deviceMemory && deviceMemory < 8) {
+		return true;
+	}
+
+	// Windows Chrome with many threads tends to have memory pressure issues
+	// with multiple large WASM instances
+	const isWindows = /Win/.test(navigator.platform);
+	const isChrome = /Chrome/.test(navigator.userAgent) && !/Edge/.test(navigator.userAgent);
+	const threads = getThreadCount();
+
+	// If Windows Chrome with high thread count, prefer lite to avoid memory issues
+	if (isWindows && isChrome && threads >= 16) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
  * Detects the recommended Stockfish.js flavor based on device capabilities
  */
 export function detectStockfishFlavor(): StockfishRecommendation {
@@ -107,15 +131,18 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 		};
 	}
 
-	// Priority 2: Mobile devices should use lite versions
-	if (isMobile) {
+	// Priority 2: Mobile devices or memory-constrained devices should use lite versions
+	const useLite = isMobile || shouldUseLiteForMemory();
+	if (useLite) {
 		if (supportsCORS) {
 			return {
 				flavor: StockfishFlavor.LITE_MULTI_THREADED,
 				supportsWasm,
 				supportsCORS,
 				isMobile,
-				reason: "Mobile device with CORS support, using lite multi-threaded engine (≈7MB)",
+				reason: isMobile
+					? "Mobile device with CORS support, using lite multi-threaded engine (≈7MB)"
+					: "Memory constraints detected, using lite multi-threaded engine (≈7MB) to prevent worker crashes",
 				fileName: "stockfish-18-lite.js",
         title: "Stockfish 18 Lite MT",
 				threads,
@@ -126,7 +153,9 @@ export function detectStockfishFlavor(): StockfishRecommendation {
 				supportsWasm,
 				supportsCORS,
 				isMobile,
-				reason: "Mobile device without CORS support, using lite single-threaded engine (≈7MB)",
+				reason: isMobile
+					? "Mobile device without CORS support, using lite single-threaded engine (≈7MB)"
+					: "Memory constraints detected, using lite single-threaded engine (≈7MB) to prevent worker crashes",
 				fileName: "stockfish-18-lite-single.js",
         title: "Stockfish 18 Lite ST",
 				threads,

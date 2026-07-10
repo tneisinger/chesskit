@@ -15,6 +15,7 @@ interface QueueItem {
   resolve: (value: PositionEvaluation) => void;
   reject: (reason: any) => void;
   cancelled: boolean;
+  retryCount?: number; // Track retry attempts for worker recovery
 }
 
 interface FenAnalyzersContextType {
@@ -41,9 +42,17 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
 
   // Detect available threads and determine how many instances to use
   // Default to 8 if navigator.hardwareConcurrency is not available
+  // IMPORTANT: Reduce worker count on Windows Chrome to prevent memory pressure
+  // that causes workers to be terminated mid-analysis (especially with large WASM files)
+  const isWindows = typeof navigator !== 'undefined' && /Win/.test(navigator.platform);
+  const isChrome = typeof navigator !== 'undefined' && /Chrome/.test(navigator.userAgent) && !/Edge/.test(navigator.userAgent);
+
+  // Use fewer workers on Windows Chrome (max 8) to avoid memory pressure issues
+  const maxInstances = (isWindows && isChrome) ? 8 : MAX_INSTANCES;
+
   const numInstancesToUse = Math.min(
     navigator.hardwareConcurrency || 8,
-    MAX_INSTANCES
+    maxInstances
   );
 
   const [evaluations, setEvaluations] = useState<Evaluations>({});
@@ -125,13 +134,46 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
           }
           processQueue();
         })
-        .catch((error) => {
+        .catch(async (error) => {
           instanceBusyRef.current[i] = false;
           activeItemsRef.current[i] = null;
-          if (!currentItem.cancelled) {
-            currentItem.reject(error);
+
+          // Check if this is a worker crash/timeout error that might be recoverable
+          const isWorkerError = error?.message?.includes('timeout') ||
+                                error?.message?.includes('Worker') ||
+                                error?.message?.includes('WASM');
+
+          const retryCount = currentItem.retryCount || 0;
+          const maxRetries = 2;
+
+          if (!currentItem.cancelled && isWorkerError && retryCount < maxRetries) {
+            // Worker might have crashed - try to recover by resetting it and retrying
+            console.warn(`Worker ${i + 1} error detected, attempting recovery (retry ${retryCount + 1}/${maxRetries}):`, error.message);
+
+            try {
+              // Try to recreate the worker
+              await analyzersCurrent[i].setupWorker();
+
+              // Re-queue the item with incremented retry count
+              currentItem.retryCount = retryCount + 1;
+              queueRef.current.unshift(currentItem); // Add to front of queue for immediate retry
+              processQueue();
+            } catch (recoveryError) {
+              console.error(`Worker ${i + 1} recovery failed:`, recoveryError);
+              // Recovery failed, reject the promise
+              currentItem.reject(error);
+              processQueue();
+            }
+          } else {
+            // Not a recoverable error or max retries exceeded
+            if (!currentItem.cancelled) {
+              if (retryCount >= maxRetries) {
+                console.error(`Worker ${i + 1} max retries (${maxRetries}) exceeded for position`);
+              }
+              currentItem.reject(error);
+            }
+            processQueue();
           }
-          processQueue();
         });
     }
 
@@ -206,13 +248,28 @@ export function FenAnalyzersProvider({ children }: FenAnalyzersProviderProps) {
 
     const numInstances = numInstancesRef.current;
     const availableThreads = navigator.hardwareConcurrency || 'unknown';
+    const platform = typeof navigator !== 'undefined' ? navigator.platform : 'unknown';
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
+
+    console.log('=== System Resources ===');
+    console.log(`Available threads: ${availableThreads}`);
+    console.log(`Available RAM: ${(navigator as any).deviceMemory ? `${(navigator as any).deviceMemory} GB` : 'unknown'}`);
+    console.log('========================');
     console.log(`Initializing ${numInstances} analyzer instances (${availableThreads} hardware threads available)`);
 
     // Only setup the workers we need (first numInstances analyzers)
     const promises = analyzersRef.current.slice(0, numInstances).map(a => a.setupWorker());
-    await Promise.all(promises);
-    workersSetupRef.current = true;
-    setStatus(AnalyzerStatus.Idle);
+
+    try {
+      await Promise.all(promises);
+      workersSetupRef.current = true;
+      setStatus(AnalyzerStatus.Idle);
+      console.log(`✓ Successfully initialized ${numInstances} workers`);
+    } catch (error) {
+      console.error('Error setting up workers:', error);
+      setStatus(AnalyzerStatus.Uninitialized);
+      throw error;
+    }
   }, []);
 
   // Update latestEvaluations whenever any analyzer's latestEvaluation changes
