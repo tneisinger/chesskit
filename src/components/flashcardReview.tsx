@@ -17,7 +17,7 @@ import HintButtons from '@/components/hintButtons';
 import { Arrow } from '@/components/cmChessboard';
 import { MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers';
 import { ARROW_TYPE } from 'cm-chessboard/src/extensions/arrows/Arrows';
-import { reviewFlashcard, updateFlashcardPgn, deleteFlashcard, removePracticeFlashcard } from '@/app/flashcards/actions';
+import { reviewFlashcard, updateFlashcard, deleteFlashcard, removePracticeFlashcard } from '@/app/flashcards/actions';
 import { ReviewQuality } from '@/utils/supermemo2';
 import { useRouter } from 'next/navigation';
 import { useFlashcardContext } from '@/contexts/FlashcardContext';
@@ -99,6 +99,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   const [opponentFirstMove, setOpponentFirstMove] = useState<ShortMove | undefined | null>(null);
   const [moveJudgements, setMoveJudgements] = useState<MoveJudgement[]>([]);
   const [areLinesForcing, setAreLinesForcing] = useState<boolean | null>(null);
+  const [editedAreLinesForcing, setEditedAreLinesForcing] = useState<boolean>(false);
   const [lines, setLines] = useState<Record<string, LineStats>>({});
   const [wrongAnswerBlinkTrigger, setWrongAnswerBlinkTrigger] = useState(0);
   const [wrongAnswerCount, setWrongAnswerCount] = useState(0)
@@ -496,8 +497,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) return false;
     const originalHistory = loadPgnIntoCmChess(fc.pgn).history();
-    return !doHistoriesMatch(originalHistory, history);
-  }, [history, flashcards, flashcardIndex]);
+    const historyChanged = !doHistoriesMatch(originalHistory, history);
+    const areLinesChanged = editedAreLinesForcing !== fc.areLinesForcing;
+    return historyChanged || areLinesChanged;
+  }, [history, flashcards, flashcardIndex, editedAreLinesForcing]);
 
 
   const discardUnsavedChanges = useCallback(() => {
@@ -510,7 +513,8 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
     const lastCommonMove = getLastMoveOfLine(currentMoveLine, newHistory);
     setHistory(newHistory);
     setCurrentMove(lastCommonMove);
-  }, [history, flashcards, flashcardIndex, currentMove]);
+    setEditedAreLinesForcing(fc.areLinesForcing);
+  }, [history, flashcards, flashcardIndex, currentMove, doUnsavedFlashcardChangesExist]);
 
 
   const saveFlashcardPgnChanges = useCallback(async () => {
@@ -518,7 +522,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
     const pgn = renderPgn(cmchess.current);
 
     try {
-      const result = await updateFlashcardPgn(currentFlashcard.id, pgn);
+      const result = await updateFlashcard(currentFlashcard.id, {
+        pgn,
+        areLinesForcing: editedAreLinesForcing,
+      });
 
       if (result.success) {
         router.refresh();
@@ -527,10 +534,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
         alert(`Error: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error saving flashcard PGN:', error);
+      console.error('Error saving flashcard:', error);
       alert('An error occurred while saving changes');
     }
-  }, [doUnsavedFlashcardChangesExist, currentFlashcard, router]);
+  }, [doUnsavedFlashcardChangesExist, currentFlashcard, router, editedAreLinesForcing]);
 
 
   const handleConfirmedFlashcardDelete = useCallback(async () => {
@@ -622,7 +629,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   const makeContextMenu = useCallback((): ContextMenuItems => {
     return ({
       'Delete from here forward': {
-        isDisabled: (move: Move) => !areLinesForcing || move.ply <= currentFlashcard.positionIdx + 1,
+        isDisabled: (move: Move) => !areLinesForcing || move.ply <= currentFlashcard.positionIdx,
         handler: (move: Move) => deleteMoves(move),
       },
       'Promote to main line': {
@@ -700,6 +707,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
       // Use the areLinesForcing value stored in the database
       setAreLinesForcing(fc.areLinesForcing);
+      setEditedAreLinesForcing(fc.areLinesForcing);
 
       resetClock();
 
@@ -1071,14 +1079,16 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
     if (currentMode !== Mode.Edit) return null;
     return (
       <FlashcardEditButtons
+        flashcard={currentFlashcard}
         onDiscardChangesBtnClick={discardUnsavedChanges}
         onSaveChangesBtnClick={saveFlashcardPgnChanges}
         onDeleteFlashcardBtnClick={() => setShowDeleteFlashcardModal(true)}
         doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
-        showSaveAndUndoBtns={areLinesForcing === true}
+        areLinesForcing={editedAreLinesForcing}
+        onAreLinesChangingChange={setEditedAreLinesForcing}
       />
     );
-  }, [currentMode, history, areLinesForcing]);
+  }, [currentMode, history, areLinesForcing, currentFlashcard, editedAreLinesForcing]);
 
   const desktopHintButtons = useMemo(() => (
     <HintButtons

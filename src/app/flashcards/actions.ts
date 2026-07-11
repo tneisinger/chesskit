@@ -271,11 +271,11 @@ export async function reviewFlashcard(
 }
 
 /**
- * Update flashcard content (lines)
+ * Update flashcard content (pgn, lines, areLinesForcing)
  */
 export async function updateFlashcard(
   id: number,
-  updates: { lines?: {score: Score, lanLine: string}[]; areLinesForcing?: boolean }
+  updates: { pgn?: string; lines?: {score: Score, lanLine: string}[]; areLinesForcing?: boolean }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await auth();
