@@ -481,7 +481,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
     setLines(makeLineStatsRecord(effectivePgn));
     setAreLinesForcing(effectiveAreLinesForcing);
-    setEditedAreLinesForcing(effectiveAreLinesForcing);
+    setEditedAreLinesForcing(effectiveAreLinesForcing ?? false);
     setCurrentMode(Mode.Practice);
     setHasUserCompletedFlashcard(false);
     currentMoveAnalyzer.setIsOn(false);
@@ -536,7 +536,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
     const lastCommonMove = getLastMoveOfLine(currentMoveLine, newHistory);
     setHistory(newHistory);
     setCurrentMove(lastCommonMove);
-    setEditedAreLinesForcing(effectiveAreLinesForcing);
+    setEditedAreLinesForcing(effectiveAreLinesForcing ?? false);
   }, [currentMove, doUnsavedFlashcardChangesExist, effectivePgn, effectiveAreLinesForcing]);
 
 
@@ -646,7 +646,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
       // Ensure editedAreLinesForcing and lines are set to the baseline values when entering Edit mode
       if (effectivePgn) {
-        setEditedAreLinesForcing(effectiveAreLinesForcing);
+        setEditedAreLinesForcing(effectiveAreLinesForcing ?? false);
         setLines(makeLineStatsRecord(effectivePgn));
       }
 
