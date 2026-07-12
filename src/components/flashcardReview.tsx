@@ -12,6 +12,7 @@ import AltMoveModal from '@/components/altMoveModal';
 import FlashcardFeedback from './flashcardFeedback';
 import DeleteFlashcardModal, { DeleteStatus } from './deleteFlashcardModal';
 import SaveSuccessModal from './saveSuccessModal';
+import PgnValidationErrorModal from './pgnValidationErrorModal';
 import FlashcardEditButtons from './flashcardEditButtons';
 import FlashcardDetails from './flashcardDetails';
 import HintButtons from '@/components/hintButtons';
@@ -122,6 +123,8 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   const [selectedMobileTab, setSelectedMobileTab] = useState<MobileTab>(MobileTab.Feedback);
   const [isSavingFlashcard, setIsSavingFlashcard] = useState(false);
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
+  const [showPgnValidationErrorModal, setShowPgnValidationErrorModal] = useState(false);
+  const [pgnValidationErrorMessage, setPgnValidationErrorMessage] = useState('');
   const [savedPgn, setSavedPgn] = useState<string | null>(null);
   const [savedAreLinesForcing, setSavedAreLinesForcing] = useState<boolean | null>(null);
 
@@ -197,6 +200,17 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   const previousMoveGrade = usePrevious(moveGrade);
   const previousMode = usePrevious(currentMode);
   const prevOpponentFirstMove = usePrevious(opponentFirstMove);
+
+  // Calculate effective values (use saved values if they exist)
+  const effectiveAreLinesForcing = useMemo(() => {
+    return savedAreLinesForcing !== null ? savedAreLinesForcing : areLinesForcing;
+  }, [savedAreLinesForcing, areLinesForcing]);
+
+  const effectivePgn = useMemo(() => {
+    const fc = flashcards[flashcardIndex];
+    if (!fc) return null;
+    return savedPgn !== null ? savedPgn : fc.pgn;
+  }, [savedPgn, flashcards, flashcardIndex]);
 
 
   const performWrongAnswerActions = useCallback((options?: {indicateThatTheMoveWasWrong: boolean}) => {
@@ -317,9 +331,9 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
 
   const shouldUserPlayAnAlternativeMove = useCallback((relevantLines: string[]): boolean => {
-    if (!areLinesForcing) return false;
+    if (!effectiveAreLinesForcing) return false;
     return relevantLines.every((rLine => lines[rLine].isComplete));
-  }, [areLinesForcing, lines]);
+  }, [effectiveAreLinesForcing, lines]);
 
   const getJudgementOfCorrectMove = useCallback((move: Move): MoveJudgement => {
     const fc = flashcards[flashcardIndex];
@@ -335,7 +349,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   const handleCorrectUserMove = useCallback((relevantLines: string[]) => {
     if (currentMove == undefined) throw new Error('currentMove was undefined');
 
-    if (areLinesForcing) {
+    if (effectiveAreLinesForcing) {
       setMoveGrade({ san: currentMove.san, grade: MoveJudgement.Best });
     } else {
       const j = getJudgementOfCorrectMove(currentMove);
@@ -350,7 +364,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
     const nextMoves = getNextMoves(lines, currentMove, {incompleteLinesOnly: true});
 
-    if (nextMoves.length > 0) {
+    if (nextMoves.length > 0 && effectiveAreLinesForcing) {
       if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
       setupOpponentMoveTimeout(nextMoves);
       return;
@@ -358,7 +372,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
     markCurrentLineComplete();
   }, [lines, currentMove, remainingTime, addTimeToClock, setupOpponentMoveTimeout,
-      shouldUserPlayAnAlternativeMove, markCurrentLineComplete, areLinesForcing]);
+      shouldUserPlayAnAlternativeMove, markCurrentLineComplete, effectiveAreLinesForcing]);
 
 
   const gradeMove = useCallback(async (move: Move): Promise<MoveJudgement> => {
@@ -373,7 +387,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   const handleMoveThatWasNotInFlashcardPgn = useCallback(async () => {
     if (currentMove == undefined) throw new Error('currentMove was undefined');
 
-    if (areLinesForcing) {
+    if (effectiveAreLinesForcing) {
       handleIncorrectUserMove();
     } else {
       setIsGradingMove(true);
@@ -386,7 +400,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
         handleIncorrectUserMove();
       }
     }
-  }, [currentMove, areLinesForcing, handleIncorrectUserMove, gradeMove,
+  }, [currentMove, effectiveAreLinesForcing, handleIncorrectUserMove, gradeMove,
       handleIncorrectUserMove, markCurrentLineComplete]);
 
 
@@ -415,9 +429,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
   // Set the history so that the MovesDisplay shows the correct history for the flashcard
   // unsolved state. Return the opponentMove so that the opponentMoveTimeout can be setup.
-  const setupHistoryForUnsolvedFlashcard = useCallback((flashcard: Flashcard): ShortMove => {
+  const setupHistoryForUnsolvedFlashcard = useCallback((flashcard: Flashcard, pgnOverride?: string): ShortMove => {
     cmchess.current = new CmChess();
-    const parsedPgn = parsePGN(flashcard.pgn);
+    const pgnToUse = pgnOverride !== undefined ? pgnOverride : flashcard.pgn;
+    const parsedPgn = parsePGN(pgnToUse);
     if (parsedPgn.length !== 1) throw new Error('parsedPgn length was not 1');
     const parsedMoves = parsedPgn[0].moves.map((m) => m.move);
     const initialMoves = parsedMoves.slice(0, flashcard.positionIdx - 1);
@@ -432,9 +447,9 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   }, []);
 
 
-  const setupResetBoardTimeouts = useCallback((delay = 800) => {
+  const setupResetBoardTimeouts = useCallback((delay = 800, pgnOverride?: string) => {
     const fc = flashcards[flashcardIndex];
-    const opponentMove = setupHistoryForUnsolvedFlashcard(fc);
+    const opponentMove = setupHistoryForUnsolvedFlashcard(fc, pgnOverride);
     const cmhistory = cmchess.current.history();
     const newCurrentMove = cmhistory[cmhistory.length - 1];
 
@@ -462,22 +477,25 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
 
   const handleReplayFlashcardBtnClick = useCallback((resetBoardDelay = 500) => {
-    const fc = flashcards[flashcardIndex];
-    setLines(makeLineStatsRecord(fc.pgn));
+    if (!effectivePgn) return;
+
+    setLines(makeLineStatsRecord(effectivePgn));
+    setAreLinesForcing(effectiveAreLinesForcing);
+    setEditedAreLinesForcing(effectiveAreLinesForcing);
     setCurrentMode(Mode.Practice);
     setHasUserCompletedFlashcard(false);
     currentMoveAnalyzer.setIsOn(false);
     setMoveGrade(null);
     setWrongAnswerCount(0);
     setIsReplay(true);
-    setupResetBoardTimeouts(resetBoardDelay);
+    setupResetBoardTimeouts(resetBoardDelay, effectivePgn);
     resetClock();
     setNumHintsGiven(0);
     setNumShowMovesGiven(0);
     setMarkers([]);
     setPersistentArrows([]);
     hasSubmittedRef.current = false;
-  }, [flashcards, flashcardIndex, setupResetBoardTimeouts, resetClock]);
+  }, [effectivePgn, effectiveAreLinesForcing, setupResetBoardTimeouts, resetClock]);
 
 
   const deleteMoves = useCallback((move: Move) => {
@@ -499,37 +517,49 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
 
   const doUnsavedFlashcardChangesExist = useCallback((): boolean => {
-    const fc = flashcards[flashcardIndex];
-    if (fc == undefined) return false;
+    if (!effectivePgn) return false;
 
-    // Compare against saved values if they exist, otherwise use flashcard values
-    const baselinePgn = savedPgn !== null ? savedPgn : fc.pgn;
-    const baselineAreLinesForcing = savedAreLinesForcing !== null ? savedAreLinesForcing : fc.areLinesForcing;
-
-    const originalHistory = loadPgnIntoCmChess(baselinePgn).history();
+    const originalHistory = loadPgnIntoCmChess(effectivePgn).history();
     const historyChanged = !doHistoriesMatch(originalHistory, history);
-    const areLinesChanged = editedAreLinesForcing !== baselineAreLinesForcing;
+    const areLinesChanged = editedAreLinesForcing !== effectiveAreLinesForcing;
     return historyChanged || areLinesChanged;
-  }, [history, flashcards, flashcardIndex, editedAreLinesForcing, savedPgn, savedAreLinesForcing]);
+  }, [history, editedAreLinesForcing, effectivePgn, effectiveAreLinesForcing]);
 
 
   const discardUnsavedChanges = useCallback(() => {
     if (!doUnsavedFlashcardChangesExist()) return;
-    const fc = flashcards[flashcardIndex];
-    if (fc == undefined) return;
+    if (!effectivePgn) return;
+
     const currentMoveLine = getLanLineFromCmMove(currentMove);
-    cmchess.current.loadPgn(fc.pgn);
+    cmchess.current.loadPgn(effectivePgn);
     const newHistory = cmchess.current.history();
     const lastCommonMove = getLastMoveOfLine(currentMoveLine, newHistory);
     setHistory(newHistory);
     setCurrentMove(lastCommonMove);
-    setEditedAreLinesForcing(fc.areLinesForcing);
-  }, [history, flashcards, flashcardIndex, currentMove, doUnsavedFlashcardChangesExist]);
+    setEditedAreLinesForcing(effectiveAreLinesForcing);
+  }, [currentMove, doUnsavedFlashcardChangesExist, effectivePgn, effectiveAreLinesForcing]);
 
 
   const saveFlashcardPgnChanges = useCallback(async () => {
     if (!doUnsavedFlashcardChangesExist()) return;
     const pgn = renderPgn(cmchess.current);
+
+    // Validate that PGN has enough moves (need at least one move after positionIdx)
+    const history = cmchess.current.history();
+    if (history.length <= currentFlashcard.positionIdx) {
+      // PGN is too short - get the move at positionIdx for the error message
+      const lastMove = history[history.length - 1];
+      if (lastMove) {
+        const moveNumber = Math.floor((history.length - 1) / 2) + 1;
+        const moveNumberString = history.length % 2 === 1 ? `${moveNumber}.` : `${moveNumber}...`;
+        const errorMsg = `Pgn too short. Add at least one move after ${moveNumberString} ${lastMove.san}`;
+        setPgnValidationErrorMessage(errorMsg);
+      } else {
+        setPgnValidationErrorMessage('Pgn too short. Please add more moves.');
+      }
+      setShowPgnValidationErrorModal(true);
+      return;
+    }
 
     setIsSavingFlashcard(true);
     try {
@@ -613,9 +643,16 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
     if (currentMode !== Mode.Edit) {
       pauseClock();
       discardUnsavedChanges();
+
+      // Ensure editedAreLinesForcing and lines are set to the baseline values when entering Edit mode
+      if (effectivePgn) {
+        setEditedAreLinesForcing(effectiveAreLinesForcing);
+        setLines(makeLineStatsRecord(effectivePgn));
+      }
+
       setCurrentMode(Mode.Edit);
     }
-  }, [currentMode, pauseClock, handleReplayFlashcardBtnClick, discardUnsavedChanges, windowSize]);
+  }, [currentMode, pauseClock, handleReplayFlashcardBtnClick, discardUnsavedChanges, windowSize, effectivePgn, effectiveAreLinesForcing]);
 
 
   const handleNextFlashcardBtnClick = useCallback(() => {
@@ -660,6 +697,13 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   }, [editedAreLinesForcing, currentFlashcard, deleteMoves, promoteToMainLine, promoteMoveVariation]);
 
 
+  // Ensure lines is updated from effectivePgn when entering Practice mode during replay
+  useEffect(() => {
+    if (currentMode === Mode.Practice && isReplay && effectivePgn) {
+      setLines(makeLineStatsRecord(effectivePgn));
+    }
+  }, [currentMode, isReplay, effectivePgn]);
+
   // Whenever lines changes, update the numIncompleteLines and totalLines refs
   useEffect(() => {
     if (Object.keys(lines).length < 1) {
@@ -687,18 +731,18 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
     const haveAnyLinesBeenCompleted = numIncompleteLinesRef.current < totalLinesRef.current;
 
-    if (areLinesForcing) {
+    if (effectiveAreLinesForcing) {
       if (numIncompleteLinesRef.current > 0 && haveAnyLinesBeenCompleted) {
         if (remainingTime > 0) addTimeToClock(MOVE_INCREMENT_SECONDS);
         setupResetBoardTimeouts();
       }
     }
 
-    if (numIncompleteLinesRef.current === 0 || (!areLinesForcing && haveAnyLinesBeenCompleted)) {
+    if (numIncompleteLinesRef.current === 0 || (!effectiveAreLinesForcing && haveAnyLinesBeenCompleted)) {
       pauseClock();
       setHasUserCompletedFlashcard(true);
     }
-  }, [lines, areLinesForcing, previousLines, setupResetBoardTimeouts, pauseClock, remainingTime]);
+  }, [lines, effectiveAreLinesForcing, previousLines, setupResetBoardTimeouts, pauseClock, remainingTime]);
 
 
   // When the flashcardIndex changes...
@@ -731,7 +775,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
       resetClock();
 
-      const opponentMove = setupHistoryForUnsolvedFlashcard(fc);
+      const opponentMove = setupHistoryForUnsolvedFlashcard(fc, fc.pgn);
       const cmHistory = cmchess.current.history();
       setCurrentMove(cmHistory[cmHistory.length - 1]);
       setOpponentFirstMove(opponentMove);
@@ -757,6 +801,14 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
       }, 1000);
     }
   }, [prevOpponentFirstMove, opponentFirstMove, playMove, unpauseClock]);
+
+
+  // Sync lines with effectivePgn during replay in Practice mode
+  useEffect(() => {
+    if (currentMode === Mode.Practice && isReplay && effectivePgn) {
+      setLines(makeLineStatsRecord(effectivePgn));
+    }
+  }, [currentMode, isReplay, effectivePgn]);
 
 
   // Cleanup timeouts on unmount
@@ -814,12 +866,12 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
 
 
   useEffect(() => {
-    if (areLinesForcing) return;
+    if (effectiveAreLinesForcing) return;
     if (moveGrade != null && previousMoveGrade !== moveGrade &&
         isMoveJudgementAtLeast(MoveJudgement.Good, moveGrade.grade)) {
       setHasUserCompletedFlashcard(true);
     }
-  }, [moveGrade, previousMoveGrade, areLinesForcing])
+  }, [moveGrade, previousMoveGrade, effectiveAreLinesForcing])
 
 
   // Save flashcard result only once when completed
@@ -1207,6 +1259,11 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
               show={showSaveSuccessModal}
               onClose={() => setShowSaveSuccessModal(false)}
             />
+            <PgnValidationErrorModal
+              show={showPgnValidationErrorModal}
+              onClose={() => setShowPgnValidationErrorModal(false)}
+              errorMessage={pgnValidationErrorMessage}
+            />
             {mobileChessboard}
           </div>
 
@@ -1301,6 +1358,11 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
           <SaveSuccessModal
             show={showSaveSuccessModal}
             onClose={() => setShowSaveSuccessModal(false)}
+          />
+          <PgnValidationErrorModal
+            show={showPgnValidationErrorModal}
+            onClose={() => setShowPgnValidationErrorModal(false)}
+            errorMessage={pgnValidationErrorMessage}
           />
           <Chessboard
             currentMove={currentMove}
