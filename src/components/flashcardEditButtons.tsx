@@ -9,6 +9,7 @@ interface Props {
   doUnsavedChangesExist: boolean;
   areLinesForcing: boolean;
   onAreLinesChangingChange: (value: boolean) => void;
+  isSaving: boolean;
 }
 
 const FlashcardEditButtons = ({
@@ -19,6 +20,7 @@ const FlashcardEditButtons = ({
   doUnsavedChangesExist,
   areLinesForcing,
   onAreLinesChangingChange,
+  isSaving,
 }: Props) => {
   return (
     <div className="flex flex-col justify-center items-center bg-background-page rounded-md w-full p-3 gap-3">
@@ -38,11 +40,11 @@ const FlashcardEditButtons = ({
           <span>
             <Button
               onClick={onSaveChangesBtnClick}
-              disabled={!doUnsavedChangesExist}
+              disabled={!doUnsavedChangesExist || isSaving}
               buttonSize={ButtonSize.Small}
               buttonStyle={ButtonStyle.Primary}
             >
-              Save Changes
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </span>
           <span>

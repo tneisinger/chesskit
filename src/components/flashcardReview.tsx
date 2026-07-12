@@ -11,6 +11,7 @@ import ArrowButtons from '@/components/arrowButtons';
 import AltMoveModal from '@/components/altMoveModal';
 import FlashcardFeedback from './flashcardFeedback';
 import DeleteFlashcardModal, { DeleteStatus } from './deleteFlashcardModal';
+import SaveSuccessModal from './saveSuccessModal';
 import FlashcardEditButtons from './flashcardEditButtons';
 import FlashcardDetails from './flashcardDetails';
 import HintButtons from '@/components/hintButtons';
@@ -94,8 +95,6 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   // Declare currentFlashcard early so it's available in all hooks
   const currentFlashcard = flashcards[flashcardIndex];
 
-  console.log('flashcard id:', currentFlashcard.id);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
   const [opponentFirstMove, setOpponentFirstMove] = useState<ShortMove | undefined | null>(null);
@@ -121,6 +120,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   const [isGradingMove, setIsGradingMove] = useState(false);
   const [moveGrade, setMoveGrade] = useState<{ san: string, grade: MoveJudgement } | null>(null);
   const [selectedMobileTab, setSelectedMobileTab] = useState<MobileTab>(MobileTab.Feedback);
+  const [isSavingFlashcard, setIsSavingFlashcard] = useState(false);
+  const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
+  const [savedPgn, setSavedPgn] = useState<string | null>(null);
+  const [savedAreLinesForcing, setSavedAreLinesForcing] = useState<boolean | null>(null);
 
   // Used to scroll to the bottom of the MovesDisplay
   const [scrollTrigger, setScrollTrigger] = useState(0);
@@ -498,11 +501,16 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   const doUnsavedFlashcardChangesExist = useCallback((): boolean => {
     const fc = flashcards[flashcardIndex];
     if (fc == undefined) return false;
-    const originalHistory = loadPgnIntoCmChess(fc.pgn).history();
+
+    // Compare against saved values if they exist, otherwise use flashcard values
+    const baselinePgn = savedPgn !== null ? savedPgn : fc.pgn;
+    const baselineAreLinesForcing = savedAreLinesForcing !== null ? savedAreLinesForcing : fc.areLinesForcing;
+
+    const originalHistory = loadPgnIntoCmChess(baselinePgn).history();
     const historyChanged = !doHistoriesMatch(originalHistory, history);
-    const areLinesChanged = editedAreLinesForcing !== fc.areLinesForcing;
+    const areLinesChanged = editedAreLinesForcing !== baselineAreLinesForcing;
     return historyChanged || areLinesChanged;
-  }, [history, flashcards, flashcardIndex, editedAreLinesForcing]);
+  }, [history, flashcards, flashcardIndex, editedAreLinesForcing, savedPgn, savedAreLinesForcing]);
 
 
   const discardUnsavedChanges = useCallback(() => {
@@ -523,6 +531,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
     if (!doUnsavedFlashcardChangesExist()) return;
     const pgn = renderPgn(cmchess.current);
 
+    setIsSavingFlashcard(true);
     try {
       const result = await updateFlashcard(currentFlashcard.id, {
         pgn,
@@ -530,7 +539,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
       });
 
       if (result.success) {
-        router.refresh();
+        // Update the saved baseline values
+        setSavedPgn(pgn);
+        setSavedAreLinesForcing(editedAreLinesForcing);
+        setShowSaveSuccessModal(true);
       } else {
         console.error('Error saving flashcard:', result.error);
         alert(`Error: ${result.error}`);
@@ -538,8 +550,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
     } catch (error) {
       console.error('Error saving flashcard:', error);
       alert('An error occurred while saving changes');
+    } finally {
+      setIsSavingFlashcard(false);
     }
-  }, [doUnsavedFlashcardChangesExist, currentFlashcard, router, editedAreLinesForcing]);
+  }, [doUnsavedFlashcardChangesExist, currentFlashcard, editedAreLinesForcing]);
 
 
   const handleConfirmedFlashcardDelete = useCallback(async () => {
@@ -710,6 +724,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
       // Use the areLinesForcing value stored in the database
       setAreLinesForcing(fc.areLinesForcing);
       setEditedAreLinesForcing(fc.areLinesForcing);
+
+      // Reset saved baseline values for the new flashcard
+      setSavedPgn(null);
+      setSavedAreLinesForcing(null);
 
       resetClock();
 
@@ -1088,9 +1106,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
         doUnsavedChangesExist={doUnsavedFlashcardChangesExist()}
         areLinesForcing={editedAreLinesForcing}
         onAreLinesChangingChange={setEditedAreLinesForcing}
+        isSaving={isSavingFlashcard}
       />
     );
-  }, [currentMode, history, areLinesForcing, currentFlashcard, editedAreLinesForcing]);
+  }, [currentMode, history, areLinesForcing, currentFlashcard, editedAreLinesForcing, isSavingFlashcard]);
 
   const desktopHintButtons = useMemo(() => (
     <HintButtons
@@ -1184,6 +1203,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
               onConfirmedFlashcardDelete={handleConfirmedFlashcardDelete}
               deleteStatus={deleteStatus}
             />
+            <SaveSuccessModal
+              show={showSaveSuccessModal}
+              onClose={() => setShowSaveSuccessModal(false)}
+            />
             {mobileChessboard}
           </div>
 
@@ -1274,6 +1297,10 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
             onNextFlashcardBtnClick={handleNextFlashcardBtnClick}
             onConfirmedFlashcardDelete={handleConfirmedFlashcardDelete}
             deleteStatus={deleteStatus}
+          />
+          <SaveSuccessModal
+            show={showSaveSuccessModal}
+            onClose={() => setShowSaveSuccessModal(false)}
           />
           <Chessboard
             currentMove={currentMove}
