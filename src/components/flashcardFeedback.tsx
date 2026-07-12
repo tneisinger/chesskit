@@ -101,7 +101,7 @@ const FlashcardFeedback = ({
   if (isFlashcardComplete && flashcardIndex >= dueFlashcards.length - 1) return wrapContent(
     <>
       <h3 className='text-lg font-bold text-nowrap leading-2'>
-        All Flashcards Complete!
+        {dueFlashcards.length === 1 ? "Flashcard Complete!" : "All Flashcards Complete!"}
       </h3>
       <div>
         {renderMoveGradeFeedback()}
