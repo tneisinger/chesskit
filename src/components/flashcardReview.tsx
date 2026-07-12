@@ -94,6 +94,8 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   // Declare currentFlashcard early so it's available in all hooks
   const currentFlashcard = flashcards[flashcardIndex];
 
+  console.log('flashcard id:', currentFlashcard.id);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userAttemptedMove, setUserAttemptedMove] = useState<ShortMove | null>(null);
   const [opponentFirstMove, setOpponentFirstMove] = useState<ShortMove | undefined | null>(null);
@@ -629,19 +631,19 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
   const makeContextMenu = useCallback((): ContextMenuItems => {
     return ({
       'Delete from here forward': {
-        isDisabled: (move: Move) => !areLinesForcing || move.ply <= currentFlashcard.positionIdx,
+        isDisabled: (move: Move) => !editedAreLinesForcing || move.ply <= currentFlashcard.positionIdx,
         handler: (move: Move) => deleteMoves(move),
       },
       'Promote to main line': {
-        isDisabled: (move: Move) => !areLinesForcing || !isInVariation(move),
+        isDisabled: (move: Move) => !editedAreLinesForcing || !isInVariation(move),
         handler: (move: Move) => promoteToMainLine(move),
       },
       'Promote line': {
-        isDisabled: (move: Move) => !areLinesForcing  || !isInVariation(move),
+        isDisabled: (move: Move) => !editedAreLinesForcing  || !isInVariation(move),
         handler: (move: Move) => promoteMoveVariation(move)
       },
     });
-  }, [areLinesForcing, currentFlashcard, deleteMoves, promoteToMainLine, promoteMoveVariation]);
+  }, [editedAreLinesForcing, currentFlashcard, deleteMoves, promoteToMainLine, promoteMoveVariation]);
 
 
   // Whenever lines changes, update the numIncompleteLines and totalLines refs
@@ -933,7 +935,7 @@ const FlashcardReview = ({ flashcards, stats, isPracticeMode = false }: Props) =
         scrollToBottom={scrollTrigger}
       />
     );
-  }, [history, currentMove, currentFlashcard, scrollTrigger]);
+  }, [history, currentMove, currentFlashcard, scrollTrigger, makeContextMenu]);
 
 
   const arrowButtons = useMemo(() => (
