@@ -1108,6 +1108,14 @@ const LessonSession = ({
     }
   }, [s.mode, prevMode, putAllLessonLinesInHistory, s.currentChapterIdx, prevChapterIdx]);
 
+
+  // When currentMoveAnalyzer.isOn changes, clear arrows if it is turned off.
+  useEffect(() => {
+    if (!currentMoveAnalyzer.isOn) {
+      dispatch({ type: 'setArrows', arrows: [] });
+    }
+  }, [currentMoveAnalyzer.isOn]);
+
   
   // On first load: setup workers and clear evaluations
   useEffect(() => {
