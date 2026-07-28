@@ -97,6 +97,13 @@ function shouldUseLiteForMemory(): boolean {
 	// Windows Chrome with many threads tends to have memory pressure issues
 	// with multiple large WASM instances
 	const isWindows = /Win/.test(navigator.platform);
+
+  if (isWindows) {
+    console.log('Detected Windows platform');
+    console.log('shouldUseLiteForMemory');
+    return true;
+  }
+
 	const isChrome = /Chrome/.test(navigator.userAgent) && !/Edge/.test(navigator.userAgent);
 	const threads = getThreadCount();
 

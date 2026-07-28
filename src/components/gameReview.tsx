@@ -211,17 +211,6 @@ const GameReview = ({ game }: Props) => {
   }, [game]);
 
 
-  // Log system resources on first load
-  useEffect(() => {
-    const threads = navigator.hardwareConcurrency || 'unknown';
-    const ramGB = (navigator as any).deviceMemory || 'unknown';
-
-    console.log('=== System Resources ===');
-    console.log(`Available threads: ${threads}`);
-    console.log(`Available RAM: ${ramGB} GB`);
-    console.log('========================');
-  }, []);
-
   // On first load: setup workers, reset evaluations, and prepare for a new game
   useEffect(() => {
     fenAnalyzers.setupWorkers()
